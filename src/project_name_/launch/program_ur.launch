@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <arg name="use_sim" default="false" />
+
+    <arg name="host_ip"  default="10.0.0.2"/> <!-- 10.0.0.2 or 127.0.0.1 -->
+    <arg name="robot_ip"  default="10.0.0.1"/> <!-- 10.0.0.1 or 127.0.0.1 -->
+    <arg name="reverse_port"  default="8080"/> <!-- 50001 -->
+
+
+    <!-- <param name="robot_description" command="$(find xacro)/xacro.py '$(find project_name_)/urdf/ur5_kol_robot_description.xacro'" /> -->
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find project_name_)/urdf/ur5_r85_robot_description.xacro'" />
+
+
+    <param name="targets_description" command="$(find xacro)/xacro.py '$(find project_name_)/urdf/targets_description.xacro'" />
+    <node name="ur5_kol_joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <remap from="robot_description" to="targets_description" />
+    </node>
+    <node name="ur5_kol_robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="robot_description" to="targets_description" />
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz" respawn="false" args="-d $(find project_name_)/rviz/kol_casing.rviz" output="screen" required="true"/>
+
+
+    <arg name="node_name" default="project_name__node" />
+    <node pkg="project_name_" type="project_name_" name="$(arg node_name)"
+          output="screen" cwd="node" required="true">
+
+        <param name="use_sim" value="$(arg use_sim)"/>
+
+        <param name="host_ip" type="string" value="$(arg host_ip)" />
+        <param name="robot_ip" type="string" value="$(arg robot_ip)" />
+        <param name="reverse_port" type="int" value="$(arg reverse_port)" />
+
+        <rosparam>
+            model_path: "/config/model/"
+            train_data_path: "/config/training/"
+            exec_data_path: "/config/execution/"
+
+            robot_type: "ur" # "lwr4p"
+            robot_description_name: "/robot_description"
+            base_link: "ur5_base_link" # "lwr_arm_base_link"
+            tool_link: "ee_link" # "ee_link"
+
+            ctrl_cycle: 0.002
+            limits_check: false
+
+            target_pose_topic: "/target_pose"
+
+            q_start: [-2.4, -1.04, -1.7, -1.56, 1.45, 1.43]
+            #q_start: [-2.93, -1.15, -1.58, -1.6, 1.5, 4.18]
+            #q_start: [-2.26, -1.21, -1.57, -1.64, 1.34, 1.76] # train
+
+            model_filename: "pih_ur_gmp_target_model.bin"
+            train_data_filename: "pih_ur_train_data.bin"
+        </rosparam>
+
+    </node>
+
+</launch>

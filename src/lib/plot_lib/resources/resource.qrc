@@ -1,0 +1,10 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file alias="msg_box_icon">images/msg_box_icon.png</file>
+    <file alias="accept_icon">images/accept_icon.jpg</file>
+    <file alias="reject_icon">images/reject_icon.jpg</file>
+    <file alias="panic_button_icon">images/panic_button_icon.jpg</file>
+    <file alias="start_rec_icon">images/start_rec.jpg</file>
+    <file alias="stop_rec_icon">images/stop_rec.jpg</file>
+</qresource>
+</RCC>
