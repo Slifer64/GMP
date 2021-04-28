@@ -1,4 +1,5 @@
 #include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP_nDoF_Update.h>
 // #include <gmp_lib/GMP/GMPo.h>
 
 #include <gmp_lib/TrajScale/TrajScale.h>
