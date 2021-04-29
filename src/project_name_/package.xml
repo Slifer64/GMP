@@ -2,7 +2,7 @@
 <package>
   <name>project_name_</name>
   <version>0.0.0</version>
-  <description>Goal and time scale prediction during pHRI on SE3-DMP using KF</description>
+  <description>Test package for GMP</description>
 
   <maintainer email="antosidi646@gmail.com">Antonis Sidiropoulos</maintainer>
 
@@ -16,44 +16,8 @@
   <build_depend>roslib</build_depend>
   <run_depend>roslib</run_depend>
 
-  <build_depend>kf_lib</build_depend>
-  <run_depend>kf_lib</run_depend>
-
-  <build_depend>dmp_lib</build_depend>
-  <run_depend>dmp_lib</run_depend>
-
-  <build_depend>io_lib</build_depend>
-  <run_depend>io_lib</run_depend>
-
-  <build_depend>math_lib</build_depend>
-  <run_depend>math_lib</run_depend>
-
-  <build_depend>plot_lib</build_depend>
-  <run_depend>plot_lib</run_depend>
-
-  <build_depend>thread_lib</build_depend>
-  <run_depend>thread_lib</run_depend>
-
-  <build_depend>robo_lib</build_depend>
-  <run_depend>robo_lib</run_depend>
-
-  <build_depend>robot_wrapper</build_depend>
-  <run_depend>robot_wrapper</run_depend>
-
-  <build_depend>gui_lib</build_depend>
-  <run_depend>gui_lib</run_depend>
-
-  <build_depend>geometry_msgs</build_depend>
-  <run_depend>geometry_msgs</run_depend>
-
-  <build_depend>tf</build_depend>
-  <run_depend>tf</run_depend>
-
-  <build_depend>rviz_lib</build_depend>
-  <run_depend>rviz_lib</run_depend>
-
-  <build_depend>rvirobotiq_85_gripperz_lib</build_depend>
-  <run_depend>robotiq_85_gripper</run_depend>
+  <build_depend>gmp_lib</build_depend>
+  <run_depend>gmp_lib</run_depend>
 
   <export></export>
 </package>

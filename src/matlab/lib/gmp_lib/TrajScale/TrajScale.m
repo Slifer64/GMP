@@ -8,6 +8,16 @@
 
 classdef TrajScale < matlab.mixin.Copyable
     
+    properties (Constant, Access = public)
+        
+        % enum TrajScaleType{
+        PROP_SCALE = 0
+        ROT_MIN_SCALE = 1
+        ROT_WB_SCALE = 2
+        %}
+        
+    end
+    
     methods (Access = public)
         
         %% Constructor.
@@ -76,11 +86,17 @@ classdef TrajScale < matlab.mixin.Copyable
         
     end
     
+    methods (Abstract, Access = public)
+        
+        scale_type = getScaleType(this)
+        
+    end
+    
     methods (Abstract, Access = protected)
         
         sc = calcScaling(this)
         
-        inv_sc = calcInvScaling(this) 
+        inv_sc = calcInvScaling(this)
         
     end
     

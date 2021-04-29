@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node pkg="project_name_" type="nDoF_gmp_test" name="nDoF_gmp_test_node"
+          output="screen" cwd="node" required="true">
+
+        <rosparam>
+
+          in_filename: "src/simulation/data/pos_data.bin"
+          out_filename: "src/simulation/data/nDoF_gmp_test_results.bin"
+
+          train_method: "LS"
+          N_kernels: 25
+          kernels_std_scaling: 1.5
+
+          scale_type: "rot_wb" # {"prop", "rot_min", "rot_wb"}
+
+          spat_s: [2, 3, 1.1] # spatial scale
+          temp_s: 1.2 # temporal scale
+
+          read_from_file: false
+
+        </rosparam>
+
+    </node>
+
+</launch>

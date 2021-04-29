@@ -6,19 +6,13 @@ namespace as64_
 namespace gmp_
 {
 
-  GMP_nDoF_IO::GMP_nDoF_IO(const std::shared_ptr<gmp_::GMP_nDoF> &gmp)
-  {
-    this->gmp = gmp;
-  }
-
-
-  void GMP_nDoF_IO::write(const std::string &filename, const std::string &prefix)
+  void GMP_nDoF_IO::write(const gmp_::GMP_nDoF::Ptr gmp, const std::string &filename, const std::string &prefix)
   {
     gmp_::FileIO fid(filename, gmp_::FileIO::out|gmp_::FileIO::trunc);
-    write(fid, prefix);
+    write(gmp, fid, prefix);
   }
 
-  void GMP_nDoF_IO::write(gmp_::FileIO &fid, const std::string &prefix)
+  void GMP_nDoF_IO::write(const gmp_::GMP_nDoF::Ptr gmp, gmp_::FileIO &fid, const std::string &prefix)
   {
     unsigned N_kernels = gmp->numOfKernels();
     unsigned n_dofs = gmp->numOfDoFs();
@@ -33,13 +27,13 @@ namespace gmp_
     fid.write(prefix + "h", gmp->h);
   }
 
-  void GMP_nDoF_IO::read(const std::string &filename, const std::string &prefix)
+  void GMP_nDoF_IO::read(gmp_::GMP_nDoF::Ptr gmp, const std::string &filename, const std::string &prefix)
   {
     gmp_::FileIO fid(filename, gmp_::FileIO::in);
-    read(fid, prefix);
+    read(gmp, fid, prefix);
   }
 
-  void GMP_nDoF_IO::read(gmp_::FileIO &fid, const std::string &prefix)
+  void GMP_nDoF_IO::read(gmp_::GMP_nDoF::Ptr gmp, gmp_::FileIO &fid, const std::string &prefix)
   {
     fid.read(prefix + "weights", gmp->W);
     fid.read(prefix + "damping", gmp->D);

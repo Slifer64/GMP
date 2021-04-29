@@ -28,6 +28,16 @@ classdef TrajScale_Rot_wb < TrajScale
 
     end
     
+    methods (Access = public) % Abstract implementations
+        
+        function scale_type = getScaleType(this)
+            
+            scale_type = TrajScale.ROT_WB_SCALE;
+            
+        end
+        
+    end
+    
     methods (Access = protected)
        
         % ------------------------------------------

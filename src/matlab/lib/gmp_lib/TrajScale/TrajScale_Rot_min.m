@@ -14,6 +14,16 @@ classdef TrajScale_Rot_min < TrajScale
 
     end
     
+    methods (Access = public) % Abstract implementations
+        
+        function scale_type = getScaleType(this)
+            
+            scale_type = TrajScale.ROT_MIN_SCALE;
+            
+        end
+        
+    end
+    
     methods (Access = protected)
        
         % ------------------------------------------

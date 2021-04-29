@@ -10,8 +10,6 @@ set(CMAKE_CXX_STANDARD 11) # Tell CMake to compile with C++11
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib
-  math_lib
-  io_lib
   gmp_lib
 )
 
@@ -28,11 +26,26 @@ include_directories(
 )
 
 set(SRC_LIST
-  include/${PROJECT_NAME}/main.cpp
+  src/utils/utils.cpp
 )
 
+set(LIBS
+  ${catkin_LIBRARIES}
+  armadillo
+  gmp_lib
+)
+
+# ===================================================
+
+add_executable( nDoF_gmp_test src/simulation/nDoF_gmp_test.cpp ${SRC_LIST})
+target_link_libraries(nDoF_gmp_test ${LIBS} )
+
+# ===================================================
+
+
+#[[
 add_executable(${PROJECT_NAME}
-  ${SRC_LIST}
+  include/${PROJECT_NAME}/main.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -43,7 +56,8 @@ add_dependencies(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   armadillo
-  math_lib
-  io_lib
   gmp_lib
 )
+]]
+
+# =====================================

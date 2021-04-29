@@ -1,0 +1,130 @@
+#include <cstdlib>
+#include <memory>
+
+#include <ros/ros.h>
+#include <ros/package.h>
+
+#include <armadillo>
+
+#include <gmp_lib/gmp_lib.h>
+#include <gmp_lib/io/file_io.h>
+
+#include <project_name_/utils/utils.h>
+
+using namespace as64_;
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "nDoF_gmp_test_node");
+
+  arma::wall_clock timer;
+
+  std::string in_filename;
+  std::string out_filename;
+  std::string train_method = "LS";
+  int N_kernels = 25;
+  double kernels_std_scaling = 1.5;
+  std::string scale_type;
+  arma::vec spat_s;
+  double temp_s;
+  bool read_from_file;
+
+  // =============  Load params  =============
+  ros::NodeHandle nh("~");
+  if (!nh.getParam("in_filename", in_filename)) throw std::runtime_error("Failed to load param \"in_filename\"...\n");
+  in_filename = ros::package::getPath("project_name_") + "/" + in_filename;
+  if (!nh.getParam("out_filename", out_filename)) throw std::runtime_error("Failed to load param \"out_filename\"...\n");
+  out_filename = ros::package::getPath("project_name_") + "/" + out_filename;
+  if (!nh.getParam("train_method", train_method)) throw std::runtime_error("Failed to load param \"train_method\"...\n");
+  if (!nh.getParam("N_kernels", N_kernels)) throw std::runtime_error("Failed to load param \"N_kernels\"...\n");
+  if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw std::runtime_error("Failed to load param \"kernels_std_scaling\"...\n");
+  if (!nh.getParam("scale_type", scale_type)) throw std::runtime_error("Failed to load param \"scale_type\"...\n");
+  if (!nh.getParam("read_from_file", read_from_file)) throw std::runtime_error("Failed to load param \"read_from_file\"...\n");
+
+  std::vector<double> spat_s_;
+  if (!nh.getParam("spat_s", spat_s_)) throw std::runtime_error("Failed to load param \"spat_s\"...\n");
+  spat_s = spat_s_;
+  if (!nh.getParam("temp_s", temp_s)) throw std::runtime_error("Failed to load param \"temp_s\"...\n");
+
+  // =============  Load train data  =============
+  arma::rowvec Timed;
+  arma::mat Pd_data, dPd_data, ddPd_data;
+  gmp_::FileIO fid(in_filename, gmp_::FileIO::in);
+  fid.read("Timed",Timed);
+  fid.read("Pd_data",Pd_data);
+  fid.read("dPd_data",dPd_data);
+  fid.read("ddPd_data",ddPd_data);
+  fid.close();
+
+  double Ts = Timed(1) - Timed(0);
+
+  // =============  Create/Train GMP  =============
+  gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
+
+  if (read_from_file) gmp_::GMP_nDoF_IO::read(gmp, "gmp_ndof.bin", "t1_");
+  else
+  {
+    // initialize and train GMP
+    unsigned n_dof = Pd_data.n_rows;
+    gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
+    timer.tic();
+    arma::vec offline_train_mse;
+    gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
+    std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
+    std::cerr << "Elapsed time " << timer.toc() << " sec\n";
+
+    gmp_::TrajScale::Ptr traj_sc;
+    if (scale_type.compare("prop") == 0) traj_sc.reset( new gmp_::TrajScale_Prop(n_dof) );
+    else if (scale_type.compare("rot_min") == 0) traj_sc.reset( new gmp_::TrajScale_Rot_min() );
+    else if (scale_type.compare("rot_wb") == 0)
+    {
+      traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
+      dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
+    }
+    else throw std::runtime_error("Unsupported scale type \"" + scale_type + "\"...\n");
+
+    gmp->setScaleMethod(traj_sc);
+  }
+
+  // gmp_::GMP_nDoF_IO::wirte(gmp, "gmp_ndof.bin", "t1_");
+
+
+  // =============  GMP simulation  =============
+  std::cerr << "GMP simulation...\n";
+
+  timer.tic();
+
+  int n_data = Timed.size();
+  int i_end = n_data - 1;
+  arma::vec P0d = Pd_data.col(0);
+  arma::vec Pgd = Pd_data.col(i_end);
+  arma::vec P0 = P0d;
+  arma::vec Pg = spat_s%(Pgd - P0) + P0;
+  double T = Timed(i_end) / temp_s;
+  double dt = Ts;
+
+  arma::rowvec Time;
+  arma::mat P_data, dP_data, ddP_data;
+  simulateGMP_nDoF(gmp, P0, Pg, T, dt, Time, P_data, dP_data, ddP_data);
+
+  std::cerr << "Elapsed time " << timer.toc() << " sec\n";
+
+  // =============  Write results  =============
+  {
+    gmp_::FileIO fid(out_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
+    fid.write("Timed",Timed);
+    fid.write("Pd_data",Pd_data);
+    fid.write("dPd_data",dPd_data);
+    fid.write("ddPd_data",ddPd_data);
+    fid.write("Time",Time);
+    fid.write("P_data",P_data);
+    fid.write("dP_data",dP_data);
+    fid.write("ddP_data",ddP_data);
+    fid.write("spat_s",spat_s);
+    fid.write("temp_s",temp_s);
+  }
+
+  PRINT_INFO_MSG("<====  Finished! ====>\n");
+
+  return 0;
+}

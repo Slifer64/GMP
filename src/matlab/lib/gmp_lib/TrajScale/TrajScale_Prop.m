@@ -14,7 +14,17 @@ classdef TrajScale_Prop < TrajScale
 
     end
     
-    methods (Access = protected)
+    methods (Access = public) % Abstract implementations
+        
+        function scale_type = getScaleType(this)
+            
+            scale_type = TrajScale.PROP_SCALE;
+            
+        end
+        
+    end
+    
+    methods (Access = protected) % Abstract implementations
 
         function sc = calcScaling(this)
 
