@@ -23,7 +23,7 @@ namespace gmp_
     this->Y0 = this->Y0d;
     this->Yg = this->Ygd;
 
-    this->setScaleMethod( std::shared_ptr<gmp_::TrajScale>(new TrajScale_Prop(n_dofs)) );
+    this->setScaleMethod( gmp_::TrajScale::Ptr(new TrajScale_Prop(n_dofs)) );
 
     this->y_dot = arma::vec().zeros(n_dofs);
     this->z_dot = arma::vec().zeros(n_dofs);

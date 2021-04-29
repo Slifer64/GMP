@@ -32,6 +32,8 @@ public:
     this->calcInvScaling();
   }
 
+  ScaleType getScaleType() const { return TrajScale::ScaleType::ROT_WB_SCALE; }
+
 protected:
 
   arma::mat calcScaling() const

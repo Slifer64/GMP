@@ -17,6 +17,8 @@ class GMP_nDoF_Update
 
 public:
 
+  typedef std::shared_ptr<GMP_nDoF_Update> Ptr;
+
   /**GMP constructor.
    *  @param[in] gmp: n_DoF dmp.
    */

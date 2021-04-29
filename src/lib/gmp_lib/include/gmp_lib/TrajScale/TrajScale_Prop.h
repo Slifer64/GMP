@@ -22,6 +22,8 @@ public:
    */
   TrajScale_Prop(unsigned n_dof): TrajScale(n_dof) {}
 
+  enum ScaleType getScaleType() const { return TrajScale::ScaleType::PROP_SCALE; }
+
 protected:
 
   arma::mat calcScaling() const

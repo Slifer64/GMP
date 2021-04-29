@@ -25,6 +25,8 @@ class GMP_nDoF: public GMP_regressor
 
 public:
 
+  typedef std::shared_ptr<GMP_nDoF> Ptr;
+
   /** GMP constructor.
    *  @param[in] n_dofs: number of degrees of freedom.
    *  @param[in] N_kernels: the number of kernels
@@ -145,7 +147,7 @@ public:
 
 public: // properties
 
-  std::shared_ptr<gmp_::TrajScale> traj_sc; ///< object of type @TrajScale
+  gmp_::TrajScale::Ptr traj_sc; ///< object of type @TrajScale
 
   // weights
   arma::mat W; ///< num_DoF x num_Kernels matrix where each row contrains the weights for each DoF

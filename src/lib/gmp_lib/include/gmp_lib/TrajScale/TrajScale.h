@@ -17,11 +17,19 @@ namespace gmp_
 
 class TrajScale
 {
-
 // ===================================
 // =======  Public Functions  ========
 // ===================================
 public:
+
+  typedef std::shared_ptr<TrajScale> Ptr;
+
+  enum ScaleType
+  {
+    PROP_SCALE = 0,
+    ROT_MIN_SCALE = 1,
+    ROT_WB_SCALE = 2
+  };
 
   /** Constructor.
    * @param[in] n_dof: degrees of freedom.
@@ -89,11 +97,17 @@ public:
     return this->Y0d.size();
   }
 
+
+  // ==============================================
+  // =======  Abstract (public) Functions  ========
+  // ==============================================
+  virtual enum ScaleType getScaleType() const = 0;
+
 protected:
 
-  // =====================================
-  // =======  Abstract Functions  ========
-  // =====================================
+  // =================================================
+  // =======  Abstract (protected) Functions  ========
+  // =================================================
 
   virtual arma::mat calcScaling() const = 0;
   virtual arma::mat calcInvScaling() const = 0;

@@ -19,6 +19,8 @@ public:
    */
   TrajScale_Rot_min(): TrajScale(3) {}
 
+  enum ScaleType getScaleType() const { return TrajScale::ScaleType::ROT_MIN_SCALE; }
+
 protected:
 
   arma::mat calcScaling() const
