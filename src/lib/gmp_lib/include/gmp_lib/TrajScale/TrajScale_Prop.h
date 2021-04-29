@@ -20,7 +20,11 @@ public:
   /** Constructor.
    *  @param[in] n_dof: degrees of freedom.
    */
-  TrajScale_Prop(unsigned n_dof): TrajScale(n_dof) {}
+  TrajScale_Prop(unsigned n_dof): TrajScale(n_dof)
+  {
+    this->setNominalStartFinalPos(this->Y0d, this->Ygd);
+    this->setNewStartFinalPos(this->Y0, this->Yg);
+  }
 
   enum ScaleType getScaleType() const { return TrajScale::ScaleType::PROP_SCALE; }
 

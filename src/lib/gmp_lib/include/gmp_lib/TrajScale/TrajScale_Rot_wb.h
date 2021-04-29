@@ -18,6 +18,8 @@ public:
    */
   TrajScale_Rot_wb(): TrajScale(3)
   {
+    this->setNominalStartFinalPos(this->Y0d, this->Ygd);
+    this->setNewStartFinalPos(this->Y0, this->Yg);
     this->setWorkBenchNormal({0,0,1});
   }
 

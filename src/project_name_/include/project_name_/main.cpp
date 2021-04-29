@@ -12,10 +12,11 @@ int main(int argc, char **argv)
 
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1,2));
 
-  gmp_::GMP_nDoF_IO::Ptr gmp_io(new gmp_::GMP_nDoF_IO(gmp));
+  // gmp_::GMP_nDoF_IO::Ptr gmp_io(new gmp_::GMP_nDoF_IO(gmp));
+  //
+  // gmp_::GMP_nDoF_Update::Ptr gmp_up(new gmp_::GMP_nDoF_Update(gmp));
 
-  gmp_::GMP_nDoF_Update::Ptr gmp_up(new gmp_::GMP_nDoF_Update(gmp));
-
+  std::cerr << "==========   Everything is ok!  ==========\n";
 
   return 0;
 }

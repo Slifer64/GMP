@@ -17,7 +17,11 @@ public:
   /** Constructor.
    *  @param[in] n_dof: degrees of freedom.
    */
-  TrajScale_Rot_min(): TrajScale(3) {}
+  TrajScale_Rot_min(): TrajScale(3)
+  {
+    this->setNominalStartFinalPos(this->Y0d, this->Ygd);
+    this->setNewStartFinalPos(this->Y0, this->Yg);
+  }
 
   enum ScaleType getScaleType() const { return TrajScale::ScaleType::ROT_MIN_SCALE; }
 

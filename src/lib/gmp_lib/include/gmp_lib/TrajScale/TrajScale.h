@@ -42,9 +42,6 @@ public:
     //will be overwirtten then on the 'setInitFinalPos' call
     this->Y0 = arma::vec().zeros(n_dof);
     this->Yg = arma::vec().ones(n_dof);
-
-    this->setNominalStartFinalPos(this->Y0d, this->Ygd);
-    this->setNewStartFinalPos(this->Y0, this->Yg);
   }
 
   /** Returns the matrix that scales to the new init/target position, according to the set scaling method.
