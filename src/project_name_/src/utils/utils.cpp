@@ -1,5 +1,8 @@
 #include <project_name_/utils/utils.h>
 
+arma::wall_clock Timer::timer;
+
+
 void PRINT_INFO_MSG(const std::string &msg, std::ostream &out)
 {
   out << "\033[1m" << "\033[34m" << "[INFO]: " << msg << "\033[0m";

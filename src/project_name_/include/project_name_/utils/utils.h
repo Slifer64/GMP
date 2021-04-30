@@ -14,6 +14,15 @@
 
 using namespace as64_;
 
+class Timer
+{
+public:
+  static void tic() { Timer::timer.tic(); }
+  static void toc() { std::cerr << "Elapsed time " + std::to_string(Timer::timer.toc()) + " sec\n"; }
+private:
+  static arma::wall_clock timer;
+};
+
 void PRINT_INFO_MSG(const std::string &msg, std::ostream &out = std::cout);
 void PRINT_CONFIRM_MSG(const std::string &msg, std::ostream &out = std::cout);
 void PRINT_WARNING_MSG(const std::string &msg, std::ostream &out = std::cout);

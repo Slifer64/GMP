@@ -110,6 +110,8 @@ public:
     int i = findNameIndex(name_);
     if (i>=0) throw std::runtime_error("[FileIO::write]: " + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
 
+    current_name = name_;
+
     this->name.push_back(name_);
     this->type.push_back(Type::SCALAR);
     this->sc_type.push_back(findScalarType(s));
@@ -249,6 +251,8 @@ public:
 
     int i = findNameIndex(name_);
     if (i<0) throw std::runtime_error("[FileIO::read]: " + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
+
+    current_name = name_;
 
     checkType(i, Type::SCALAR, findScalarType(s));
     size_t_ pos = i_pos[i];
@@ -434,7 +438,7 @@ protected:
     else if (std::is_same<T, double>::value) t = ScalarType::DOUBLE;
     else t = ScalarType::UNKNOWN;
 
-    if (t == ScalarType::UNKNOWN) throw std::runtime_error("[FileIO::findScalarType]: " + getErrMsg(UNKNOWN_TYPE));
+    if (t == ScalarType::UNKNOWN) throw std::runtime_error("[FileIO::findScalarType]: entry \"" + current_name + "\", " + getErrMsg(UNKNOWN_TYPE));
 
     return t;
   }
@@ -479,6 +483,8 @@ protected:
   {
     int i = findNameIndex(name_);
     if (i<0) throw std::runtime_error("[FileIO::read]: " + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
+
+    current_name = name_;
 
     T sc_t; // temporary variable to determine the scalar type
     checkType(i, t, findScalarType(sc_t));
@@ -530,6 +536,8 @@ protected:
     int i = findNameIndex(name_);
     if (i>=0) throw std::runtime_error("[FileIO::write]: " + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
 
+    current_name = name_;
+
     this->name.push_back(name_);
     this->type.push_back(t);
     T temp; // temporary variable to determine the type of T
@@ -572,6 +580,8 @@ protected:
   static const char* error_msg[];
   static const char *TypeName[];
   static const char *ScalarTypeName[];
+
+  std::string current_name; // stores the name of the entry that is currently proccessed (used to for display purposes on errors)
 
 };
 

@@ -13,38 +13,32 @@
 
 using namespace as64_;
 
+std::string in_filename;
+std::string out_filename;
+std::string train_method = "LS";
+int N_kernels = 25;
+double kernels_std_scaling = 1.5;
+std::string scale_type;
+arma::vec wb_normal;
+arma::vec spat_s;
+double temp_s;
+
+bool read_gmp_from_file;
+bool write_gmp_to_file;
+std::string gmp_filename;
+
+void loadParams();
+
+// ==================================
+// ------------   MAIN  -------------
+// ==================================
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "nDoF_gmp_test_node");
 
-  arma::wall_clock timer;
-
-  std::string in_filename;
-  std::string out_filename;
-  std::string train_method = "LS";
-  int N_kernels = 25;
-  double kernels_std_scaling = 1.5;
-  std::string scale_type;
-  arma::vec spat_s;
-  double temp_s;
-  bool read_from_file;
-
   // =============  Load params  =============
-  ros::NodeHandle nh("~");
-  if (!nh.getParam("in_filename", in_filename)) throw std::runtime_error("Failed to load param \"in_filename\"...\n");
-  in_filename = ros::package::getPath("project_name_") + "/" + in_filename;
-  if (!nh.getParam("out_filename", out_filename)) throw std::runtime_error("Failed to load param \"out_filename\"...\n");
-  out_filename = ros::package::getPath("project_name_") + "/" + out_filename;
-  if (!nh.getParam("train_method", train_method)) throw std::runtime_error("Failed to load param \"train_method\"...\n");
-  if (!nh.getParam("N_kernels", N_kernels)) throw std::runtime_error("Failed to load param \"N_kernels\"...\n");
-  if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw std::runtime_error("Failed to load param \"kernels_std_scaling\"...\n");
-  if (!nh.getParam("scale_type", scale_type)) throw std::runtime_error("Failed to load param \"scale_type\"...\n");
-  if (!nh.getParam("read_from_file", read_from_file)) throw std::runtime_error("Failed to load param \"read_from_file\"...\n");
-
-  std::vector<double> spat_s_;
-  if (!nh.getParam("spat_s", spat_s_)) throw std::runtime_error("Failed to load param \"spat_s\"...\n");
-  spat_s = spat_s_;
-  if (!nh.getParam("temp_s", temp_s)) throw std::runtime_error("Failed to load param \"temp_s\"...\n");
+  loadParams();
 
   // =============  Load train data  =============
   arma::rowvec Timed;
@@ -61,18 +55,20 @@ int main(int argc, char **argv)
   // =============  Create/Train GMP  =============
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
 
-  if (read_from_file) gmp_::GMP_nDoF_IO::read(gmp, "gmp_ndof.bin", "t1_");
+  if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp, gmp_filename, "");
   else
   {
     // initialize and train GMP
     unsigned n_dof = Pd_data.n_rows;
     gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
-    timer.tic();
+    Timer::tic();
     arma::vec offline_train_mse;
+    PRINT_INFO_MSG("GMP training...\n");
     gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
     std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
-    std::cerr << "Elapsed time " << timer.toc() << " sec\n";
+    Timer::toc();
 
+    // set scaling type
     gmp_::TrajScale::Ptr traj_sc;
     if (scale_type.compare("prop") == 0) traj_sc.reset( new gmp_::TrajScale_Prop(n_dof) );
     else if (scale_type.compare("rot_min") == 0) traj_sc.reset( new gmp_::TrajScale_Rot_min() );
@@ -86,13 +82,12 @@ int main(int argc, char **argv)
     gmp->setScaleMethod(traj_sc);
   }
 
-  // gmp_::GMP_nDoF_IO::wirte(gmp, "gmp_ndof.bin", "t1_");
-
+  if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp, gmp_filename, "");
 
   // =============  GMP simulation  =============
-  std::cerr << "GMP simulation...\n";
+  PRINT_INFO_MSG("GMP simulation...\n");
 
-  timer.tic();
+  Timer::tic();
 
   int n_data = Timed.size();
   int i_end = n_data - 1;
@@ -107,7 +102,7 @@ int main(int argc, char **argv)
   arma::mat P_data, dP_data, ddP_data;
   simulateGMP_nDoF(gmp, P0, Pg, T, dt, Time, P_data, dP_data, ddP_data);
 
-  std::cerr << "Elapsed time " << timer.toc() << " sec\n";
+  Timer::toc();
 
   // =============  Write results  =============
   {
@@ -124,7 +119,37 @@ int main(int argc, char **argv)
     fid.write("temp_s",temp_s);
   }
 
-  PRINT_INFO_MSG("<====  Finished! ====>\n");
+  PRINT_CONFIRM_MSG("<====  Finished! ====>\n");
 
   return 0;
+}
+
+// ===============================================
+
+void loadParams()
+{
+  std::string package_path = ros::package::getPath("project_name_") + "/";
+  ros::NodeHandle nh("~");
+  if (!nh.getParam("in_filename", in_filename)) throw std::runtime_error("Failed to load param \"in_filename\"...\n");
+  in_filename = package_path + in_filename;
+  if (!nh.getParam("out_filename", out_filename)) throw std::runtime_error("Failed to load param \"out_filename\"...\n");
+  out_filename = package_path + out_filename;
+  if (!nh.getParam("train_method", train_method)) throw std::runtime_error("Failed to load param \"train_method\"...\n");
+  if (!nh.getParam("N_kernels", N_kernels)) throw std::runtime_error("Failed to load param \"N_kernels\"...\n");
+  if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw std::runtime_error("Failed to load param \"kernels_std_scaling\"...\n");
+  if (!nh.getParam("scale_type", scale_type)) throw std::runtime_error("Failed to load param \"scale_type\"...\n");
+  std::vector<double> wb_normal_temp;
+  if (!nh.getParam("wb_normal", wb_normal_temp)) throw std::runtime_error("Failed to load param \"wb_normal\"...\n");
+  wb_normal = wb_normal_temp;
+
+  std::vector<double> spat_s_;
+  if (!nh.getParam("spat_s", spat_s_)) throw std::runtime_error("Failed to load param \"spat_s\"...\n");
+  spat_s = spat_s_;
+  if (!nh.getParam("temp_s", temp_s)) throw std::runtime_error("Failed to load param \"temp_s\"...\n");
+
+  if (!nh.getParam("read_gmp_from_file", read_gmp_from_file)) throw std::runtime_error("Failed to load param \"read_gmp_from_file\"...\n");
+  if (!nh.getParam("write_gmp_to_file", write_gmp_to_file)) throw std::runtime_error("Failed to load param \"write_gmp_to_file\"...\n");
+  if ((read_gmp_from_file || write_gmp_to_file) && !nh.getParam("gmp_filename", gmp_filename))
+    throw std::runtime_error("Failed to load param \"gmp_filename\"...\n");
+  gmp_filename = package_path + gmp_filename;
 }
