@@ -164,6 +164,157 @@ arma::vec quatLog(const arma::vec &quat, double zero_tol)
   return q_log;
 }
 
+// ===========================================================
+// ===========================================================
+
+arma::vec rotVel_to_qLogDot(const arma::vec &rotVel, const arma::vec &logQ)
+{
+  arma::mat JqQ = jacob_qLog_Q(logQ);
+  return 0.5 * JqQ * quatProd( arma::join_vert(arma::vec({0}), rotVel), logQ );
+}
+
+
+arma::vec qLogDot_to_rotVel(const arma::vec &logQ_dot, const arma::vec &Q)
+{
+  arma::mat JQq = jacob_Q_qLog(Q);
+  arma::vec rotVel = 2 * quatProd( JQq*logQ_dot, quatInv(Q) );
+  return rotVel.subvec(1,3);
+}
+
+
+arma::vec rotAccel_to_qLogDDot(const arma::vec &rotAccel, const arma::vec &rotVel, const arma::vec &Q)
+{
+  arma::vec rotVelQ = arma::join_vert(arma::vec({0}), rotVel);
+  arma::vec rotAccelQ = arma::join_vert(arma::vec({0}), rotAccel);
+
+  arma::mat J = jacob_qLog_Q(Q);
+  arma::mat Jdot = jacobDot_qLog_Q(Q, rotVel);
+
+  return 0.5*(Jdot * quatProd(rotVelQ, Q) + J * quatProd( rotAccelQ+0.5*quatProd(rotVelQ,rotVelQ), Q ) );
+}
+
+
+arma::vec qLogDDot_to_rotAccel(const arma::vec &logQ_ddot, const arma::vec &rotVel, const arma::vec &Q)
+{
+  arma::vec logQ_dot = rotVel_to_qLogDot(rotVel, Q);
+  arma::mat Jq = jacob_Q_qLog(Q);
+  arma::mat dJq = jacobDot_Q_qLog(Q, rotVel);
+
+  arma::vec rotAccel = 2 * ( quatProd( dJq*logQ_dot + Jq*logQ_ddot, quatInv(Q) ) );
+  return rotAccel.subvec(1,3);
+}
+
+const long double JLOG_ZERO_TOL = 1e-8;
+
+arma::mat jacob_Q_qLog(const arma::vec &Q)
+{
+  arma::mat JQq(4,3);
+
+  if ( (1-std::fabs(Q(0))) <= JLOG_ZERO_TOL)
+  {
+    JQq.row(0) = arma::rowvec().zeros(3);
+    JQq.submat(1,0,3,2) = arma::mat().eye(3,3);
+    return JQq;
+  }
+
+  double w = Q(0);
+  arma::vec v = Q.subvec(1,3);
+  double norm_v = arma::norm(v);
+  arma::vec eta = v / norm_v;
+  double s_th = norm_v;
+  double c_th = w;
+  double th = std::atan2(s_th, c_th);
+  arma::mat Eta = eta*eta.t();
+
+  JQq.row(0) = -0.5 * s_th * eta.t();
+  JQq.submat(1,0,3,2) = 0.5 * ( (arma::mat().eye(3,3) - Eta)*s_th/th + c_th*Eta );
+  return JQq;
+}
+
+arma::mat jacob_qLog_Q(const arma::vec &Q)
+{
+  arma::mat JqQ(3,4);
+
+  if ( (1-std::fabs(Q(0))) <= JLOG_ZERO_TOL)
+  {
+    JqQ.col(0) = arma::vec().zeros(3);
+    JqQ.submat(0,1,2,3) = arma::mat().eye(3,3);
+    return JqQ;
+  }
+
+  double w = Q(0);
+  arma::vec v = Q.subvec(1,3);
+  double norm_v = arma::norm(v);
+  arma::vec eta = v / norm_v;
+  double s_th = norm_v;
+  double c_th = w;
+  double th = std::atan2(s_th, c_th);
+
+  JqQ.col(0) = 2*eta*(th*c_th - s_th)/std::pow(s_th,2);
+  JqQ.submat(0,1,2,3) = 2*arma::mat().eye(3,3)*th/s_th;
+  return JqQ;
+}
+
+
+arma::mat jacobDot_qLog_Q(const arma::vec &Q, const arma::vec &rotVel)
+{
+  arma::mat JqQ_dot(3,4);
+
+  arma::vec qdot = rotVel_to_qLogDot(rotVel, Q);
+
+  if ( (1-std::fabs(Q(0))) <= JLOG_ZERO_TOL)
+  {
+    JqQ_dot.col(0) = -qdot/3;
+    JqQ_dot.submat(0,1,2,3) = arma::mat().zeros(3,3);
+    return JqQ_dot;
+  }
+
+  double w = Q(0);
+  arma::vec v = Q.subvec(1,3);
+  double norm_v = arma::norm(v);
+  arma::vec eta = v / norm_v;
+  double s_th = norm_v;
+  double c_th = w;
+  double th = std::atan2(s_th, c_th);
+  arma::mat Eta = eta*eta.t();
+  double temp = (th*c_th-s_th)/std::pow(s_th,2);
+
+  JqQ_dot.col(0) = ((-th/s_th - 2*c_th*temp/s_th)*Eta + temp*(arma::mat().eye(3,3)-Eta)/th)*qdot;
+  JqQ_dot.submat(0,1,2,3) = (-temp*arma::dot(eta,qdot))*arma::mat().eye(3,3);
+  return JqQ_dot;
+}
+
+
+arma::mat jacobDot_Q_qLog(const arma::vec &Q, const arma::vec &rotVel)
+{
+  arma::mat JQq_dot(4,3);
+
+  arma::vec qdot = rotVel_to_qLogDot(rotVel, Q);
+
+  if ( (1-std::fabs(Q(0))) <= JLOG_ZERO_TOL)
+  {
+    JQq_dot.row(0) = -qdot.t()/4;
+    JQq_dot.submat(1,0,3,2) = arma::mat().zeros(3,3);
+    return JQq_dot;
+  }
+
+  double w = Q(0);
+  arma::vec v = Q.subvec(1,3);
+  double norm_v = arma::norm(v);
+  arma::vec eta = v / norm_v;
+  double s_th = norm_v;
+  double c_th = w;
+  double th = std::atan2(s_th, c_th);
+  arma::mat Eta = eta*eta.t();
+  arma::mat I_eta = arma::mat().eye(3,3) - Eta;
+  double temp = ((th*c_th-s_th)/std::pow(th,2));
+
+  JQq_dot.row(0) = -0.25 * qdot.t() * (c_th*Eta + (s_th/th)*I_eta);
+  JQq_dot.submat(1,0,3,2) = (0.25*arma::dot(eta,qdot))*( temp*I_eta - s_th*Eta ) + 0.25*temp*( eta*(qdot.t()*I_eta) + (I_eta*qdot)*eta.t() );
+
+  return JQq_dot;
+}
+
 
 } // namespace gmp_
 
