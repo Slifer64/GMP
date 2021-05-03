@@ -24,6 +24,8 @@ arma::vec quatExp(const arma::vec &v_rot, double zero_tol=1e-16);
 Eigen::Vector3d quatLog(const Eigen::Vector4d &quat, double zero_tol=1e-16);
 arma::vec quatLog(const arma::vec &quat, double zero_tol=1e-16);
 
+arma::vec quatDiff(const arma::vec &quat1, const arma::vec &quat2);
+
 // ===========================================================
 // ===========================================================
 

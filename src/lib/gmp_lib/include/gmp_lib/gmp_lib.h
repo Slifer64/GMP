@@ -3,6 +3,7 @@
 #include <gmp_lib/GMP/GMP_nDoF_IO.h>
 
 #include <gmp_lib/GMP/GMPo.h>
+#include <gmp_lib/GMP/GMPo_IO.h>
 
 #include <gmp_lib/TrajScale/TrajScale.h>
 #include <gmp_lib/TrajScale/TrajScale_Prop.h>

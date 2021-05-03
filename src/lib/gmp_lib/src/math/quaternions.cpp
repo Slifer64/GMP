@@ -164,6 +164,18 @@ arma::vec quatLog(const arma::vec &quat, double zero_tol)
   return q_log;
 }
 
+arma::vec quatDiff(const arma::vec &quat1, const arma::vec &quat2)
+{
+  arma::vec quatD;
+
+  arma::vec Q2 = quat2;
+  if (arma::dot(quat1,Q2)<0) Q2 = -Q2;
+
+  quatD = quatProd(quat1, quatInv(Q2));
+
+  return quatD;
+}
+
 // ===========================================================
 // ===========================================================
 

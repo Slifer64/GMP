@@ -24,6 +24,9 @@ class GMPo : public GMP_nDoF
 {
 
 public:
+
+  typedef std::shared_ptr<GMPo> Ptr;
+
   /** Constructs a GMP defined in the quat-log space.
    * @param[in] N_kernels: 3x1 vector with the number of kernels for each dim of the quat log.
    * @param[in] kernels_std_scaling: Scaling for std of kernels (optional, default=2).

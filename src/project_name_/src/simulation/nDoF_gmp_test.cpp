@@ -55,11 +55,11 @@ int main(int argc, char **argv)
   // =============  Create/Train GMP  =============
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
 
+  unsigned n_dof = Pd_data.n_rows;
   if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
-    unsigned n_dof = Pd_data.n_rows;
     gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
     Timer::tic();
     arma::vec offline_train_mse;
@@ -67,20 +67,20 @@ int main(int argc, char **argv)
     gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
     std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
     Timer::toc();
-
-    // set scaling type
-    gmp_::TrajScale::Ptr traj_sc;
-    if (scale_type.compare("prop") == 0) traj_sc.reset( new gmp_::TrajScale_Prop(n_dof) );
-    else if (scale_type.compare("rot_min") == 0) traj_sc.reset( new gmp_::TrajScale_Rot_min() );
-    else if (scale_type.compare("rot_wb") == 0)
-    {
-      traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
-      dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
-    }
-    else throw std::runtime_error("Unsupported scale type \"" + scale_type + "\"...\n");
-
-    gmp->setScaleMethod(traj_sc);
   }
+
+  // set scaling type
+  gmp_::TrajScale::Ptr traj_sc;
+  if (scale_type.compare("prop") == 0) traj_sc.reset( new gmp_::TrajScale_Prop(n_dof) );
+  else if (scale_type.compare("rot_min") == 0) traj_sc.reset( new gmp_::TrajScale_Rot_min() );
+  else if (scale_type.compare("rot_wb") == 0)
+  {
+    traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
+    dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
+  }
+  else throw std::runtime_error("Unsupported scale type \"" + scale_type + "\"...\n");
+
+  gmp->setScaleMethod(traj_sc);
 
   if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp.get(), gmp_filename, "");
 
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 
 void loadParams()
 {
-  std::string package_path = ros::package::getPath("project_name_") + "/";
+  std::string package_path = ros::package::getPath(PROJECT_NAME_) + "/";
   ros::NodeHandle nh("~");
   if (!nh.getParam("train_filename", train_filename)) throw std::runtime_error("Failed to load param \"train_filename\"...\n");
   train_filename = package_path + train_filename;

@@ -7,20 +7,22 @@
 
         <rosparam>
 
-          in_filename: "src/simulation/data/orient_data.bin"
-          out_filename: "src/simulation/data/orient_gmp_test_results.bin"
+          train_filename: "src/simulation/data/orient_data.bin"
+          results_filename: "src/simulation/data/orient_gmp_test_results.bin"
 
           train_method: "LS"
           N_kernels: 25
           kernels_std_scaling: 1.5
 
-          scale_type: "rot_wb" # {"prop", "rot_min", "rot_wb"}
+          scale_type: "prop" # {"prop", "rot_min", "rot_wb"}
           wb_normal: [0, 0, 1] # work-bench normal
 
-          spat_s: [2, 3, 1.1] # spatial scale
+          spat_s: [1.2, 1.3, 1.1] # spatial scale
           temp_s: 1.2 # temporal scale
 
-          read_gmp_from_file: false
+          orient_sim_fun: "Cart" # {"log", "quat", "Cart"}
+
+          read_gmp_from_file: true
           write_gmp_to_file: false
           gmp_filename: "src/simulation/data/gmp_orient.bin"
 

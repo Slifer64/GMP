@@ -1,79 +1,32 @@
-% function orient_gmp_test()
-
 clc;
 close all;
 clear;
 
-set_matlab_utils_path('../');
+addpath('../../matlab/lib/io_lib/');
+import_io_lib();
 
-%% Load training data
+% ------------------------------------------
 
-load('orient_data.mat', 'Data');
-Timed = Data.Time;
-Qd_data = Data.Quat;
-vRotd_data = Data.rotVel;
-dvRotd_data = Data.rotAccel;
+fid = FileIO('data/orient_gmp_test_results.bin', FileIO.in);
 
-%% Write data to binary format
-% fid = fopen('gmp_orient_train_data.bin','w');
-% io_.write_mat(Timed, fid, true);
-% io_.write_mat(Qd_data, fid, true);
-% io_.write_mat(vRotd_data, fid, true);
-% io_.write_mat(dvRotd_data, fid, true);
-% fclose(fid);
-
-Ts = Timed(2)-Timed(1);
-
-simulateGMPo = @simulateGMPo_in_Cart_space; % simulateGMPo_in_'log/quat/Cart'_space
-
-%% initialize and train GMP
-train_method = 'LS';
-N_kernels = 30;
-kernels_std_scaling = 1;
-gmp_o = GMPo(N_kernels, kernels_std_scaling);
-tic
-offline_train_mse = gmp_o.train(train_method, Timed/Timed(end), Qd_data);
-offline_train_mse
-toc
-
-% traj_sc = TrajScale_Prop(n_dof);
-% traj_sc = TrajScale_Rot_min();
-traj_sc = TrajScale_Rot_wb();
-traj_sc.setWorkBenchNormal([0; 0; 1]);
-gmp_o.setScaleMethod(traj_sc);
-
-% gmp_o.exportToFile('data/gmp_o_model.bin');
-% gmp_o = GMPo.importFromFile('data/gmp_o_model.bin');
-
-%% DMP simulation
-disp('GMP simulation...');
-tic
-Qd0 = Qd_data(:,1);
-Q0 = Qd0; %math_.quatProd(rotm2quat(rotz(57))',Qd0);
-Qgd = Qd_data(:,end);
-ks = diag([1.2 1.3 1.1]);
-kt = 2;
-e0 = ks*gmp_.quatLog(gmp_.quatDiff(Qgd,Qd0));
-Qg = gmp_.quatProd(gmp_.quatExp(e0), Q0);
-T = Timed(end) / kt;
-dt = Ts;
-
-% gmp_o.setScaleMethod(TrajScale.PROP_SCALE);
-
-[Time, Q_data, vRot_data, dvRot_data] = simulateGMPo(gmp_o, Q0, Qg, T, dt);
-toc
-
-% Data.Time = Time;
-% Data.Quat = Q_data;
-% Data.rotVel = vRot_data;
-% Data.rotAccel = dvRot_data;
-% save('data/orient_train_data.mat', 'Data');
+Timed = fid.read('Timed');
+Qd_data = fid.read('Qd_data');
+vRotd_data = fid.read('vRotd_data');
+dvRotd_data = fid.read('dvRotd_data');
+Time = fid.read('Time');
+Q_data = fid.read('Q_data');
+vRot_data = fid.read('vRot_data');
+dvRot_data = fid.read('dvRot_data');
+T_sc = fid.read('T_sc');
+kt = fid.read('temp_s');
+    
 
 %% Plot results
 
 Timed = Timed/kt;
 
-T_sc = gmp_o.getScaling();
+Qd0 = Qd_data(:,1);
+Q0 = Q_data(:,1);
 
 Pqd_data0 = zeros(3, size(Qd_data,2));
 Pqd_data = zeros(3, size(Qd_data,2));
@@ -83,11 +36,11 @@ for j=1:size(Pqd_data,2)
     Qd_data(:,j) = GMPo.q2quat(Pqd_data(:,j), Q0);
 end
 
-for j=1:size(vRotd_data,2)-1
-    vRotd_data(:,j) = math_.quatLog(math_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
-end
-vRotd_data(:,j) = zeros(3,1);
-for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
+% for j=1:size(vRotd_data,2)-1
+%     vRotd_data(:,j) = math_.quatLog(math_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
+% end
+% vRotd_data(:,j) = zeros(3,1);
+% for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
 
 
 Pq_data = zeros(3, size(Q_data,2));
@@ -166,11 +119,3 @@ for i=1:3
    hold off;
 end
 
-% Data.Time = Time;
-% Data.Quat = Q_data;
-% Data.rotVel = vRot_data;
-% Data.rotAccel = dvRot_data;
-% save('data/orient_train_data_overscale.mat', 'Data');
-
-
-% end

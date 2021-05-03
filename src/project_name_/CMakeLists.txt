@@ -42,6 +42,10 @@ target_link_libraries(nDoF_gmp_test ${LIBS} )
 
 # ===================================================
 
+add_executable( orient_gmp_test src/simulation/orient_gmp_test.cpp ${SRC_LIST})
+target_link_libraries(orient_gmp_test ${LIBS} )
+
+# ===================================================
 
 #[[
 add_executable(${PROJECT_NAME}
