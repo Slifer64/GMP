@@ -1,176 +1,147 @@
-% function orient_gmp_test()
+#include <cstdlib>
+#include <memory>
 
-clc;
-close all;
-clear;
+#include <ros/ros.h>
+#include <ros/package.h>
 
-set_matlab_utils_path('../');
+#include <armadillo>
 
-%% Load training data
+#include <gmp_lib/gmp_lib.h>
+#include <gmp_lib/io/file_io.h>
 
-load('orient_data.mat', 'Data');
-Timed = Data.Time;
-Qd_data = Data.Quat;
-vRotd_data = Data.rotVel;
-dvRotd_data = Data.rotAccel;
+#include <project_name_/utils/utils.h>
 
-%% Write data to binary format
-% fid = fopen('gmp_orient_train_data.bin','w');
-% io_.write_mat(Timed, fid, true);
-% io_.write_mat(Qd_data, fid, true);
-% io_.write_mat(vRotd_data, fid, true);
-% io_.write_mat(dvRotd_data, fid, true);
-% fclose(fid);
+using namespace as64_;
 
-Ts = Timed(2)-Timed(1);
+typedef void (*sim_fun_ptr)(std::shared_ptr<gmp_::GMPo> &, const arma::vec &, const arma::vec &,
+                            double , double , arma::rowvec &, arma::mat &, arma::mat &, arma::mat &);
 
-simulateGMPo = @simulateGMPo_in_Cart_space; % simulateGMPo_in_'log/quat/Cart'_space
+void loadParams();
 
-%% initialize and train GMP
-train_method = 'LS';
-N_kernels = 30;
-kernels_std_scaling = 1;
-gmp_o = GMPo(N_kernels, kernels_std_scaling);
-tic
-offline_train_mse = gmp_o.train(train_method, Timed/Timed(end), Qd_data);
-offline_train_mse
-toc
+std::string path;
 
-% traj_sc = TrajScale_Prop(n_dof);
-% traj_sc = TrajScale_Rot_min();
-traj_sc = TrajScale_Rot_wb();
-traj_sc.setWorkBenchNormal([0; 0; 1]);
-gmp_o.setScaleMethod(traj_sc);
+std::string train_data_file;
+std::string sim_data_file;
+std::string train_method;
+unsigned N_kernels;
+double D;
+double K;
+double kernels_std_scaling;
+double ks;
+double kt;
+sim_fun_ptr simulateGMPo;
 
-% gmp_o.exportToFile('data/gmp_o_model.bin');
-% gmp_o = GMPo.importFromFile('data/gmp_o_model.bin');
+int main(int argc, char** argv)
+{
+  // ===========  Initialize the ROS node  ===============
+  ros::init(argc, argv, "Test_orient_GMP_node");
 
-%% DMP simulation
-disp('GMP simulation...');
-tic
-Qd0 = Qd_data(:,1);
-Q0 = Qd0; %math_.quatProd(rotm2quat(rotz(57))',Qd0);
-Qgd = Qd_data(:,end);
-ks = diag([1.2 1.3 1.1]);
-kt = 2;
-e0 = ks*gmp_.quatLog(gmp_.quatDiff(Qgd,Qd0));
-Qg = gmp_.quatProd(gmp_.quatExp(e0), Q0);
-T = Timed(end) / kt;
-dt = Ts;
+  loadParams();
 
-% gmp_o.setScaleMethod(TrajScale.PROP_SCALE);
+  // =============  Load train data  =============
+  arma::rowvec Timed;
+  arma::mat Qd_data, vRotd_data, dvRotd_data;
+  gmp_::FileIO fid(train_filename, gmp_::FileIO::in);
+  fid.read("Timed",Timed);
+  fid.read("Qd_data",Qd_data);
+  fid.read("vRotd_data",vRotd_data);
+  fid.read("dvRotd_data",dvRotd_data);
+  fid.close();
 
-[Time, Q_data, vRot_data, dvRot_data] = simulateGMPo(gmp_o, Q0, Qg, T, dt);
-toc
+  double Ts = Timed(1) - Timed(0);
 
-% Data.Time = Time;
-% Data.Quat = Q_data;
-% Data.rotVel = vRot_data;
-% Data.rotAccel = dvRot_data;
-% save('data/orient_train_data.mat', 'Data');
+  // =============  Create/Train GMP  =============
+  gmp_::GMPo::Ptr gmp(new gmp_::GMPo(2) );
 
-%% Plot results
+  if (read_gmp_from_file) gmp_::GMPo_IO::read(gmp, gmp_filename, "");
+  else
+  {
+    // initialize and train GMP
+    unsigned n_dof = 3;
+    gmp.reset( new gmp_::GMPo(N_kernels, kernels_std_scaling) );
+    Timer::tic();
+    arma::vec offline_train_mse;
+    PRINT_INFO_MSG("GMPo training...\n");
+    gmp->train(train_method, Timed/Timed.back(), Qd_data, &offline_train_mse);
+    std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
+    Timer::toc();
 
-Timed = Timed/kt;
+    // set scaling type
+    gmp_::TrajScale::Ptr traj_sc;
+    if (scale_type.compare("prop") == 0) traj_sc.reset( new gmp_::TrajScale_Prop(n_dof) );
+    else if (scale_type.compare("rot_min") == 0) traj_sc.reset( new gmp_::TrajScale_Rot_min() );
+    else if (scale_type.compare("rot_wb") == 0)
+    {
+      traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
+      dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
+    }
+    else throw std::runtime_error("Unsupported scale type \"" + scale_type + "\"...\n");
 
-T_sc = gmp_o.getScaling();
+    gmp->setScaleMethod(traj_sc);
+  }
 
-Pqd_data0 = zeros(3, size(Qd_data,2));
-Pqd_data = zeros(3, size(Qd_data,2));
-for j=1:size(Pqd_data,2)
-    Pqd_data0(:,j) = GMPo.quat2q(Qd_data(:,j), Qd0);
-    Pqd_data(:,j) = T_sc*Pqd_data0(:,j);
-    Qd_data(:,j) = GMPo.q2quat(Pqd_data(:,j), Q0);
-end
+  if (write_gmp_to_file) gmp_::GMPo_IO::write(gmp, gmp_filename, "");
 
-for j=1:size(vRotd_data,2)-1
-    vRotd_data(:,j) = math_.quatLog(math_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
-end
-vRotd_data(:,j) = zeros(3,1);
-for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
+  /*
+  // ===========  gmp update and simulation  ===============
+  arma::vec Q0d = Qd_data.col(0);
+  arma::vec Qgd = Qd_data.col(i_end);
+  arma::vec Q0 = Q0d;
+  arma::vec e0 = ks*gmp_::quatLog( gmp_::quatProd( Qgd, gmp_::quatInv(Q0d) ) );
+  arma::vec Qg = gmp_::quatProd(gmp_::quatExp(e0), Q0);
+  double T = kt*Timed(i_end);
+  double dt = Timed(1) - Timed(0);
 
+  arma::rowvec Time;
+  arma::mat Q_data;
+  arma::mat vRot_data;
+  arma::mat dvRot_data;
+  simulateGMPo(gmp, Q0, Qg, T, dt, Time, Q_data, vRot_data, dvRot_data);
 
-Pq_data = zeros(3, size(Q_data,2));
-for j=1:size(Pq_data,2)
-    Pq_data(:,j) = GMPo.quat2q(Q_data(:,j), Q0);
-end
+  // ===========  write results  ===============
+  io_::FileIO out(sim_data_file, io_::FileIO::out | io_::FileIO::trunc);
+  out.write("Timed", Timed);
+  out.write("Qd_data", Qd_data);
+  out.write("vRotd_data", vRotd_data);
+  out.write("dvRotd_data", dvRotd_data);
+  out.write("Time", Time);
+  out.write("Q_data", Q_data);
+  out.write("vRot_data", vRot_data);
+  out.write("dvRot_data", dvRot_data);
+  out.write("ks", ks);
+  out.write("kt", kt);
+  */
 
-line_width = 2.5;
+  // ===========  Shutdown ROS node  ==================
+  PRINT_CONFIRM_MSG("<====  Finished! ====>\n");
 
-figure('Position', [200 200 600 500]);
-y_labels = {'$e_{q,x}$','$e_{q,y}$', '$e_{q,z}$'};
-for i=1:3
-   subplot(3,1,i);
-   hold on;
-   plot(Time, Pq_data(i,:), 'LineWidth', line_width, 'Color','blue');
-   plot(Timed, Pqd_data(i,:), 'LineWidth', line_width, 'LineStyle',':', 'Color',[0.85 0.33 0.1 0.85]);
-   plot(Timed, Pqd_data0(i,:), 'LineWidth', line_width, 'LineStyle','--', 'Color',[0.93 0.69 0.13 0.7]);
-   ylabel(y_labels{i}, 'interpreter','latex', 'fontsize',20);
-   axis tight;
-   if (i==1), legend({'$gmp$', '$k_s * demo$', '$demo$'}, 'interpreter','latex', 'fontsize',16, 'Position',[0.7 0.78 0.27 0.15]); end
-   if (i==1), title('Quaternion error: $e_q = log(Q * Q_0^{-1})$', 'interpreter','latex', 'fontsize',18); end
-   if (i==3), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',17); end
-   hold off;
-end
+  return 0;
+}
 
-figure;
-hold on;
-plot3(Pq_data(1,:), Pq_data(2,:), Pq_data(3,:), 'LineWidth', line_width, 'LineStyle','-', 'Color','blue');
-plot3(Pqd_data(1,:), Pqd_data(2,:), Pqd_data(3,:), 'LineWidth', line_width, 'LineStyle',':', 'Color',[0.85 0.33 0.1]);
-plot3(Pqd_data0(1,:), Pqd_data0(2,:), Pqd_data0(3,:), 'LineWidth', line_width, 'LineStyle','--', 'Color',[0.93 0.69 0.13]);
-legend({'$gmp$', '$k_s * demo$', '$demo$'}, 'interpreter','latex', 'fontsize',17);
-hold off;
+void loadParams()
+{
+  ros::NodeHandle nh_("~");
 
+  // ===========  Read params  ===============
+  path = ros::package::getPath("gmp_test") + "/matlab/data/";
 
-figure;
-Q_labels = {'$\eta$','$\epsilon_1$', '$\epsilon_2$', '$\epsilon_3$'};
-Qd_labels = {'$\eta_d$','$\epsilon_{d,1}$', '$\epsilon_{d,2}$', '$\epsilon_{d,3}$'};
-for i=1:4
-   subplot(4,1,i);
-   hold on;
-   plot(Time, Q_data(i,:), 'LineWidth', line_width);
-   plot(Timed, Qd_data(i,:), 'LineWidth', line_width, 'LineStyle',':');
-   legend({Q_labels{i}, Qd_labels{i}}, 'interpreter','latex', 'fontsize',15);
-   if (i==1), title('Unit Quaternion', 'interpreter','latex', 'fontsize',17); end
-   if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
-   hold off;
-end
+  if (!nh_.getParam("train_data_file", train_data_file)) train_data_file = "gmp_train_data.bin";
+  if (!nh_.getParam("sim_data_file", sim_data_file)) sim_data_file = "gmp_update_sim_data.bin";
+  if (!nh_.getParam("train_method", train_method)) train_method = "LWR";
+  int n_ker;
+  if (!nh_.getParam("N_kernels", n_ker)) n_ker = 30;
+  N_kernels = n_ker;
+  if (!nh_.getParam("D", D)) D = 50;
+  if (!nh_.getParam("K", K)) K = 250;
+  if (!nh_.getParam("kernels_std_scaling", kernels_std_scaling)) kernels_std_scaling = 2;
+  if (!nh_.getParam("ks", ks)) ks = 1.0;
+  if (!nh_.getParam("kt", kt)) kt = 1.0;
+  std::string sim_fun;
+  if (!nh_.getParam("sim_fun", sim_fun)) sim_fun = "log";
+  if (sim_fun.compare("log")==0) simulateGMPo = &simulateGMPo_in_log_space;
+  else if (sim_fun.compare("quat")==0) simulateGMPo = &simulateGMPo_in_quat_space;
+  else std::runtime_error("Unsupported simulation function: \"" + sim_fun + "\"...");
 
-return
-
-figure;
-vRot_labels = {'$\omega_x$','$\omega_y$', '$\omega_z$'};
-vRotd_labels = {'$\omega_{d,x}$','$\omega_{d,y}$', '$\omega_{d,z}$'};
-for i=1:3
-   subplot(3,1,i);
-   hold on;
-   plot(Time, vRot_data(i,:), 'LineWidth', line_width);
-   plot(Timed, vRotd_data(i,:), 'LineWidth', line_width, 'LineStyle',':');
-   legend({vRot_labels{i}, vRotd_labels{i}}, 'interpreter','latex', 'fontsize',15);
-   if (i==1), title('Rotational Velocity', 'interpreter','latex', 'fontsize',17); end
-   if (i==3), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
-   hold off;
-end
-
-figure;
-dvRot_labels = {'$\dot{\omega}_x$','$\dot{\omega}_y$', '$\dot{\omega}_z$'};
-dvRotd_labels = {'$\dot{\omega}_{d,x}$','$\dot{\omega}_{d,y}$', '$\dot{\omega}_{d,z}$'};
-for i=1:3
-   subplot(3,1,i);
-   hold on;
-   plot(Time, dvRot_data(i,:), 'LineWidth', line_width);
-   plot(Timed, dvRotd_data(i,:), 'LineWidth', line_width, 'LineStyle',':');
-   legend({dvRot_labels{i}, dvRotd_labels{i}}, 'interpreter','latex', 'fontsize',15);
-   if (i==1), title('Rotational Acceleration', 'interpreter','latex', 'fontsize',17); end
-   if (i==3), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
-   hold off;
-end
-
-% Data.Time = Time;
-% Data.Quat = Q_data;
-% Data.rotVel = vRot_data;
-% Data.rotAccel = dvRot_data;
-% save('data/orient_train_data_overscale.mat', 'Data');
-
-
-% end
+  train_data_file = path + train_data_file;
+  sim_data_file = path + sim_data_file;
+}

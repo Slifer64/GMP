@@ -1,3 +1,4 @@
+#include <gmp_lib/GMP/GMPo_IO.h>
 #include <gmp_lib/GMP/GMP_nDoF_IO.h>
 
 namespace as64_
@@ -6,14 +7,15 @@ namespace as64_
 namespace gmp_
 {
 
-  void GMP_nDoF_IO::write(const gmp_::GMP_nDoF *gmp, const std::string &filename, const std::string &prefix)
+  void GMPo_IO::write(const gmp_::GMPo::Ptr gmp, const std::string &filename, const std::string &prefix)
   {
     gmp_::FileIO fid(filename, gmp_::FileIO::out|gmp_::FileIO::trunc);
     write(gmp, fid, prefix);
   }
 
-  void GMP_nDoF_IO::write(const gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix)
+  void GMPo_IO::write(const gmp_::GMPo::Ptr gmp, gmp_::FileIO &fid, const std::string &prefix)
   {
+    /*
     unsigned N_kernels = gmp->numOfKernels();
     unsigned n_dofs = gmp->numOfDoFs();
 
@@ -25,16 +27,18 @@ namespace gmp_
     fid.write(prefix + "scale_type", (int)(gmp->traj_sc->getScaleType()));
     fid.write(prefix + "c", gmp->c);
     fid.write(prefix + "h", gmp->h);
+    */
   }
 
-  void GMP_nDoF_IO::read(gmp_::GMP_nDoF *gmp, const std::string &filename, const std::string &prefix)
+  void GMPo_IO::read(gmp_::GMPo::Ptr gmp, const std::string &filename, const std::string &prefix)
   {
     gmp_::FileIO fid(filename, gmp_::FileIO::in);
     read(gmp, fid, prefix);
   }
 
-  void GMP_nDoF_IO::read(gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix)
+  void GMPo_IO::read(gmp_::GMPo::Ptr gmp, gmp_::FileIO &fid, const std::string &prefix)
   {
+    /*
     fid.read(prefix + "weights", gmp->W);
     fid.read(prefix + "damping", gmp->D);
     fid.read(prefix + "stiffness", gmp->K);
@@ -63,7 +67,8 @@ namespace gmp_
     if (scale_type == TrajScale::PROP_SCALE) gmp->setScaleMethod( gmp_::TrajScale::Ptr(new gmp_::TrajScale_Prop(n_dofs)) );
     else if (scale_type == TrajScale::ROT_MIN_SCALE) gmp->setScaleMethod( gmp_::TrajScale::Ptr(new gmp_::TrajScale_Rot_min()) );
     else if (scale_type == TrajScale::ROT_WB_SCALE) gmp->setScaleMethod( gmp_::TrajScale::Ptr(new gmp_::TrajScale_Rot_wb()) );
-    else throw std::runtime_error("[GMP_nDoF_IO::read]: Unsupported scale type \"" + std::to_string(scale_type) + "\"...\n");
+    else throw std::runtime_error("[GMPo_IO::read]: Unsupported scale type \"" + std::to_string(scale_type) + "\"...\n");
+    */
   }
 
 

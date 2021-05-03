@@ -13,8 +13,8 @@
 
 using namespace as64_;
 
-std::string in_filename;
-std::string out_filename;
+std::string train_filename;
+std::string results_filename;
 std::string train_method = "LS";
 int N_kernels = 25;
 double kernels_std_scaling = 1.5;
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
   // =============  Load train data  =============
   arma::rowvec Timed;
   arma::mat Pd_data, dPd_data, ddPd_data;
-  gmp_::FileIO fid(in_filename, gmp_::FileIO::in);
+  gmp_::FileIO fid(train_filename, gmp_::FileIO::in);
   fid.read("Timed",Timed);
   fid.read("Pd_data",Pd_data);
   fid.read("dPd_data",dPd_data);
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
   // =============  Create/Train GMP  =============
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
 
-  if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp, gmp_filename, "");
+  if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
     Timer::tic();
     arma::vec offline_train_mse;
-    PRINT_INFO_MSG("GMP training...\n");
+    PRINT_INFO_MSG("GMP_nDoF training...\n");
     gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
     std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
     Timer::toc();
@@ -82,10 +82,10 @@ int main(int argc, char **argv)
     gmp->setScaleMethod(traj_sc);
   }
 
-  if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp, gmp_filename, "");
+  if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp.get(), gmp_filename, "");
 
   // =============  GMP simulation  =============
-  PRINT_INFO_MSG("GMP simulation...\n");
+  PRINT_INFO_MSG("GMP_nDoF simulation...\n");
 
   Timer::tic();
 
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 
   // =============  Write results  =============
   {
-    gmp_::FileIO fid(out_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
+    gmp_::FileIO fid(results_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
     fid.write("Timed",Timed);
     fid.write("Pd_data",Pd_data);
     fid.write("dPd_data",dPd_data);
@@ -130,10 +130,10 @@ void loadParams()
 {
   std::string package_path = ros::package::getPath("project_name_") + "/";
   ros::NodeHandle nh("~");
-  if (!nh.getParam("in_filename", in_filename)) throw std::runtime_error("Failed to load param \"in_filename\"...\n");
-  in_filename = package_path + in_filename;
-  if (!nh.getParam("out_filename", out_filename)) throw std::runtime_error("Failed to load param \"out_filename\"...\n");
-  out_filename = package_path + out_filename;
+  if (!nh.getParam("train_filename", train_filename)) throw std::runtime_error("Failed to load param \"train_filename\"...\n");
+  train_filename = package_path + train_filename;
+  if (!nh.getParam("results_filename", results_filename)) throw std::runtime_error("Failed to load param \"results_filename\"...\n");
+  results_filename = package_path + results_filename;
   if (!nh.getParam("train_method", train_method)) throw std::runtime_error("Failed to load param \"train_method\"...\n");
   if (!nh.getParam("N_kernels", N_kernels)) throw std::runtime_error("Failed to load param \"N_kernels\"...\n");
   if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw std::runtime_error("Failed to load param \"kernels_std_scaling\"...\n");

@@ -2,13 +2,13 @@
 
 <launch>
 
-    <node pkg="project_name_" type="nDoF_gmp_test" name="nDoF_gmp_test_node"
+    <node pkg="project_name_" type="orient_gmp_test" name="orient_gmp_test_node"
           output="screen" cwd="node" required="true">
 
         <rosparam>
 
-          train_filename: "src/simulation/data/pos_data.bin"
-          results_filename: "src/simulation/data/nDoF_gmp_test_results.bin"
+          in_filename: "src/simulation/data/orient_data.bin"
+          out_filename: "src/simulation/data/orient_gmp_test_results.bin"
 
           train_method: "LS"
           N_kernels: 25
@@ -22,7 +22,7 @@
 
           read_gmp_from_file: false
           write_gmp_to_file: false
-          gmp_filename: "src/simulation/data/gmp_pos.bin"
+          gmp_filename: "src/simulation/data/gmp_orient.bin"
 
         </rosparam>
 

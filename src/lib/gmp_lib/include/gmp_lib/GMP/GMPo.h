@@ -17,6 +17,9 @@ namespace as64_
 namespace gmp_
 {
 
+// class GMPo_Update; // forward declaration
+class GMPo_IO; // forward declaration
+
 class GMPo : public GMP_nDoF
 {
 
@@ -126,6 +129,9 @@ public:
   static arma::vec q2quat(const arma::vec &q, const arma::vec &Q0);
 
 protected:
+
+  // friend class GMPo_Update;
+  friend class GMPo_IO;
 
   arma::vec Q0; // initial orientation (as unit quaternion)
 
