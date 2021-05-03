@@ -51,6 +51,32 @@ int main(int argc, char** argv)
   // ===========  Initialize the ROS node  ===============
   ros::init(argc, argv, "orient_gmp_test_node");
 
+
+  {
+    arma::vec Ygd = arma::vec({0.6495,    0.7006,   -0.8014});
+    arma::vec Y0d = 1.0e-4 * arma::vec({-0.0301,   -0.0302,    0.4041});
+    arma::vec Yg = arma::vec({0.7794,   0.9108,   -0.8816});
+    arma::vec Y0 = 1.0e-4 * arma::vec({-0.0301, -0.0302,  0.4041});
+
+    arma::vec nd = Ygd - Y0d;  nd = nd/arma::norm(nd);
+    arma::vec n = Yg - Y0;  n = n/arma::norm(n);
+    double dot_n_nd = arma::dot(n,nd);
+    arma::mat R;
+    if (std::fabs(std::fabs(dot_n_nd) - 1) < 1e-14)
+      R = arma::mat().eye(3,3);
+    else
+    {
+      arma::vec k = arma::cross(nd,n);
+      double theta = std::acos(dot_n_nd);
+      R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({theta})) );
+    }
+
+    arma::mat T_sc = R*( arma::norm(Yg - Y0)/arma::norm(Ygd - Y0d) );
+
+    std::cout << "T_sc = \n" << T_sc << "\n";
+    exit(-1);
+  }
+
   loadParams();
 
   // =============  Load train data  =============
@@ -96,7 +122,6 @@ int main(int argc, char** argv)
   gmp_o->setScaleMethod(traj_sc);
 
   if (write_gmp_to_file) gmp_::GMPo_IO::write(gmp_o.get(), gmp_filename, "");
-
 
   // =============  GMP simulation  =============
   PRINT_INFO_MSG("GMP_orient simulation...\n");

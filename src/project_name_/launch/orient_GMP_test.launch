@@ -14,7 +14,7 @@
           N_kernels: 25
           kernels_std_scaling: 1.5
 
-          scale_type: "prop" # {"prop", "rot_min", "rot_wb"}
+          scale_type: "rot_min" # {"prop", "rot_min", "rot_wb"}
           wb_normal: [0, 0, 1] # work-bench normal
 
           spat_s: [1.2, 1.3, 1.1] # spatial scale
@@ -22,7 +22,7 @@
 
           orient_sim_fun: "Cart" # {"log", "quat", "Cart"}
 
-          read_gmp_from_file: true
+          read_gmp_from_file: false
           write_gmp_to_file: false
           gmp_filename: "src/simulation/data/gmp_orient.bin"
 
