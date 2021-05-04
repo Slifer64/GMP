@@ -13,23 +13,14 @@
 
 using namespace as64_;
 
+// ##############################################################
+
 typedef void (*sim_fun_ptr)(std::shared_ptr<gmp_::GMPo> &, const arma::vec &, const arma::vec &,
                             double , double , arma::rowvec &, arma::mat &, arma::mat &, arma::mat &);
 
 void loadParams();
 
-// std::string path;
-//
-// std::string train_data_file;
-// std::string sim_data_file;
-// std::string train_method;
-// unsigned N_kernels;
-// double D;
-// double K;
-// double kernels_std_scaling;
-// double ks;
-// double kt;
-// sim_fun_ptr simulateGMPo;
+// ##############################################################
 
 std::string train_filename;
 std::string results_filename;
@@ -46,36 +37,12 @@ bool read_gmp_from_file;
 bool write_gmp_to_file;
 std::string gmp_filename;
 
+// ##############################################################
+
 int main(int argc, char** argv)
 {
   // ===========  Initialize the ROS node  ===============
   ros::init(argc, argv, "orient_gmp_test_node");
-
-
-  {
-    arma::vec Ygd = arma::vec({0.6495,    0.7006,   -0.8014});
-    arma::vec Y0d = 1.0e-4 * arma::vec({-0.0301,   -0.0302,    0.4041});
-    arma::vec Yg = arma::vec({0.7794,   0.9108,   -0.8816});
-    arma::vec Y0 = 1.0e-4 * arma::vec({-0.0301, -0.0302,  0.4041});
-
-    arma::vec nd = Ygd - Y0d;  nd = nd/arma::norm(nd);
-    arma::vec n = Yg - Y0;  n = n/arma::norm(n);
-    double dot_n_nd = arma::dot(n,nd);
-    arma::mat R;
-    if (std::fabs(std::fabs(dot_n_nd) - 1) < 1e-14)
-      R = arma::mat().eye(3,3);
-    else
-    {
-      arma::vec k = arma::cross(nd,n);
-      double theta = std::acos(dot_n_nd);
-      R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({theta})) );
-    }
-
-    arma::mat T_sc = R*( arma::norm(Yg - Y0)/arma::norm(Ygd - Y0d) );
-
-    std::cout << "T_sc = \n" << T_sc << "\n";
-    exit(-1);
-  }
 
   loadParams();
 
@@ -167,6 +134,8 @@ int main(int argc, char** argv)
 
   return 0;
 }
+
+// ##############################################################
 
 void loadParams()
 {

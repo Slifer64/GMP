@@ -1,6 +1,7 @@
 #include <gmp_lib/math/math.h>
 
 #include <Eigen/Eigenvalues>
+#include <Eigen/Geometry>
 
 namespace as64_
 {
@@ -139,11 +140,12 @@ Eigen::Matrix3d axang2rotm(Eigen::Vector4d axang)
 {
   Eigen::Matrix3d rotm;
   Eigen::Vector3d axis = axang.segment(0,3);
+  axis /= axis.norm();
   double angle = axang(3);
 
   double x=axis(0), y=axis(1), z=axis(2), c=std::cos(angle), s=std::sin(angle), t=1-c;
   rotm <<   t*x*x + c,	    t*x*y - z*s,     t*x*z + y*s,
-  	    t*x*y + z*s,    t*y*y + c,	     t*y*z - x*s,
+  	        t*x*y + z*s,    t*y*y + c,	     t*y*z - x*s,
             t*x*z - y*s,    t*y*z + x*s,     t*z*z + c;
 
   return rotm;
@@ -151,13 +153,14 @@ Eigen::Matrix3d axang2rotm(Eigen::Vector4d axang)
 
 arma::mat axang2rotm(const arma::vec &axang)
 {
-  arma::mat rotm(3,3);
+  arma::vec axis = axang.subvec(0,2);
+  axis /= arma::norm(axis);
+  double angle = axang(3);
+  double x=axis(0), y=axis(1), z=axis(2), c=std::cos(angle), s=std::sin(angle), t=1-c;
 
-  Eigen::Map<const Eigen::Vector4d> axang_wrapper(axang.memptr());
-  Eigen::Map<Eigen::Matrix3d> rotm_wrapper(rotm.memptr());
-  rotm_wrapper = axang2rotm(axang_wrapper);
-
-  return rotm;
+  return { { t*x*x + c,	    t*x*y - z*s,   t*x*z + y*s },
+  	       { t*x*y + z*s,   t*y*y + c,	   t*y*z - x*s },
+           { t*x*z - y*s,   t*y*z + x*s,   t*z*z + c   } };
 }
 
 // =======================================================
