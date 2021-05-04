@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
     dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
   }
-  else throw std::runtime_error("Unsupported scale type \"" + scale_type + "\"...\n");
+  else throw_error("Unsupported scale type \"" + scale_type + "\"...\n");
 
   gmp->setScaleMethod(traj_sc);
 
@@ -130,26 +130,26 @@ void loadParams()
 {
   std::string package_path = ros::package::getPath(PROJECT_NAME_) + "/";
   ros::NodeHandle nh("~");
-  if (!nh.getParam("train_filename", train_filename)) throw std::runtime_error("Failed to load param \"train_filename\"...\n");
+  if (!nh.getParam("train_filename", train_filename)) throw_error("Failed to load param \"train_filename\"...\n");
   train_filename = package_path + train_filename;
-  if (!nh.getParam("results_filename", results_filename)) throw std::runtime_error("Failed to load param \"results_filename\"...\n");
+  if (!nh.getParam("results_filename", results_filename)) throw_error("Failed to load param \"results_filename\"...\n");
   results_filename = package_path + results_filename;
-  if (!nh.getParam("train_method", train_method)) throw std::runtime_error("Failed to load param \"train_method\"...\n");
-  if (!nh.getParam("N_kernels", N_kernels)) throw std::runtime_error("Failed to load param \"N_kernels\"...\n");
-  if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw std::runtime_error("Failed to load param \"kernels_std_scaling\"...\n");
-  if (!nh.getParam("scale_type", scale_type)) throw std::runtime_error("Failed to load param \"scale_type\"...\n");
+  if (!nh.getParam("train_method", train_method)) throw_error("Failed to load param \"train_method\"...\n");
+  if (!nh.getParam("N_kernels", N_kernels)) throw_error("Failed to load param \"N_kernels\"...\n");
+  if (!nh.getParam("kernels_std_scaling", kernels_std_scaling)) throw_error("Failed to load param \"kernels_std_scaling\"...\n");
+  if (!nh.getParam("scale_type", scale_type)) throw_error("Failed to load param \"scale_type\"...\n");
   std::vector<double> wb_normal_temp;
-  if (!nh.getParam("wb_normal", wb_normal_temp)) throw std::runtime_error("Failed to load param \"wb_normal\"...\n");
+  if (!nh.getParam("wb_normal", wb_normal_temp)) throw_error("Failed to load param \"wb_normal\"...\n");
   wb_normal = wb_normal_temp;
 
   std::vector<double> spat_s_;
-  if (!nh.getParam("spat_s", spat_s_)) throw std::runtime_error("Failed to load param \"spat_s\"...\n");
+  if (!nh.getParam("spat_s", spat_s_)) throw_error("Failed to load param \"spat_s\"...\n");
   spat_s = spat_s_;
-  if (!nh.getParam("temp_s", temp_s)) throw std::runtime_error("Failed to load param \"temp_s\"...\n");
+  if (!nh.getParam("temp_s", temp_s)) throw_error("Failed to load param \"temp_s\"...\n");
 
-  if (!nh.getParam("read_gmp_from_file", read_gmp_from_file)) throw std::runtime_error("Failed to load param \"read_gmp_from_file\"...\n");
-  if (!nh.getParam("write_gmp_to_file", write_gmp_to_file)) throw std::runtime_error("Failed to load param \"write_gmp_to_file\"...\n");
+  if (!nh.getParam("read_gmp_from_file", read_gmp_from_file)) throw_error("Failed to load param \"read_gmp_from_file\"...\n");
+  if (!nh.getParam("write_gmp_to_file", write_gmp_to_file)) throw_error("Failed to load param \"write_gmp_to_file\"...\n");
   if ((read_gmp_from_file || write_gmp_to_file) && !nh.getParam("gmp_filename", gmp_filename))
-    throw std::runtime_error("Failed to load param \"gmp_filename\"...\n");
+    throw_error("Failed to load param \"gmp_filename\"...\n");
   gmp_filename = package_path + gmp_filename;
 }

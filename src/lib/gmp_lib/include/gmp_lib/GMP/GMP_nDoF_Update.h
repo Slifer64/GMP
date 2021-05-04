@@ -22,7 +22,7 @@ public:
   /**GMP constructor.
    *  @param[in] gmp: n_DoF dmp.
    */
-  GMP_nDoF_Update(const std::shared_ptr<gmp_::GMP_nDoF> &gmp);
+  GMP_nDoF_Update(gmp_::GMP_nDoF *gmp);
 
   void initSigmaw();
 
@@ -57,7 +57,7 @@ public:
 
 private:
 
-  std::shared_ptr<gmp_::GMP_nDoF> gmp; ///< n_DoF GMP
+  gmp_::GMP_nDoF *gmp; ///< pointer to nDoF GMP object
 
   arma::mat Sigma_w; ///< weights covariance for trajectory update
   double rv; ///< noise variance for trajectory update

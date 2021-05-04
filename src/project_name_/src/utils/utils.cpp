@@ -23,6 +23,12 @@ void PRINT_ERROR_MSG(const std::string &msg, std::ostream &out)
   out << "\033[1m" << "\033[31m" << "[ERROR]: " << msg << "\033[0m";
 }
 
+void throw_error(const std::string &err_msg)
+{
+  PRINT_ERROR_MSG(err_msg);
+  exit(-1);
+}
+
 void simulateGMP_nDoF(gmp_::GMP_nDoF::Ptr &gmp, const arma::vec &y0,
                  const arma::vec &yg, double T, double dt,
                  arma::mat &Time, arma::mat &Y_data, arma::mat &dY_data, arma::mat &ddY_data)

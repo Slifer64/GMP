@@ -6,7 +6,7 @@ namespace as64_
 namespace gmp_
 {
 
-  GMP_nDoF_Update::GMP_nDoF_Update(const std::shared_ptr<gmp_::GMP_nDoF> &gmp)
+  GMP_nDoF_Update::GMP_nDoF_Update(gmp_::GMP_nDoF *gmp)
   {
       this->gmp = gmp;
 
