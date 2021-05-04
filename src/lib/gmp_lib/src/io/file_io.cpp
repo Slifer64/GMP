@@ -143,7 +143,7 @@ void FileIO::checkType(int i, enum Type t2, enum ScalarType sc_t2) const
   ScalarType sc_t = sc_type[i];
 
   if (t!=t2 | sc_t!=sc_t2)
-    throw std::runtime_error("[FileIO::checkType]: " + getErrMsg(TYPE_MISMATCH) +
+    throw std::runtime_error("[FileIO::checkType]: entry \"" + current_name + "\", " + getErrMsg(TYPE_MISMATCH) +
                              ": " + getFullTypeName(t,sc_t) + " != " + getFullTypeName(t2,sc_t2));
 }
 
@@ -269,11 +269,7 @@ std::string FileIO::getErrMsg(enum Error err_id)
   return std::string(FileIO::error_msg[err_id]);
 }
 
-  
+
 } // namespace gmp_
 
 } // namespace as64_
-
-
-
-

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node pkg="project_name_" type="update_gmp_test" name="update_gmp_test_node"
+          output="screen" cwd="node" required="true">
+
+        <rosparam>
+
+        </rosparam>
+
+    </node>
+
+</launch>

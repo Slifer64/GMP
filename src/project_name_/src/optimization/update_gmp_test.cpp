@@ -21,15 +21,16 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "update_gmp_test_node");
 
-  std::string gmp_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/data/gmp_pos.bin";
+  std::string in_gmp_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/data/gmp_pos.bin";
+  std::string out_gmp_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/data/gmp_pos_updated.bin";
 
   // =============  Load GMP  =============
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
-  gmp_::GMP_nDoF_IO::read(gmp.get(), gmp_filename, "opt_");
+  gmp_::GMP_nDoF_IO::read(gmp.get(), in_gmp_filename, "up_");
 
   int n_dof = gmp->numOfDoFs();
 
-  if (n_dof != 3) throw std::runtime_error("The number of DoFs must be equal to 3!\n");
+  if (n_dof != 3) throw_error("The number of DoFs must be equal to 3!\n");
 
   // =============  GMP update  =============
   double kt = 0.5;
@@ -38,21 +39,17 @@ int main(int argc, char **argv)
   arma::vec pgd = gmp->getYd(1); //Pd_data(:,end);
   arma::vec p0 = p0d;
   arma::vec pg = ks*(pgd-p0d) + p0;
-  double T = 20/kt;
-  Time = Timed/kt;
-  x = Time / T;
-  x_dot = 1/T;
-  x_ddot = 0;
+  double T = 10/kt;
+  double x_dot = 1/T;
+  double x_ddot = 0;
 
   gmp->setY0(p0);
   gmp->setGoal(pg);
 
-  N = length(x);
-  P_data = zeros(n_dof,N);
-  dP_data = zeros(n_dof,N);
-  ddP_data = zeros(n_dof,N);
-
-  points = getPoint([], [], [], [], [], [], []);
+  gmp_::GMP_nDoF_Update gmp_up(gmp.get());
+  //gmp_up.initSigmaWfromMsr(arma::linspace<arma::rowvec>(0,1,100));
+  gmp_up.enableSigmawUpdate(true);
+  gmp_up.setMsrNoiseVar(1e-4);
 
   double t1 = 1.5 / kt;
   double x1 = t1/T;
@@ -70,33 +67,26 @@ int main(int argc, char **argv)
   double x4 = t4/T;
   arma::vec p4 = gmp->getYd(x4) + arma::vec({0.2, -0.15, -0.13});
   arma::vec p4_ddot = gmp->getYdDDot(x4,x_dot,x_ddot) + arma::vec({0.02, -0.04, -0.025});
+  std::vector<gmp_::Phase> s4 = { gmp_::Phase(x4,x_dot,x_ddot), gmp_::Phase(x4,x_dot,x_ddot) };
+  std::vector<gmp_::UPDATE_TYPE> type4 = { gmp_::UPDATE_TYPE::POS, gmp_::UPDATE_TYPE::ACCEL };
+  arma::mat Z4 = arma::join_horiz(p4, p4_ddot);
 
   double t5 = 7 / kt;
   double x5 = t5/T;
   arma::vec p5_dot = gmp->getYdDot(x5,x_dot) + arma::vec({0.1, 0.05, -0.1});
   arma::vec p5_ddot = gmp->getYdDDot(x5,x_dot,x_ddot) + arma::vec({-0.03, 0.02, 0.025});
+  std::vector<gmp_::Phase> s5 = { gmp_::Phase(x5,x_dot,x_ddot), gmp_::Phase(x5,x_dot,x_ddot) };
+  std::vector<gmp_::UPDATE_TYPE> type5 = { gmp_::UPDATE_TYPE::VEL, gmp_::UPDATE_TYPE::ACCEL };
+  arma::mat Z5 = arma::join_horiz(p5_dot, p5_ddot);
 
-  gmp_::GMP_nDoF_Update::Ptr gmp_up(gmp);
-  
-  gmp_up.enableSigmawUpdate(true);
-  gmp_up.setMsrNoiseVar(1e-4);
-  for i=1:length(points), updateGMP(gmp_up, points(i)); end
-  // updateGMP_all(gmp_up, points);
+  gmp_up.updatePos(x1, p1);
+  gmp_up.updateVel(x2, x_dot, p2_dot);
+  gmp_up.updateAccel(x3, x_dot, x_ddot, p3_ddot);
+  gmp_up.updateWeights(s4, Z4, type4);
+  gmp_up.updateWeights(s5, Z5, type5);
 
   // =============  Write results  =============
-  // {
-  //   gmp_::FileIO fid(results_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
-  //   fid.write("Timed",Timed);
-  //   fid.write("Pd_data",Pd_data);
-  //   fid.write("dPd_data",dPd_data);
-  //   fid.write("ddPd_data",ddPd_data);
-  //   fid.write("Time",Time);
-  //   fid.write("P_data",P_data);
-  //   fid.write("dP_data",dP_data);
-  //   fid.write("ddP_data",ddP_data);
-  //   fid.write("spat_s",spat_s);
-  //   fid.write("temp_s",temp_s);
-  // }
+  gmp_::GMP_nDoF_IO::write(gmp.get(), out_gmp_filename, "up_");
 
   PRINT_CONFIRM_MSG("<====  Finished! ====>\n");
 

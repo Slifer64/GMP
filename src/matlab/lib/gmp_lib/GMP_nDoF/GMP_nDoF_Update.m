@@ -35,7 +35,17 @@ classdef GMP_nDoF_Update < matlab.mixin.Copyable
         end
         
         function initSigmaWfromMsr(this, x_data)
-                  
+              
+%             n_data = length(x_data);
+%             H = zeros(this.gmp.numOfKernels(), n_data);
+%             H_dot = zeros(this.gmp.numOfKernels(), n_data);
+%             for j=1:n_data
+%                 H(:,j) = this.gmp.regressVec(x_data(j));
+%                 H_dot(:,j) = this.gmp.regressVecDot(x_data(j),0.05);
+%             end
+%             
+%             this.Sigma_w = inv(H*H' + 100*(H_dot*H_dot'));
+            
             n_data = length(x_data);
             H = zeros(this.gmp.numOfKernels(), n_data);
             for j=1:n_data, H(:,j) = this.gmp.regressVec(x_data(j)); end

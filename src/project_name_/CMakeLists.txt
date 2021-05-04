@@ -47,6 +47,11 @@ target_link_libraries(orient_gmp_test ${LIBS} )
 
 # ===================================================
 
+add_executable( update_gmp_test src/optimization/update_gmp_test.cpp ${SRC_LIST})
+target_link_libraries(update_gmp_test ${LIBS} )
+
+# ===================================================
+
 #[[
 add_executable(${PROJECT_NAME}
   include/${PROJECT_NAME}/main.cpp
