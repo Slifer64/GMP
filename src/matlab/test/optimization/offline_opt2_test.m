@@ -70,6 +70,20 @@ for i=1:3
     Pos_low_lim(i, ind2) = Pos_up_lim(i,ind2) - 0.3;
 end
 
+x_vel_lim = 0:0.02:1;
+n_vel_constr = length(x_vel_lim);
+
+x_accel_lim = 0:0.02:1;
+n_accel_constr = length(x_accel_lim);
+
+% pos_bounds = GMP_nDoF_Opt.boundsStruct(x_lim, Pos_low_lim, Pos_up_lim, [0 1], [y0 yg]);
+% vel_bounds = GMP_nDoF_Opt.boundsStruct(x_vel_lim, -0.4*ones(n_dof,n_vel_constr), 0.4*ones(n_dof,n_vel_constr), [0 1], zeros(3,2));
+% accel_bounds = GMP_nDoF_Opt.boundsStruct(x_lim, -0.3*ones(n_dof,n_accel_constr), 0.6*ones(n_dof,n_accel_constr), [0 1], zeros(3,2));
+
+pos_bounds = GMP_nDoF_Opt.boundsStruct([0 1 x_lim], [y0 yg Pos_low_lim], [y0 yg Pos_up_lim], [], []);
+vel_bounds = GMP_nDoF_Opt.boundsStruct([0 1 x_vel_lim], [zeros(3,2) -0.4*ones(n_dof,n_vel_constr)], [zeros(3,2) 0.4*ones(n_dof,n_vel_constr)], [], []);
+accel_bounds = GMP_nDoF_Opt.boundsStruct([0 1 x_accel_lim], [zeros(3,2) -0.3*ones(n_dof,n_accel_constr)], [zeros(3,2) 0.6*ones(n_dof,n_accel_constr)], [], []);
+
 % =======  Position constraints  =======
 pos_up_lim = [0.6; 0.7; 0.8];
 pos_low_lim = [-0.05; -0.05; -0.05];
@@ -97,7 +111,8 @@ tic
 gmp_opt = GMP_nDoF_Opt(gmp);
 gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
 % gmp_opt.constrOpt(200, tau, pos_constr, [], []);
-gmp_opt.constrOpt(200, tau, pos_constr, vel_constr, accel_constr);
+% gmp_opt.constrOpt(200, tau, pos_constr, vel_constr, accel_constr);
+gmp_opt.constrOpt2(200, tau, pos_bounds, vel_bounds, accel_bounds);
 fprintf([gmp_opt.getExitMsg() '\n']);
 
 toc

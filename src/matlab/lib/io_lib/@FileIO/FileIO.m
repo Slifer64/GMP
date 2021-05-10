@@ -63,7 +63,8 @@ classdef FileIO < matlab.mixin.Copyable
         
         function close(this)
            
-            fclose(this.fid);
+            if (this.fid > 0), fclose(this.fid); end
+            this.fid = -1;
             
         end
         

@@ -86,7 +86,7 @@ p5_ddot = gmp.getYdDDot(x5,x_dot,x_ddot) + [-0.03; 0.02; 0.025].*[1; 1; 1];
 points(5) = getPoint(t5, x5, x_dot, x_ddot, [], p5_dot, p5_ddot);
 
 gmp_up = GMP_nDoF_Update(gmp);
-gmp_up.initSigmaWfromMsr(0:0.01:1);
+% gmp_up.initSigmaWfromMsr(0:0.01:1);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.setMsrNoiseVar(1e-4);
 for i=1:length(points), updateGMP(gmp_up, points(i)); end
