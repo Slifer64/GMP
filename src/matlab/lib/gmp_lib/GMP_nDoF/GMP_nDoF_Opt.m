@@ -108,8 +108,26 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
                 H = H + this.w_a*H3;
                 f = f + this.w_a*f3;
             end
+            
 
-
+%             A = [this.A_p; this.A_v; this.A_a];
+%             lb = [this.pos_lb; this.vel_lb; this.accel_lb];
+%             ub = [this.pos_ub; this.vel_ub; this.accel_ub];
+%             Aeq = [this.Aeq_p; this.Aeq_v; this.Aeq_a];
+%             beq = [this.pos_eq; this.vel_eq; this.accel_eq];
+%             
+%             fid = FileIO('osqp_problem.bin', bitor(FileIO.out,FileIO.trunc) );
+%             fid.write('H', H);
+%             fid.write('f', f);
+%             fid.write('A', A);
+%             fid.write('lb', lb);
+%             fid.write('ub', ub);
+%             fid.write('Aeq', Aeq);
+%             fid.write('beq', beq);
+%             fid.write('x0', this.gmp.W');
+%             fid.write('inv_ks', this.gmp.getInvScaling());
+%             stop
+            
             % inequality constraints
             
             A = [];
@@ -149,7 +167,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
                 Aeq = [Aeq; this.Aeq_a];
                 beq = [beq; this.accel_eq];
             end
-        
+
             % H = sparse(H);
             % A = sparse(A);
             

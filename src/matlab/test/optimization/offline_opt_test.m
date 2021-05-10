@@ -78,7 +78,7 @@ xeq_pos = [0 1 4/tau]; % [];
 pos_eq = [y0 yg [0.5 1 0]'];%[]; %
 
 
-x_vel_lim = 0:0.02:1;
+x_vel_lim = 0:0.01:1;
 n_vel_constr = length(x_vel_lim);
 vel_lb = -0.4*ones(n_dof,n_vel_constr);
 vel_ub = 0.4*ones(n_dof,n_vel_constr);
@@ -86,13 +86,17 @@ vel_ub = 0.4*ones(n_dof,n_vel_constr);
 xeq_vel = [0 1];%[]; %
 vel_eq = zeros(3,2);%[]; %
 
-x_accel_lim = 0:0.02:1;
+x_accel_lim = 0:0.01:1;
 n_accel_constr = length(x_accel_lim);
 accel_lb = -0.3*ones(n_dof,n_accel_constr);
 accel_ub = 0.6*ones(n_dof,n_accel_constr);
 
 xeq_accel = [0 1];%[]; % 
 accel_eq = zeros(3,2);%[]; % 
+
+
+n_constr = length(x_pos_lim) + 2*length(x_vel_lim) + 2*length(x_accel_lim)
+neq_constr = length(xeq_pos) + length(xeq_vel) + length(xeq_accel)
 
 tic
 
