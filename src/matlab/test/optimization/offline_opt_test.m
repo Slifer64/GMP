@@ -39,7 +39,7 @@ ygd = gmp.getYd(1); %Pd_data(end);
 kt = 1.0; % temporal scaling
 ks = diag([1.3 1.4 1.5]); % spatial scaling
 tau = taud/kt;
-y0 = yd0;
+y0 = yd0 + 0.15;
 yg = ks*(ygd - yd0) + y0;
 gmp.setY0(y0);
 gmp.setGoal(yg);
@@ -70,34 +70,39 @@ for i=1:3
     Pos_low_lim(i, ind2) = Pos_up_lim(i,ind2) - 0.3;
 end
 
-% =======  Position constraints  =======
-pos_up_lim = [0.6; 0.7; 0.8];
-pos_low_lim = [-0.05; -0.05; -0.05];
-pos_constr = [];
-% pos_constr = [GMPConstr(0/tau,y0,'='); GMPConstr(0.3,gmp.getYd(0.3)+0.1,'=');];% GMPConstr(tau/tau,0.7,'=')];
-pos_constr = [GMPConstr(0,y0,'=') GMPConstr(1,yg,'=')];
-% xi = 0:0.02:1;
-% pos_constr = [pos_constr; GMP_nDoF_Opt.lowerBoundConstr(xi, pos_low_lim(ind)); GMP_nDoF_Opt.upperBoundConstr(xi, pos_up_lim(ind))];
-for j=1:length(x_lim)
-    pos_constr = [pos_constr GMPConstr(x_lim(j),Pos_up_lim(:,j),'<') GMPConstr(x_lim(j),Pos_low_lim(:,j),'>')];
-end
-% =======  Velocity constraints  =======
-vel_constr = [];
-vel_constr = [GMPConstr(0,zeros(n_dof,1),'='); GMPConstr(1,zeros(n_dof,1),'=')];
-xi = 0:0.02:1;
-vel_thres = 0.12;
-vel_constr = [vel_constr; GMP_nDoF_Opt.thresholdConstr(xi, 0.4*ones(n_dof,1))];
-% =======  Acceleration constraints  =======
-accel_constr = [];
-accel_constr = [GMPConstr(0,zeros(n_dof,1),'='); GMPConstr(1,zeros(n_dof,1),'=')];
-xi = 0:0.02:1;
-accel_constr = [accel_constr; GMP_nDoF_Opt.upperBoundConstr(xi, 0.6*ones(n_dof,1)); GMP_nDoF_Opt.lowerBoundConstr(xi, -0.3*ones(n_dof,1))];
+x_pos_lim = x_lim;
+pos_lb = Pos_low_lim;
+pos_ub = Pos_up_lim;
+
+xeq_pos = [0 1 4/tau]; % [];
+pos_eq = [y0 yg [0.5 1 0]'];%[]; %
+
+
+x_vel_lim = 0:0.02:1;
+n_vel_constr = length(x_vel_lim);
+vel_lb = -0.4*ones(n_dof,n_vel_constr);
+vel_ub = 0.4*ones(n_dof,n_vel_constr);
+
+xeq_vel = [0 1];%[]; %
+vel_eq = zeros(3,2);%[]; %
+
+x_accel_lim = 0:0.02:1;
+n_accel_constr = length(x_accel_lim);
+accel_lb = -0.3*ones(n_dof,n_accel_constr);
+accel_ub = 0.6*ones(n_dof,n_accel_constr);
+
+xeq_accel = [0 1];%[]; % 
+accel_eq = zeros(3,2);%[]; % 
 
 tic
+
 gmp_opt = GMP_nDoF_Opt(gmp);
 gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
-% gmp_opt.constrOpt(200, tau, pos_constr, [], []);
-gmp_opt.constrOpt(200, tau, pos_constr, vel_constr, accel_constr);
+gmp_opt.setMotionDuration(tau);
+gmp_opt.setPosConstr(x_pos_lim, pos_lb, pos_ub, xeq_pos, pos_eq);
+gmp_opt.setVelConstr(x_vel_lim, vel_lb, vel_ub, xeq_vel, vel_eq);
+gmp_opt.setAccelConstr(x_accel_lim, accel_lb, accel_ub, xeq_accel, accel_eq);
+gmp_opt.optimize(200);
 fprintf([gmp_opt.getExitMsg() '\n']);
 
 toc
@@ -189,45 +194,31 @@ for i=1:n_dof
     axis tight;
     hold off;
 
-    plotConstr(pos_constr, ax{1}, tau, i);
-    plotConstr(vel_constr, ax{2}, tau, i);
-    plotConstr(accel_constr, ax{3}, tau, i);
+    plotConstr(tau*x_pos_lim, pos_lb, pos_ub, tau*xeq_pos, pos_eq, ax{1}, i);
+    plotConstr(tau*x_vel_lim, vel_lb, vel_ub, tau*xeq_vel, vel_eq, ax{2}, i);
+    plotConstr(tau*x_accel_lim, accel_lb, accel_ub, tau*xeq_accel, accel_eq, ax{3}, i);
 end
 
 %% =======================================================
 %% =======================================================
 
-function plotConstr(constr, ax, tau, i_dof)
+function plotConstr(t, lb, ub, teq, feq, ax, i_dof)
 
     hold(ax, 'on');
+    
+    if (~isempty(teq))
+        eq_sc = scatter(teq, feq(i_dof,:), 'MarkerEdgeColor',[0 0.7 0], 'Marker','*', ...
+                'MarkerEdgeAlpha',0.6, 'LineWidth',2, 'SizeData', 100, 'Parent',ax);
+    end
+    
+    if (~isempty(t))
+        less_sc = scatter(t, lb(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
+                'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
+        %less_sc = plot(t, lb(i_dof,:), 'Color',[1 0 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
 
-    eq_sc = scatter(nan, nan, 'MarkerEdgeColor',[0 0.7 0], 'Marker','*', ...
-            'MarkerEdgeAlpha',0.6, 'LineWidth',2, 'SizeData', 100, 'Parent',ax);
-
-%     less_sc = scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','v', ...
-%             'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
-    less_sc = plot(nan, nan, 'Color',[1 0 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
-
-%     gr_sc = scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','^', ...
-%             'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
-    gr_sc = plot(nan, nan, 'Color',[0 0.8 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
-
-    for i=1:length(constr)
-        t = constr(i).x * tau;
-        value = constr(i).value(i_dof);
-        const_type = constr(i).type;
-
-        if (const_type == '=')
-           eq_sc.XData = [eq_sc.XData t];
-           eq_sc.YData = [eq_sc.YData value];
-        elseif (const_type == '<')
-            less_sc.XData = [less_sc.XData t];
-            less_sc.YData = [less_sc.YData value];
-        elseif (const_type == '>')
-            gr_sc.XData = [gr_sc.XData t];
-            gr_sc.YData = [gr_sc.YData value];
-        end
-
+        gr_sc = scatter(t, ub(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
+                'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
+%         gr_sc = plot(t, ub(i_dof,:), 'Color',[0 0.8 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
     end
 
 end
