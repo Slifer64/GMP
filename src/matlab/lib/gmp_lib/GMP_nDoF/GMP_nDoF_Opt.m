@@ -87,7 +87,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
   
             if (this.opt_vel)
                 H2 = zeros(n_ker, n_ker);
-                f2 = zeros(n_ker, 1);
+                f2 = zeros(n_ker, n_dof);
                 for i=1:N
                     phi = this.gmp.regressVecDot(x_data(i), x_dot);
                     H2 = H2 + phi*phi';
@@ -99,7 +99,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             
             if (this.opt_accel)
                 H3 = zeros(n_ker, n_ker);
-                f3 = zeros(n_ker, 1);
+                f3 = zeros(n_ker, n_dof);
                 for i=1:N
                     phi = this.gmp.regressVecDDot(x_data(i), x_dot, x_ddot);
                     H3 = H3 + phi*phi';

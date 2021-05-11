@@ -1,5 +1,6 @@
 #include <gmp_lib/GMP/GMP_nDoF.h>
 #include <gmp_lib/GMP/GMP_nDoF_Update.h>
+#include <gmp_lib/GMP/GMP_nDoF_Opt.h>
 #include <gmp_lib/GMP/GMP_nDoF_IO.h>
 
 #include <gmp_lib/GMP/GMPo.h>

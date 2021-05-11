@@ -33,11 +33,12 @@ add_library(${PROJECT_NAME}
   #------------------------
   src/GMP/GMP_nDoF.cpp
   src/GMP/GMP_nDoF_Update.cpp
+  src/GMP/GMP_nDoF_Opt.cpp
   src/GMP/GMP_nDoF_IO.cpp
   #------------------------
   src/GMP/GMPo.cpp
   src/GMP/GMPo_IO.cpp
-  
+
 )
 
 add_dependencies(${PROJECT_NAME}
