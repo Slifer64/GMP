@@ -35,20 +35,21 @@ set(LIBS
   gmp_lib
 )
 
-# ===================================================
+# ================  Simulation  ===================
 
 add_executable( nDoF_gmp_test src/simulation/nDoF_gmp_test.cpp ${SRC_LIST})
 target_link_libraries(nDoF_gmp_test ${LIBS} )
 
-# ===================================================
-
 add_executable( orient_gmp_test src/simulation/orient_gmp_test.cpp ${SRC_LIST})
 target_link_libraries(orient_gmp_test ${LIBS} )
 
-# ===================================================
+# ===============  Optimization  ===============
 
 add_executable( update_gmp_test src/optimization/update_gmp/update_gmp_test.cpp ${SRC_LIST})
 target_link_libraries(update_gmp_test ${LIBS} )
+
+add_executable( constr_opt_test src/optimization/constr_opt/constr_opt_test.cpp ${SRC_LIST})
+target_link_libraries(constr_opt_test ${LIBS} )
 
 # ===================================================
 

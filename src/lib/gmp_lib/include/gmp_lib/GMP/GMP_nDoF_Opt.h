@@ -35,11 +35,11 @@ public:
 
   void setMotionDuration(double tau);
 
-  void setPosConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &p_eq);
+  void setPosConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &p_eq);
 
-  void setVelConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &v_eq);
+  void setVelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &v_eq);
 
-  void setAccelConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &a_eq);
+  void setAccelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &a_eq);
 
   void clearPosConstr();
 

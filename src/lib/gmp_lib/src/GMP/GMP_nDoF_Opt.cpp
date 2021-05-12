@@ -173,7 +173,7 @@ namespace gmp_
     this->tau = tau;
   }
 
-  void GMP_nDoF_Opt::setPosConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &p_eq)
+  void GMP_nDoF_Opt::setPosConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &p_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     int n_dof = this->gmp->numOfDoFs();
@@ -216,7 +216,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::setVelConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &v_eq)
+  void GMP_nDoF_Opt::setVelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &v_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     double x_dot = 1 / this->tau;
@@ -249,7 +249,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::setAccelConstr(const arma::vec &x, const arma::mat &lb, const arma::mat &ub, const arma::vec &x_eq, const arma::mat &a_eq)
+  void GMP_nDoF_Opt::setAccelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &a_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     double x_dot = 1 / this->tau;
