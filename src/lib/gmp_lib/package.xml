@@ -8,6 +8,9 @@
 
   <license>MIT</license>
 
+  <build_depend>osqp_lib</build_depend>
+  <run_depend>osqp_lib</run_depend>
+
   <buildtool_depend>catkin</buildtool_depend>
 
   <export></export>

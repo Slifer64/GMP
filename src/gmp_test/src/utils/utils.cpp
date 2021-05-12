@@ -1,4 +1,4 @@
-#include <project_name_/utils/utils.h>
+#include <gmp_test/utils/utils.h>
 
 arma::wall_clock Timer::timer;
 

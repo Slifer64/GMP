@@ -12,7 +12,7 @@
 #include <gmp_lib/gmp_lib.h>
 #include <gmp_lib/math/quaternions.h>
 
-#define PROJECT_NAME_ "project_name_"
+#define PROJECT_NAME_ "gmp_test"
 
 using namespace as64_;
 

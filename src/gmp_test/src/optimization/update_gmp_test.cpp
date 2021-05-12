@@ -9,7 +9,7 @@
 #include <gmp_lib/gmp_lib.h>
 #include <gmp_lib/io/file_io.h>
 
-#include <project_name_/utils/utils.h>
+#include <gmp_test/utils/utils.h>
 
 using namespace as64_;
 

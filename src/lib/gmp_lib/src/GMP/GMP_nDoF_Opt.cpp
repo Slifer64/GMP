@@ -1,5 +1,7 @@
 #include <gmp_lib/GMP/GMP_nDoF_Opt.h>
 
+#include <osqp_lib/quadprog.h>
+
 namespace as64_
 {
 
@@ -107,24 +109,28 @@ namespace gmp_
     // inequality constraints
 
     arma::mat A;
-    arma::mat b;
+    arma::mat lb;
+    arma::mat ub;
 
     if (!this->A_p.empty())
     {
-      A = arma::join_vert(A, -this->A_p, this->A_p);
-      b = arma::join_vert(b, -this->pos_lb, this->pos_ub);
+      A = arma::join_vert(A, this->A_p);
+      lb = arma::join_vert(lb, this->pos_lb);
+      ub = arma::join_vert(ub, this->pos_ub);
     }
 
     if (!this->A_v.empty())
     {
-      A = arma::join_vert(A, -this->A_v, this->A_v);
-      b = arma::join_vert(b, -this->vel_lb, this->vel_ub);
+      A = arma::join_vert(A, this->A_v);
+      lb = arma::join_vert(lb, this->vel_lb);
+      ub = arma::join_vert(ub, this->vel_ub);
     }
 
     if (!this->A_a.empty())
     {
-      A = arma::join_vert(A, -this->A_a, this->A_a);
-      b = arma::join_vert(b, -this->accel_lb, this->accel_ub);
+      A = arma::join_vert(A, this->A_a);
+      lb = arma::join_vert(lb, this->accel_lb);
+      ub = arma::join_vert(ub, this->accel_ub);
     }
 
     // equality constraints
@@ -154,28 +160,12 @@ namespace gmp_
     // A = sparse(A);
 
     // solve optimization problem
-    arma::mat W(n_dof, n_ker);
-    // for i=1:n_dof
-    // {
-    //   bi = [];
-    //   beq_i = [];
-    //   if (~isempty(b)), bi = b.col(i); end
-    //   if (~isempty(beq)), beq_i = beq.col(i); end
-    //
-    //   [W.row(i), ~, ex_flag] = quadprog(H,f.col(i), A,bi, Aeq,beq_i, [],[], this->gmp->W.row(i), opt);
-    //
-    //   if (ex_flag == 1 || ex_flag == 2)
-    //       %this->gmp->W.row(i) = w'; %w'/ks(i);
-    //   else
-    //       success = false;
-    //       % break; ?
-    //   }
-    //
-    //   if (~isempty(this->exit_msg)), this->exit_msg = [this->exit_msg '\n']; end
-    //   this->exit_msg = [this->exit_msg 'DoF-' num2str(i) ': ' this->ex_flag_map(ex_flag)];
-    // }
+    osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq);
 
-    if (success) this->gmp->W = this->gmp->getInvScaling()*W;
+    if (solution.success) this->gmp->W = this->gmp->getInvScaling()*solution.x.t();
+    else this->exit_msg = solution.exit_msg;
+
+    return solution.success;
   }
 
   void GMP_nDoF_Opt::setMotionDuration(double tau)
@@ -255,7 +245,6 @@ namespace gmp_
       this->vel_eq = v_eq.t();
       this->Aeq_v.resize(m, n_ker);
       for (int i=0; i<m; i++) this->Aeq_v.row(i) = this->gmp->regressVecDot(x_eq(i),x_dot).t();
-
     }
 
   }

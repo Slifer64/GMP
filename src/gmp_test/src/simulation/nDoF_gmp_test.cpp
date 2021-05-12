@@ -9,18 +9,9 @@
 #include <gmp_lib/gmp_lib.h>
 #include <gmp_lib/io/file_io.h>
 
-#include <project_name_/utils/utils.h>
+#include <gmp_test/utils/utils.h>
 
 using namespace as64_;
-
-// ##############################################################
-
-typedef void (*sim_fun_ptr)(std::shared_ptr<gmp_::GMPo> &, const arma::vec &, const arma::vec &,
-                            double , double , arma::rowvec &, arma::mat &, arma::mat &, arma::mat &);
-
-void loadParams();
-
-// ##############################################################
 
 std::string train_filename;
 std::string results_filename;
@@ -31,46 +22,49 @@ std::string scale_type;
 arma::vec wb_normal;
 arma::vec spat_s;
 double temp_s;
-sim_fun_ptr simulateGMPo;
 
 bool read_gmp_from_file;
 bool write_gmp_to_file;
 std::string gmp_filename;
 
-// ##############################################################
+void loadParams();
 
-int main(int argc, char** argv)
+// ==================================
+// ------------   MAIN  -------------
+// ==================================
+
+int main(int argc, char **argv)
 {
-  // ===========  Initialize the ROS node  ===============
-  ros::init(argc, argv, "orient_gmp_test_node");
+  ros::init(argc, argv, "nDoF_gmp_test_node");
 
+  // =============  Load params  =============
   loadParams();
 
   // =============  Load train data  =============
   arma::rowvec Timed;
-  arma::mat Qd_data, vRotd_data, dvRotd_data;
+  arma::mat Pd_data, dPd_data, ddPd_data;
   gmp_::FileIO fid(train_filename, gmp_::FileIO::in);
   fid.read("Timed",Timed);
-  fid.read("Qd_data",Qd_data);
-  fid.read("vRotd_data",vRotd_data);
-  fid.read("dvRotd_data",dvRotd_data);
+  fid.read("Pd_data",Pd_data);
+  fid.read("dPd_data",dPd_data);
+  fid.read("ddPd_data",ddPd_data);
   fid.close();
 
   double Ts = Timed(1) - Timed(0);
 
   // =============  Create/Train GMP  =============
-  unsigned n_dof = 3;
-  gmp_::GMPo::Ptr gmp_o(new gmp_::GMPo(2) );
+  gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
 
-  if (read_gmp_from_file) gmp_::GMPo_IO::read(gmp_o.get(), gmp_filename, "");
+  unsigned n_dof = Pd_data.n_rows;
+  if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
-    gmp_o.reset( new gmp_::GMPo(N_kernels, kernels_std_scaling) );
+    gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
     Timer::tic();
     arma::vec offline_train_mse;
-    PRINT_INFO_MSG("GMPo training...\n");
-    gmp_o->train(train_method, Timed/Timed.back(), Qd_data, &offline_train_mse);
+    PRINT_INFO_MSG("GMP_nDoF training...\n");
+    gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
     std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
     Timer::toc();
   }
@@ -86,56 +80,51 @@ int main(int argc, char** argv)
   }
   else throw_error("Unsupported scale type \"" + scale_type + "\"...\n");
 
-  gmp_o->setScaleMethod(traj_sc);
+  gmp->setScaleMethod(traj_sc);
 
-  if (write_gmp_to_file) gmp_::GMPo_IO::write(gmp_o.get(), gmp_filename, "");
+  if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp.get(), gmp_filename, "");
 
   // =============  GMP simulation  =============
-  PRINT_INFO_MSG("GMP_orient simulation...\n");
+  PRINT_INFO_MSG("GMP_nDoF simulation...\n");
 
   Timer::tic();
 
-  int i_end = Timed.size() - 1;
-  arma::vec Qd0 = Qd_data.col(0);
-  arma::vec Q0 = Qd0; // math_.quatProd(rotm2quat(rotz(57))',Qd0);
-  arma::vec Qgd = Qd_data.col(i_end);
-
-  arma::mat ks = arma::diagmat(spat_s);
-  double kt = temp_s;
-  arma::vec e0 = ks*gmp_::quatLog(gmp_::quatDiff(Qgd,Qd0));
-  arma::vec Qg = gmp_::quatProd(gmp_::quatExp(e0), Q0);
-  double T = Timed(i_end) / kt;
+  int n_data = Timed.size();
+  int i_end = n_data - 1;
+  arma::vec P0d = Pd_data.col(0);
+  arma::vec Pgd = Pd_data.col(i_end);
+  arma::vec P0 = P0d;
+  arma::vec Pg = spat_s%(Pgd - P0) + P0;
+  double T = Timed(i_end) / temp_s;
   double dt = Ts;
 
   arma::rowvec Time;
-  arma::mat Q_data, vRot_data, dvRot_data;
-  simulateGMPo(gmp_o, Q0, Qg, T, dt, Time, Q_data, vRot_data, dvRot_data);
+  arma::mat P_data, dP_data, ddP_data;
+  simulateGMP_nDoF(gmp, P0, Pg, T, dt, Time, P_data, dP_data, ddP_data);
 
   Timer::toc();
 
   // =============  Write results  =============
   {
     gmp_::FileIO fid(results_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
-    fid.write("Timed", Timed);
-    fid.write("Qd_data", Qd_data);
-    fid.write("vRotd_data", vRotd_data);
-    fid.write("dvRotd_data", dvRotd_data);
-    fid.write("Time", Time);
-    fid.write("Q_data", Q_data);
-    fid.write("vRot_data", vRot_data);
-    fid.write("dvRot_data", dvRot_data);
-    arma::mat T_sc = gmp_o->getScaling();
-    fid.write("T_sc", T_sc);
-    fid.write("temp_s", kt);
+    fid.write("Timed",Timed);
+    fid.write("Pd_data",Pd_data);
+    fid.write("dPd_data",dPd_data);
+    fid.write("ddPd_data",ddPd_data);
+    fid.write("Time",Time);
+    fid.write("P_data",P_data);
+    fid.write("dP_data",dP_data);
+    fid.write("ddP_data",ddP_data);
+    fid.write("spat_s",spat_s);
+    fid.write("temp_s",temp_s);
   }
 
-  // ===========  Shutdown ROS node  ==================
   PRINT_CONFIRM_MSG("<====  Finished! ====>\n");
 
   return 0;
 }
 
-// ##############################################################
+// ===============================================
 
 void loadParams()
 {
@@ -158,17 +147,9 @@ void loadParams()
   spat_s = spat_s_;
   if (!nh.getParam("temp_s", temp_s)) throw_error("Failed to load param \"temp_s\"...\n");
 
-  std::string orient_sim_fun;
-  if (!nh.getParam("orient_sim_fun", orient_sim_fun)) throw_error("Failed to load param \"orient_sim_fun\"...\n");
-  if (orient_sim_fun.compare("log") == 0) simulateGMPo = &simulateGMPo_in_log_space;
-  else if (orient_sim_fun.compare("quat") == 0) simulateGMPo = &simulateGMPo_in_quat_space;
-  else if (orient_sim_fun.compare("Cart") == 0) simulateGMPo = &simulateGMPo_in_Cart_space;
-  else throw_error("Unsupported orient-simulation function \"" + orient_sim_fun + "\"...\n");
-
   if (!nh.getParam("read_gmp_from_file", read_gmp_from_file)) throw_error("Failed to load param \"read_gmp_from_file\"...\n");
   if (!nh.getParam("write_gmp_to_file", write_gmp_to_file)) throw_error("Failed to load param \"write_gmp_to_file\"...\n");
   if ((read_gmp_from_file || write_gmp_to_file) && !nh.getParam("gmp_filename", gmp_filename))
     throw_error("Failed to load param \"gmp_filename\"...\n");
   gmp_filename = package_path + gmp_filename;
-
 }

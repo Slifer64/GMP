@@ -94,10 +94,6 @@ accel_ub = 0.6*ones(n_dof,n_accel_constr);
 xeq_accel = [0 1];%[]; % 
 accel_eq = zeros(3,2);%[]; % 
 
-
-n_constr = length(x_pos_lim) + 2*length(x_vel_lim) + 2*length(x_accel_lim)
-neq_constr = length(xeq_pos) + length(xeq_vel) + length(xeq_accel)
-
 tic
 
 gmp_opt = GMP_nDoF_Opt(gmp);
