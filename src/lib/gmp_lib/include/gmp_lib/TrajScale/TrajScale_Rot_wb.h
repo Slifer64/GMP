@@ -34,6 +34,8 @@ public:
     this->calcInvScaling();
   }
 
+  arma::vec getWorkBenchNormal() const { return n_wb; }
+
   ScaleType getScaleType() const { return TrajScale::ScaleType::ROT_WB_SCALE; }
 
 protected:

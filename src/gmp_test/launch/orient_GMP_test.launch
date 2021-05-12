@@ -2,7 +2,7 @@
 
 <launch>
 
-    <node pkg="project_name_" type="orient_gmp_test" name="orient_gmp_test_node"
+    <node pkg="gmp_test" type="orient_gmp_test" name="orient_gmp_test_node"
           output="screen" cwd="node" required="true">
 
         <rosparam>

@@ -32,7 +32,7 @@ public:
    *  @param[in] N_kernels: the number of kernels
    *  @param[in] kern_std_scale: Scaling for std of kernels (optional, default=1).
    */
-  GMP_nDoF(unsigned n_dofs, unsigned N_kernels, double kern_std_scale=1.0);
+  GMP_nDoF(unsigned n_dofs=1, unsigned N_kernels=2, double kern_std_scale=1.0);
 
 
   /** Returns the number of DoFs.
@@ -144,6 +144,7 @@ public:
    */
   arma::vec getYdDDot(double x, double x_dot, double x_ddot=0) const;
 
+  void deepCopy(gmp_::GMP_nDoF *cp_obj) const;
 
 public: // properties
 

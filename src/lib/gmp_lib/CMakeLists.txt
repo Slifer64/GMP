@@ -29,6 +29,8 @@ add_library(${PROJECT_NAME}
   src/io/io.cpp
   src/io/file_io.cpp
 
+  src/TrajScale/TrajScale.cpp
+
   #------------------------
   src/GMP/GMP_regressor.cpp
   #------------------------

@@ -12,6 +12,8 @@ classdef GMP_nDoF < GMP_regressor
         %  @param[in] kern_std_scale: Scaling for std of kernels (optional, default=1).
         function this = GMP_nDoF(n_dofs, N_kernels, kern_std_scale)
                 
+            if (nargin < 1), n_dofs = 1; end
+            if (nargin < 2), N_kernels = 2; end
             if (nargin < 3), kern_std_scale = 1.0; end
             
             this@GMP_regressor(N_kernels, kern_std_scale);
@@ -278,8 +280,9 @@ classdef GMP_nDoF < GMP_regressor
             
             % Make a shallow copy of all properties
             cp_obj = this.copy();
+            
             % Make a deep copy of the pointers
-            % ...
+            cp_obj.traj_sc = this.traj_sc.deepCopy();
 
         end
         

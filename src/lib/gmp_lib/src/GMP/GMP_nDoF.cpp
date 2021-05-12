@@ -206,6 +206,15 @@ namespace gmp_
     return this->getScaling()*this->W*this->regressVecDDot(x,x_dot,x_ddot);
   }
 
+  void GMP_nDoF::deepCopy(gmp_::GMP_nDoF *cp_obj) const
+  {
+    // make a shallow copy first
+    *cp_obj = *this;
+
+    // make a deep copy of pointer-like objects
+    cp_obj->traj_sc = this->traj_sc->deepCopy();
+  }
+
 
 } // namespace gmp_
 

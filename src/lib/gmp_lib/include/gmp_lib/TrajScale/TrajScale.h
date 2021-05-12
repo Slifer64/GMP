@@ -9,6 +9,9 @@
 // scale it, i.e. Y_scaled = T_sc * Y
 // The scaling is also invertible, i.e. Y = inv(T_sc) * Y_scaled
 
+#include <memory>
+#include <armadillo>
+
 namespace as64_
 {
 
@@ -34,15 +37,7 @@ public:
   /** Constructor.
    * @param[in] n_dof: degrees of freedom.
    */
-  TrajScale(unsigned n_dof)
-  {
-    this->Y0d = arma::vec().zeros(n_dof);
-    this->Ygd = arma::vec().ones(n_dof);
-    //Initialization required for 'setScaleMethod'
-    //will be overwirtten then on the 'setInitFinalPos' call
-    this->Y0 = arma::vec().zeros(n_dof);
-    this->Yg = arma::vec().ones(n_dof);
-  }
+  TrajScale(unsigned n_dof);
 
   /** Returns the matrix that scales to the new init/target position, according to the set scaling method.
    * @return: The scaling matrix to the new init/target position.
@@ -64,36 +59,23 @@ public:
    * @param[in] Y0: new start position.
    * @param[in] Yg: new final position.
    */
-  void setNewStartFinalPos(const arma::vec &Y0, const arma::vec &Yg)
-  {
-    this->Y0 = Y0;
-    this->Yg = Yg;
-
-    this->T_sc = this->calcScaling();
-    this->inv_T_sc = this->calcInvScaling();
-  }
+  void setNewStartFinalPos(const arma::vec &Y0, const arma::vec &Yg);
 
   /** Set the nominal start and final position.
    * @param[in] Y0d: nominal start position.
    * @param[in] Ygd: nominal final position.
    */
-  void setNominalStartFinalPos(const arma::vec &Y0d, const arma::vec &Ygd)
-  {
-    this->Y0d = Y0d;
-    this->Ygd = Ygd;
-
-    this->T_sc = this->calcScaling();
-    this->inv_T_sc = this->calcInvScaling();
-  }
+  void setNominalStartFinalPos(const arma::vec &Y0d, const arma::vec &Ygd);
 
   /** Returns the number of DoFs.
    * @return: number of DoFs.
    */
-  unsigned numOfDoFs()
+  unsigned numOfDoFs() const
   {
     return this->Y0d.size();
   }
 
+  gmp_::TrajScale::Ptr deepCopy() const;
 
   // ==============================================
   // =======  Abstract (public) Functions  ========

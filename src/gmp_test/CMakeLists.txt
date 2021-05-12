@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-project(project_name_)
+project(gmp_test)
 
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-narrowing")
 
@@ -47,7 +47,7 @@ target_link_libraries(orient_gmp_test ${LIBS} )
 
 # ===================================================
 
-add_executable( update_gmp_test src/optimization/update_gmp_test.cpp ${SRC_LIST})
+add_executable( update_gmp_test src/optimization/update_gmp/update_gmp_test.cpp ${SRC_LIST})
 target_link_libraries(update_gmp_test ${LIBS} )
 
 # ===================================================

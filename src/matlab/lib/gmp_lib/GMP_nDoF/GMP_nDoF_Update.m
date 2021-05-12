@@ -92,7 +92,7 @@ classdef GMP_nDoF_Update < matlab.mixin.Copyable
         
         function updateVel(this, x, x_dot, y_dot, r_n)
             
-            if (nargin < 4), r_n=this.rv; end
+            if (nargin < 5), r_n=this.rv; end
             
             this.updateWeights(GMP_phase(x,x_dot,0), y_dot, GMP_UpdateType.VEL, r_n);
             
@@ -100,7 +100,7 @@ classdef GMP_nDoF_Update < matlab.mixin.Copyable
         
         function updateAccel(this, x, x_dot, x_ddot, y_ddot, r_n)
             
-            if (nargin < 4), r_n=this.rv; end
+            if (nargin < 6), r_n=this.rv; end
             
             this.updateWeights(GMP_phase(x,x_dot,x_ddot), y_ddot, GMP_UpdateType.ACCEL, r_n);
             

@@ -84,6 +84,12 @@ classdef TrajScale < matlab.mixin.Copyable
             
         end
         
+        function cp_obj = deepCopy(this)
+           
+            cp_obj = this.copy();
+            
+        end
+        
     end
     
     methods (Abstract, Access = public)
