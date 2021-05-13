@@ -1,5 +1,5 @@
 clc;
-% close all;
+close all;
 clear;
 
 addpath('../../../../matlab/lib/gmp_lib/');
@@ -35,7 +35,7 @@ taud = Timed(end);
 yd0 = gmp.getYd(0); %Pd_data(1);
 ygd = gmp.getYd(1); %Pd_data(end);
 
-kt = 1.0; % temporal scaling
+kt = 3; % temporal scaling
 ks = diag([1.3 1.4 1.5]); % spatial scaling
 tau = taud/kt;
 y0 = yd0 + 0.15;
@@ -73,86 +73,58 @@ x_pos_lim = x_lim;
 pos_lb = Pos_low_lim;
 pos_ub = Pos_up_lim;
 
-xeq_pos = [0 1 4/tau]; % [];
-pos_eq = [y0 yg [0.5 1 0]'];%[]; %
+xeq_pos = [0 1]; % [];
+pos_eq = [y0 yg];%[]; %
 
 x_vel_lim = 0:0.01:1;
 n_vel_constr = length(x_vel_lim);
-vel_lb = -0.4*ones(n_dof,n_vel_constr);
-vel_ub = 0.4*ones(n_dof,n_vel_constr);
+vel_lb = -1*ones(n_dof,n_vel_constr);
+vel_ub = 1*ones(n_dof,n_vel_constr);
 
 xeq_vel = [0 1];%[]; %
 vel_eq = zeros(3,2);%[]; %
 
 x_accel_lim = 0:0.01:1;
 n_accel_constr = length(x_accel_lim);
-accel_lb = -0.3*ones(n_dof,n_accel_constr);
-accel_ub = 0.6*ones(n_dof,n_accel_constr);
+accel_lb = -2*ones(n_dof,n_accel_constr);
+accel_ub = 2*ones(n_dof,n_accel_constr);
 
 xeq_accel = [0 1];%[]; % 
 accel_eq = zeros(3,2);%[]; % 
 
-%% Write constraints to file
-if (false) % set to 'true' to write constraints to file
-    fid = FileIO ('constraints.bin', bitor(FileIO.out, FileIO.trunc) );
-    % -----------------------------
-    fid.write('t_pos_lim', tau*x_pos_lim);
-    fid.write('pos_lb', pos_lb);
-    fid.write('pos_ub', pos_ub);
-    fid.write('teq_pos', tau*xeq_pos);
-    fid.write('pos_eq', pos_eq);
-    fid.write('t_vel_lim', tau*x_vel_lim);
-    fid.write('vel_lb', vel_lb);
-    fid.write('vel_ub', vel_ub);
-    fid.write('teq_vel', tau*xeq_vel);
-    fid.write('vel_eq', vel_eq);
-    fid.write('t_accel_lim', tau*x_accel_lim);
-    fid.write('accel_lb', accel_lb);
-    fid.write('accel_ub', accel_ub);
-    fid.write('teq_accel', tau*xeq_accel);
-    fid.write('accel_eq', accel_eq);
-    % -----------------------------
-    fid.close();
-end
+% %% Write constraints to file
+% if (false) % set to 'true' to write constraints to file
+%     fid = FileIO ('constraints.bin', bitor(FileIO.out, FileIO.trunc) );
+%     % -----------------------------
+%     fid.write('t_pos_lim', tau*x_pos_lim);
+%     fid.write('pos_lb', pos_lb);
+%     fid.write('pos_ub', pos_ub);
+%     fid.write('teq_pos', tau*xeq_pos);
+%     fid.write('pos_eq', pos_eq);
+%     fid.write('t_vel_lim', tau*x_vel_lim);
+%     fid.write('vel_lb', vel_lb);
+%     fid.write('vel_ub', vel_ub);
+%     fid.write('teq_vel', tau*xeq_vel);
+%     fid.write('vel_eq', vel_eq);
+%     fid.write('t_accel_lim', tau*x_accel_lim);
+%     fid.write('accel_lb', accel_lb);
+%     fid.write('accel_ub', accel_ub);
+%     fid.write('teq_accel', tau*xeq_accel);
+%     fid.write('accel_eq', accel_eq);
+%     % -----------------------------
+%     fid.close();
+% end
 
-%% Solve constr-optimization problem
-tic
-
+%% Solve constr-optimization problem on-line
 gmp_opt = GMP_nDoF_Opt(gmp);
 gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
-gmp_opt.setMotionDuration(tau);
-
-gmp_opt.setPosConstr(x_pos_lim, pos_lb, pos_ub, xeq_pos, pos_eq);
-
-gmp_opt.setVelBounds(-0.4, 0.4, 60);
-gmp_opt.setVelConstr([], [], [], xeq_vel, vel_eq);
-% gmp_opt.setVelConstr(x_vel_lim, vel_lb, vel_ub, xeq_vel, vel_eq);
-
-gmp_opt.setAccelBounds(-0.3, 0.6, 60);
-gmp_opt.setAccelConstr([], [], [], xeq_accel, accel_eq);
-% gmp_opt.setAccelConstr(x_accel_lim, accel_lb, accel_ub, xeq_accel, accel_eq);
-
-% gmp_opt.optimize(100);
-gmp_opt.optimize2(0:0.01:1);
-
-fprintf([gmp_opt.getExitMsg() '\n']);
-
-toc
-
-% fid = FileIO('qp_solution.bin',FileIO.in);
-% W2 = fid.read('W')';
-% 
-% W_err = gmp.W - W2;
-% 
-% gmp.W = W2;
-
-
-%% Generate trajectory of the constr-optimized GMP
 
 Time = [];
 P_data = [];
 dP_data = [];
 ddP_data = [];
+
+Elaps_Time = [];
 
 p = y0;
 p_dot = 0;
@@ -161,13 +133,59 @@ p_ddot = 0;
 t = 0;
 dt = 0.01;
 
-while (true)
+dx = 0.01;
+x_win = 16 / sqrt(2*gmp.h(1)); % 4*sigma
+x_hor = 0:dx:x_win;
+n_hor = length(x_hor);
 
+pos_lb_i = zeros(n_dof, n_hor);
+pos_ub_i = zeros(n_dof, n_hor);
+
+vel_lb_i = -1 * ones(n_dof, n_hor);
+vel_ub_i = 1 * ones(n_dof, n_hor);
+accel_lb_i = -2 * ones(n_dof, n_hor);
+accel_ub_i = 2 * ones(n_dof, n_hor);
+
+x = 0;
+x_dot = 1 / tau;
+x_ddot = 0;
+
+W0 = gmp.W;
+
+while (true)
+    
+    for k=1:n_dof
+        pos_lb_i(k,:) = interp1(x_pos_lim, pos_lb(k,:), x_hor);
+        pos_ub_i(k,:) = interp1(x_pos_lim, pos_ub(k,:), x_hor);
+    end
+    
+    tic;
+    
+%     % set equality constraint to current trajectory point
+%     xeq_pos_i = x_hor(1);
+%     pos_eq_i = gmp.getYd(x);
+%     xeq_vel_i = x_hor(1);
+%     vel_eq_i = gmp.getYdDot(x_hor(1), x_dot);
+%     xeq_accel_i = x_hor(1);
+%     accel_eq_i = gmp.getYdDDot(x, x_dot, x_ddot);
+    
+    gmp.W = W0;
+    gmp_opt.setMotionDuration(tau);
+    gmp_opt.setPosConstr(x_hor, pos_lb_i, pos_ub_i, [], []);
+    gmp_opt.setVelConstr(x_hor, vel_lb_i, vel_ub_i, [], []);
+    gmp_opt.setAccelConstr(x_hor, accel_lb_i, accel_ub_i, [], []);
+    success = gmp_opt.optimize2(x_hor);
+
+    if (~success), warning('Opt failed...'); end
+    
     x = t/tau;
-    x_dot = 1/tau;
     p = gmp.getYd(x);
     p_dot = gmp.getYdDot(x, x_dot);
     p_ddot = gmp.getYdDDot(x, x_dot, 0);
+    
+    Elaps_Time = [Elaps_Time toc];
+    
+    [t Elaps_Time(end)]
 
     Time = [Time t];
     P_data = [P_data p];
@@ -175,8 +193,10 @@ while (true)
     ddP_data = [ddP_data p_ddot];
 
     t = t + dt;
+    
+    x_hor = x_hor + x_dot*dt;
 
-    if (t >= 1.05*tau), break; end
+    if (t >= 2), break; end
 
 end
 

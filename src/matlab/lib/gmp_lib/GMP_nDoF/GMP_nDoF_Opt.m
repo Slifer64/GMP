@@ -49,11 +49,19 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
         %  @param[in] vel_constr: Vector of @GMPConstr velocity constraints. For no constraints pass '[]'.
         %  @param[in] accel_constr: Vector of @GMPConstr acceleration constraints. For no constraints pass '[]'.
         %  @param[out] success: true if minimum found, false otherwise.
-
+        
         function success = optimize(this, num_points)
-
-            if (nargin < 2), num_points = 200; end
             
+            if (nargin < 2), num_points = 150; end
+            
+            dx = 1 / num_points;
+            x_data = 0:dx:1;
+            success = this.optimize2(x_data);
+
+        end
+            
+        function success = optimize2(this, x_data)
+
             n_ker = this.gmp.numOfKernels();
             n_dof = this.gmp.numOfDoFs();
             
@@ -62,8 +70,6 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             
             success = true;
             this.exit_msg = '';
-            
-            x_data = linspace(0,1, num_points);
             
             % calculate cost function: J = 0.5w'Hw + f'w
             N = length(x_data);
@@ -204,10 +210,61 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             % toc
             
         end
-                
+     
         function setMotionDuration(this, tau)
            
             this.tau = tau;
+            
+        end
+        
+        function setPosBounds(this, lower_bound, upper_bound, num_points)
+            
+            if (nargin < 4), num_points = 50; end
+            
+            dx = 1/num_points;
+            x = 0:dx:1;
+            
+            n = length(x);
+            n_dofs = this.gmp.numOfDoFs();
+            
+            lb = lower_bound * ones(n_dofs, n);
+            ub = upper_bound * ones(n_dofs, n);
+            
+            this.setPosConstr(x, lb, ub, [], []);
+            
+        end
+        
+        function setVelBounds(this, lower_bound, upper_bound, num_points)
+            
+            if (nargin < 4), num_points = 50; end
+            
+            dx = 1/num_points;
+            x = 0:dx:1;
+            
+            n = length(x);
+            n_dofs = this.gmp.numOfDoFs();
+            
+            lb = lower_bound * ones(n_dofs, n);
+            ub = upper_bound * ones(n_dofs, n);
+            
+            this.setVelConstr(x, lb, ub, [], []);
+            
+        end
+        
+        function setAccelBounds(this, lower_bound, upper_bound, num_points)
+            
+            if (nargin < 4), num_points = 50; end
+            
+            dx = 1/num_points;
+            x = 0:dx:1;
+            
+            n = length(x);
+            n_dofs = this.gmp.numOfDoFs();
+            
+            lb = lower_bound * ones(n_dofs, n);
+            ub = upper_bound * ones(n_dofs, n);
+            
+            this.setAccelConstr(x, lb, ub, [], []);
             
         end
         
@@ -266,6 +323,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             if (~isempty(x))
  
                 m = length(x);
+                
                 if (size(lb,2) ~= m), error(['[GMP_nDoF_Opt::setVelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
                 if (size(ub,2) ~= m), error(['[GMP_nDoF_Opt::setVelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
                 if (size(lb,1) ~= size(ub,1)), error('[GMP_nDoF_Opt::setVelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
@@ -301,6 +359,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             if (~isempty(x))
  
                 m = length(x);
+                
                 if (size(lb,2) ~= m), error(['[GMP_nDoF_Opt::setAccelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
                 if (size(ub,2) ~= m), error(['[GMP_nDoF_Opt::setAccelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
                 if (size(lb,1) ~= size(ub,1)), error('[GMP_nDoF_Opt::setAccelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
