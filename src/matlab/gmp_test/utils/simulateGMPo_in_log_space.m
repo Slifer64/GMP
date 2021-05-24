@@ -82,8 +82,8 @@ while (true)
     Q = gmp_o.q2quat(q, Q0);
     if (Q_prev'*Q<0), Q = -Q; end
     
-    Q1 = gmp_o.quatTf(Q, Q0);
-    rotVel = gmp_o.qdot2rotVel(qdot, Q1);
+    Q1 = gmp_o.getQ1(Q, Q0);
+    rotVel = gmp_o.qLogDot_to_rotVel(qdot, Q1);
     
 end
 

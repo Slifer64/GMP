@@ -6,8 +6,7 @@ classdef gmp_
     
     %% ========================================
     %% ==============   MATH   ================
-    %% ========================================
-        
+    %% ========================================    
     methods (Access = public, Static)
 
         %% Returns the quaternion product between two quaternions.
@@ -114,7 +113,163 @@ classdef gmp_
             v = gmp_.quatLog(gmp_.quatDiff(Q1,Q2));
 
         end
-  
+        
+        %% Returns derivative of log given the rotational velocity and orientation (expressed w.r.t. the initial orientation)
+        %  @param[in] rotVel: Rotational velocity.
+        %  @param[in] Q1: Orientation expressed w.r.t. the initial orientation.
+        %  @return: Derivative of log.
+        function qdot = rotVel_to_qLogDot(rotVel, Q1)
+            
+            JqQ = gmp_.jacob_qLog_Q(Q1);
+            qdot = 0.5*JqQ * gmp_.quatProd([0; rotVel], Q1);
+
+        end
+        
+        
+        function rotVel = qLogDot_to_rotVel(qdot, Q1)
+            
+            JQq = gmp_.jacob_Q_qLog(Q1);
+            rotVel = 2 * gmp_.quatProd( JQq*qdot, gmp_.quatInv(Q1) );
+            rotVel = rotVel(2:4);
+
+        end
+        
+
+        function qddot = rotAccel_to_qLogDDot(rotAccel, rotVel, Q1)
+            
+            rotVelQ = [0; rotVel];
+            rotAccelQ = [0; rotAccel];
+
+            J = gmp_.jacob_qLog_Q(Q1);
+            Jdot = gmp_.jacobDot_qLog_Q(Q1, rotVel);
+
+            qddot = 0.5 * (Jdot * gmp_.quatProd(rotVelQ, Q1) + J * gmp_.quatProd( rotAccelQ+0.5*gmp_.quatProd(rotVelQ,rotVelQ), Q1 ) );
+
+        end
+        
+
+        function rotAccel = qLogDDot_to_rotAccel(qddot, rotVel, Q1)
+
+            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+            invQ1 = gmp_.quatInv(Q1);
+            J = gmp_.jacob_Q_qLog(Q1);
+            Jdot = gmp_.jacobDot_Q_qLog(Q1, rotVel);
+
+            rotAccel = 2 * ( gmp_.quatProd( Jdot*qdot+J*qddot, invQ1 ) );
+            rotAccel = rotAccel(2:4);
+
+        end
+        
+        
+        %% Returns the Jacobian from the derivative of log to the derivative of Q.
+        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
+        %  @return: Jacobian.
+        function JQq = jacob_Q_qLog(Q1)
+
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                JQq = [zeros(1, 3); eye(3,3)];
+                return;
+            end
+
+            w = Q1(1);
+            v = Q1(2:4);
+            norm_v = norm(v);
+            eta = v / norm_v;
+            s_th = norm_v;
+            c_th = w;
+            th = atan2(s_th, c_th);
+            Eta = eta*eta';
+
+            JQq = zeros(4,3);
+            JQq(1,:) = -0.5 * s_th * eta';
+            JQq(2:4,:) = 0.5 * ( (eye(3,3) - Eta)*s_th/th + c_th*Eta );
+
+        end
+        
+        
+        %% Returns the Jacobian from the derivative of Q to the derivative of log.
+        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
+        %  @return: Jacobian.
+        function JqQ = jacob_qLog_Q(Q1)
+            
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                JqQ = [zeros(3,1) eye(3,3)];
+                return;
+            end
+
+            w = Q1(1);
+            v = Q1(2:4);
+            norm_v = norm(v);
+            eta = v / norm_v;
+            s_th = norm_v;
+            c_th = w;
+            th = atan2(s_th, c_th);
+
+            JqQ = zeros(3,4);
+            JqQ(:,1) = 2*eta*(th*c_th - s_th)/s_th^2;
+            JqQ(:,2:4) = 2*eye(3,3)*th/s_th;
+
+        end
+       
+        
+        %% Returns the time derivative of the Jacobian from the derivative of log to the derivative of Q.
+        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
+        %  @return: Jacobian time derivative.
+        function JqQ_dot = jacobDot_qLog_Q(Q1, rotVel)
+
+            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                JqQ_dot = [-qdot/3 zeros(3,3)];
+                return;
+            end
+
+            w = Q1(1);
+            v = Q1(2:4);
+            norm_v = norm(v);
+            eta = v / norm_v;
+            s_th = norm_v;
+            c_th = w;
+            th = atan2(s_th, c_th);
+            Eta = eta*eta';
+            temp = (th*c_th-s_th)/s_th^2;
+
+            JqQ_dot = zeros(3,4);
+            JqQ_dot(:,1) = ((-th/s_th - 2*c_th*temp/s_th)*Eta + temp*(eye(3,3)-Eta)/th)*qdot;
+            JqQ_dot(:,2:4) = -temp*dot(eta,qdot)*eye(3,3);
+
+        end
+        
+        
+        %% Returns the time derivative of the Jacobian from the derivative of Q to the derivative of log.
+        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
+        %  @return: Jacobian time derivative.
+        function JQq_dot = jacobDot_Q_qLog(Q1, rotVel)
+            
+            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                JQq_dot = [-qdot'/4; zeros(3,3)];
+                return;
+            end
+
+            w = Q1(1);
+            v = Q1(2:4);
+            norm_v = norm(v);
+            eta = v / norm_v;
+            s_th = norm_v;
+            c_th = w;
+            th = atan2(s_th, c_th);
+            Eta = eta*eta';
+            I_eta = eye(3,3) - Eta;
+            temp = ((th*c_th-s_th)/th^2);
+
+            JQq_dot = zeros(4,3);
+            JQq_dot(1,:) = -0.25 * qdot' * (c_th*Eta + (s_th/th)*I_eta);
+            JQq_dot(2:4,:) = 0.25*dot(eta,qdot)*( temp*I_eta - s_th*Eta ) + 0.25*temp*( eta*(qdot'*I_eta) + (I_eta*qdot)*eta' );
+
+        end
+        
     end
     
     %% ======================================
