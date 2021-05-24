@@ -7,7 +7,7 @@
 %
 
 
-classdef GMPo < GMP_nDoF
+classdef GMPo < GMP
     
     methods  (Access = public)
         %% Constructs a GMP defined in the quat-log space.
@@ -19,7 +19,7 @@ classdef GMPo < GMP_nDoF
             if (nargin < 1), N_kernels=2; end
             if (nargin < 2), kernels_std_scaling=1; end
             
-            this = this@GMP_nDoF(3, N_kernels, kernels_std_scaling);
+            this = this@GMP(3, N_kernels, kernels_std_scaling);
             
             this.setScaleMethod(TrajScale_Rot_min());
             
@@ -47,8 +47,8 @@ classdef GMPo < GMP_nDoF
             qd_data = zeros(3, n_data);
             for j=1:n_data, qd_data(:,j) = GMPo.quat2q(Quat_data(:,j), this.Q0); end
              
-            if (nargout > 0), train_error = train@GMP_nDoF(this, train_method, Time, qd_data);
-            else, train@GMP_nDoF(this, train_method, Time, qd_data); end
+            if (nargout > 0), train_error = train@GMP(this, train_method, Time, qd_data);
+            else, train@GMP(this, train_method, Time, qd_data); end
             
         end
         

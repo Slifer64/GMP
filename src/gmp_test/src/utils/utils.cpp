@@ -29,7 +29,7 @@ void throw_error(const std::string &err_msg)
   exit(-1);
 }
 
-void simulateGMP_nDoF(gmp_::GMP_nDoF::Ptr &gmp, const arma::vec &y0,
+void simulateGMP(gmp_::GMP::Ptr &gmp, const arma::vec &y0,
                  const arma::vec &yg, double T, double dt,
                  arma::mat &Time, arma::mat &Y_data, arma::mat &dY_data, arma::mat &ddY_data)
 {

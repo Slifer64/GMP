@@ -22,7 +22,7 @@ train_method = 'LS';
 N_kernels = 20;
 kernels_std_scaling = 1;
 n_dof = size(Pd_data,1);
-gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
 tic
 offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
 offline_train_mse
@@ -33,7 +33,7 @@ toc
 
 % gmp.plotWeightsCovariance();
 
-% GMP_nDoF_IO.write(gmp, 'gmp_pos.bin','up_');
+% GMP_IO.write(gmp, 'gmp_pos.bin','up_');
 % return
 
 %% scale spatio-temporally
@@ -86,7 +86,7 @@ p5_dot = gmp.getYdDot(x5,x_dot) + [0.1; 0.05; -0.1].*[1; 1; 1];
 p5_ddot = gmp.getYdDDot(x5,x_dot,x_ddot) + [-0.03; 0.02; 0.025].*[1; 1; 1];
 points(5) = getPoint(t5, x5, x_dot, x_ddot, [], p5_dot, p5_ddot);
 
-gmp_up = GMP_nDoF_Update(gmp);
+gmp_up = GMP_Update(gmp);
 % gmp_up.initSigmaWfromMsr(0:0.01:1);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.setMsrNoiseVar(1e-4);

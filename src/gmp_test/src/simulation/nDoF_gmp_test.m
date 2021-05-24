@@ -48,13 +48,13 @@ n_dof = size(Pd_data, 1);
 
 if (read_gmp_from_file)
     
-    gmp = GMP_nDoF();
+    gmp = GMP();
     gmp_.read(gmp, gmp_filename, '');
 
 else
     
     %% initialize and train GMP
-    gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+    gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
     tic
     offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
     offline_train_mse
@@ -94,7 +94,7 @@ Pg = spat_s.*(Pgd - P0) + P0;
 T = Timed(end) / temp_s;
 dt = Ts;
 
-[Time, P_data, dP_data, ddP_data] = simulateGMP_nDoF(gmp, P0, Pg, T, dt);
+[Time, P_data, dP_data, ddP_data] = simulateGMP(gmp, P0, Pg, T, dt);
 toc
 
 %% Reference trajectory (scaled)
@@ -151,7 +151,7 @@ hold off;
 %% ============================================================
 
 
-function [Time, Y_data, dY_data, ddY_data] = simulateGMP_nDoF(gmp, y0, g, T, dt)
+function [Time, Y_data, dY_data, ddY_data] = simulateGMP(gmp, y0, g, T, dt)
 %% Simulates a dmp
 % @param[in] gmp: Dim x 1 cell array, where each cell is a 1D GMP.
 % @param[in] y0: Dim x 1 vector with the initial position..

@@ -1,4 +1,4 @@
-function [Time, Y_data, dY_data, ddY_data] = simulateGMP_nDoF(gmp, y0, g, T, dt)
+function [Time, Y_data, dY_data, ddY_data] = simulateGMP(gmp, y0, g, T, dt)
 %% Simulates a dmp
 % @param[in] gmp: Dim x 1 cell array, where each cell is a 1D GMP.
 % @param[in] y0: Dim x 1 vector with the initial position..

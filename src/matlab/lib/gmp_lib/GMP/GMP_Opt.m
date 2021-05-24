@@ -1,13 +1,13 @@
 %% N-DoF GMP Optimization class
 %
 
-classdef GMP_nDoF_Opt < matlab.mixin.Copyable
+classdef GMP_Opt < matlab.mixin.Copyable
     
     methods (Access = public)
         
         %% GMP constructor.
         %  @param[in] gmp: n_DoF dmp.
-        function this = GMP_nDoF_Opt(gmp)
+        function this = GMP_Opt(gmp)
                 
             this.ex_flag_map = containers.Map('KeyType','double','ValueType','char');
             this.ex_flag_map(-10) = 'Empty... Call ''constrOpt'' first.';
@@ -280,9 +280,9 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
  
                 m = length(x);
                 
-                if (size(lb,2) ~= m), error(['[GMP_nDoF_Opt::setPosConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(ub,2) ~= m), error(['[GMP_nDoF_Opt::setPosConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(lb,1) ~= size(ub,1)), error('[GMP_nDoF_Opt::setPosConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
+                if (size(lb,2) ~= m), error(['[GMP_Opt::setPosConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(ub,2) ~= m), error(['[GMP_Opt::setPosConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(lb,1) ~= size(ub,1)), error('[GMP_Opt::setPosConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
                 
                 this.A_p = zeros(m, n_ker);
                 this.pos_lb = zeros(m, n_dof);
@@ -300,7 +300,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             if (~isempty(x_eq))
                 
                 m = length(x_eq);
-                if (size(p_eq,2) ~= m), error(['[GMP_nDoF_Opt::setPosConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
+                if (size(p_eq,2) ~= m), error(['[GMP_Opt::setPosConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
                 
                 this.Aeq_p = zeros(m, n_ker);
                 this.pos_eq = zeros(m, n_dof);
@@ -324,9 +324,9 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
  
                 m = length(x);
                 
-                if (size(lb,2) ~= m), error(['[GMP_nDoF_Opt::setVelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(ub,2) ~= m), error(['[GMP_nDoF_Opt::setVelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(lb,1) ~= size(ub,1)), error('[GMP_nDoF_Opt::setVelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
+                if (size(lb,2) ~= m), error(['[GMP_Opt::setVelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(ub,2) ~= m), error(['[GMP_Opt::setVelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(lb,1) ~= size(ub,1)), error('[GMP_Opt::setVelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
                 
                 this.vel_lb = lb';
                 this.vel_ub = ub';
@@ -339,7 +339,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             if (~isempty(x_eq))
                 
                 m = length(x_eq);
-                if (size(v_eq,2) ~= m), error(['[GMP_nDoF_Opt::setVelConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
+                if (size(v_eq,2) ~= m), error(['[GMP_Opt::setVelConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
 
                 this.vel_eq = v_eq';
                 this.Aeq_v = zeros(m, n_ker);
@@ -360,9 +360,9 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
  
                 m = length(x);
                 
-                if (size(lb,2) ~= m), error(['[GMP_nDoF_Opt::setAccelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(ub,2) ~= m), error(['[GMP_nDoF_Opt::setAccelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
-                if (size(lb,1) ~= size(ub,1)), error('[GMP_nDoF_Opt::setAccelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
+                if (size(lb,2) ~= m), error(['[GMP_Opt::setAccelConstr]: Lower bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(ub,2) ~= m), error(['[GMP_Opt::setAccelConstr]: Upper bounds must have ' num2str(m) ' columns (constraints).']); end
+                if (size(lb,1) ~= size(ub,1)), error('[GMP_Opt::setAccelConstr]: Lower and Upper bounds must have the same number of rows (DoFs)'); end
                 
                 this.accel_lb = lb';
                 this.accel_ub = ub';
@@ -375,7 +375,7 @@ classdef GMP_nDoF_Opt < matlab.mixin.Copyable
             if (~isempty(x_eq))
                 
                 m = length(x_eq);
-                if (size(a_eq,2) ~= m), error(['[GMP_nDoF_Opt::setAccelConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
+                if (size(a_eq,2) ~= m), error(['[GMP_Opt::setAccelConstr]: Equality values matrix must have ' num2str(m) ' columns (constraints).']); end
 
                 this.accel_eq = a_eq';
                 this.Aeq_a = zeros(m, n_ker);

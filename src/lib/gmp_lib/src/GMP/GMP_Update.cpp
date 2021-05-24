@@ -1,4 +1,4 @@
-#include <gmp_lib/GMP/GMP_nDoF_Update.h>
+#include <gmp_lib/GMP/GMP_Update.h>
 
 namespace as64_
 {
@@ -6,7 +6,7 @@ namespace as64_
 namespace gmp_
 {
 
-  GMP_nDoF_Update::GMP_nDoF_Update(gmp_::GMP_nDoF *gmp)
+  GMP_Update::GMP_Update(gmp_::GMP *gmp)
   {
       this->gmp = gmp;
 
@@ -16,7 +16,7 @@ namespace gmp_
       this->enableSigmawUpdate(false);
   }
 
-  void GMP_nDoF_Update::initSigmaw()
+  void GMP_Update::initSigmaw()
   {
       unsigned N_kernels = gmp->numOfKernels();
       // arma::mat S = arma::mat().zeros(N_kernels,N_kernels);
@@ -32,7 +32,7 @@ namespace gmp_
       this->Sigma_w = arma::mat().eye(N_kernels, N_kernels);
   }
 
-  void GMP_nDoF_Update::initSigmaWfromMsr(const arma::rowvec &x_data)
+  void GMP_Update::initSigmaWfromMsr(const arma::rowvec &x_data)
   {
       unsigned n_data = x_data.size();
       arma::mat H(gmp->numOfKernels(), n_data);
@@ -41,22 +41,22 @@ namespace gmp_
       this->Sigma_w = arma::inv(H*H.t());
   }
 
-  void GMP_nDoF_Update::enableSigmawUpdate(bool flag)
+  void GMP_Update::enableSigmawUpdate(bool flag)
   {
       this->enable_Sigma_w_update = flag;
   }
 
-  void GMP_nDoF_Update::setSigmaW(const arma::mat &Sw)
+  void GMP_Update::setSigmaW(const arma::mat &Sw)
   {
     this->Sigma_w = Sw;
   }
 
-  arma::mat GMP_nDoF_Update::getSigmaW() const
+  arma::mat GMP_Update::getSigmaW() const
   {
     return this->Sigma_w;
   }
 
-  double GMP_nDoF_Update::setMsrNoiseVar(double rv)
+  double GMP_Update::setMsrNoiseVar(double rv)
   {
     this->rv = rv;
   }
@@ -65,27 +65,27 @@ namespace gmp_
   // ===============   Online update  =================
   // ==================================================
 
-  void GMP_nDoF_Update::updatePos(double x, const arma::vec &y, double r_n)
+  void GMP_Update::updatePos(double x, const arma::vec &y, double r_n)
   {
     if (r_n < 0) r_n=this->rv;
     this->updateWeights({gmp_::Phase(x,0,0)}, y, {gmp_::UPDATE_TYPE::POS}, arma::rowvec({r_n}) );
 
   }
 
-  void GMP_nDoF_Update::updateVel(double x, double x_dot, const arma::vec &y_dot, double r_n)
+  void GMP_Update::updateVel(double x, double x_dot, const arma::vec &y_dot, double r_n)
   {
     if (r_n < 0) r_n=this->rv;
     this->updateWeights({gmp_::Phase(x,x_dot,0)}, y_dot, {gmp_::UPDATE_TYPE::VEL}, arma::rowvec({r_n}) );
 
   }
 
-  void GMP_nDoF_Update::updateAccel(double x, double x_dot, double x_ddot, const arma::vec &y_ddot, double r_n)
+  void GMP_Update::updateAccel(double x, double x_dot, double x_ddot, const arma::vec &y_ddot, double r_n)
   {
     if (r_n < 0) r_n=this->rv;
     this->updateWeights({gmp_::Phase(x,x_dot,x_ddot)}, y_ddot, {gmp_::UPDATE_TYPE::ACCEL}, arma::rowvec({r_n}) );
   }
 
-  void GMP_nDoF_Update::updateWeights(const std::vector<gmp_::Phase> &s, arma::mat Z, const std::vector<gmp_::UPDATE_TYPE> &type, arma::rowvec r_n)
+  void GMP_Update::updateWeights(const std::vector<gmp_::Phase> &s, arma::mat Z, const std::vector<gmp_::UPDATE_TYPE> &type, arma::rowvec r_n)
   {
     if (r_n.is_empty()) r_n = {this->rv};
 

@@ -131,7 +131,7 @@ classdef gmp_
             if (nargin < 3), prefix=''; end
             
             c = class(gmp);
-            if ( strcmpi(c, 'GMP_nDoF') ), gmp_.writeGMP(gmp, fid, prefix)
+            if ( strcmpi(c, 'GMP') ), gmp_.writeGMP(gmp, fid, prefix)
             elseif ( strcmpi(c, 'GMPo') ), gmp_.writeGMPo(gmp, fid, prefix)
             else, error('[gmp_::write]: Unsupported class type');
             end
@@ -147,7 +147,7 @@ classdef gmp_
             if (nargin < 3), prefix=''; end
             
             c = class(gmp);
-            if ( strcmpi(c, 'GMP_nDoF') ), gmp_.readGMP(gmp, fid, prefix)
+            if ( strcmpi(c, 'GMP') ), gmp_.readGMP(gmp, fid, prefix)
             elseif ( strcmpi(c, 'GMPo') ), gmp_.readGMPo(gmp, fid, prefix)
             else, error('[gmp_::read]: Unsupported class type');
             end
@@ -159,7 +159,7 @@ classdef gmp_
     methods (Access = private, Static)
         
         %% Write the GMP model to a file.
-        % @param[in] gmp: Pointer to a @GMP_nDoF object.
+        % @param[in] gmp: Pointer to a @GMP object.
         % @param[in] fid: Filename string or object of type @FileIO associated with the file.
         % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
         function writeGMP(gmp, fid, prefix)
@@ -186,7 +186,7 @@ classdef gmp_
         end
         
         %% Reads the GMP model from a file.
-        % @param[in] gmp: Pointer to a @GMP_nDoF object.
+        % @param[in] gmp: Pointer to a @GMP object.
         % @param[in] fid: Filename string or object of type @FileIO associated with the file.
         % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
         function readGMP(gmp, fid, prefix)
@@ -220,7 +220,7 @@ classdef gmp_
             if (scale_type == TrajScale.PROP_SCALE), gmp.setScaleMethod(TrajScale_Prop(n_dofs));
             elseif (scale_type == TrajScale.ROT_MIN_SCALE), gmp.setScaleMethod(TrajScale_Rot_min());
             elseif (scale_type == TrajScale.ROT_WB_SCALE), gmp.setScaleMethod(TrajScale_Rot_wb());
-            else, error(['[GMP_nDoF_IO::read]: Unsupported scale type ''' num2str(scale_type) '''...']);
+            else, error(['[GMP_IO::read]: Unsupported scale type ''' num2str(scale_type) '''...']);
             end
             
         end

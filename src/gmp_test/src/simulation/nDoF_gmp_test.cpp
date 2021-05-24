@@ -52,17 +52,17 @@ int main(int argc, char **argv)
   double Ts = Timed(1) - Timed(0);
 
   // =============  Create/Train GMP  =============
-  gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
+  gmp_::GMP::Ptr gmp(new gmp_::GMP(1, 2) );
 
   unsigned n_dof = Pd_data.n_rows;
   if (read_gmp_from_file) gmp_::read(gmp.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
-    gmp.reset( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
+    gmp.reset( new gmp_::GMP(n_dof, N_kernels, kernels_std_scaling) );
     Timer::tic();
     arma::vec offline_train_mse;
-    PRINT_INFO_MSG("GMP_nDoF training...\n");
+    PRINT_INFO_MSG("GMP training...\n");
     gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
     std::cerr << "offline_train_mse = \n" << offline_train_mse << "\n";
     Timer::toc();
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
   if (write_gmp_to_file) gmp_::write(gmp.get(), gmp_filename, "");
 
   // =============  GMP simulation  =============
-  PRINT_INFO_MSG("GMP_nDoF simulation...\n");
+  PRINT_INFO_MSG("GMP simulation...\n");
 
   Timer::tic();
 
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 
   arma::rowvec Time;
   arma::mat P_data, dP_data, ddP_data;
-  simulateGMP_nDoF(gmp, P0, Pg, T, dt, Time, P_data, dP_data, ddP_data);
+  simulateGMP(gmp, P0, Pg, T, dt, Time, P_data, dP_data, ddP_data);
 
   Timer::toc();
 

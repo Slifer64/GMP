@@ -3,7 +3,7 @@
 
 //#define GMP_DEBUG_
 //#define WSoG_DEBUG_
-//#define GMP_NDOF_DEBUG_
+//#define GMP_DEBUG_
 //#define GMPo_DEBUG_
 
 namespace as64_

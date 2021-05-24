@@ -21,7 +21,7 @@ int main(int argc, char **argv)
   std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/results.bin";
 
   // =============  Load GMP  =============
-  gmp_::GMP_nDoF::Ptr gmp( new gmp_::GMP_nDoF() );
+  gmp_::GMP::Ptr gmp( new gmp_::GMP() );
   gmp_::read(gmp.get(), in_filename, "up_");
 
   int n_dof = gmp->numOfDoFs();
@@ -72,10 +72,10 @@ int main(int argc, char **argv)
   arma::mat Z5 = arma::join_horiz(p5_dot, p5_ddot);
 
   // make a deep copy of the original GMP
-  gmp_::GMP_nDoF::Ptr gmp0( new gmp_::GMP_nDoF() );
+  gmp_::GMP::Ptr gmp0( new gmp_::GMP() );
   gmp->deepCopy(gmp0.get());
 
-  gmp_::GMP_nDoF_Update gmp_up(gmp.get());
+  gmp_::GMP_Update gmp_up(gmp.get());
   //gmp_up.initSigmaWfromMsr(arma::linspace<arma::rowvec>(0,1,100));
   gmp_up.enableSigmawUpdate(true);
   gmp_up.setMsrNoiseVar(1e-4);

@@ -9,7 +9,7 @@
 //  rotational velocity and acceleration.
 //
 
-#include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP.h>
 
 namespace as64_
 {
@@ -20,7 +20,7 @@ namespace gmp_
 // class GMPo_Update; // forward declaration
 class GMPo_IO; // forward declaration
 
-class GMPo : public GMP_nDoF
+class GMPo : public GMP
 {
 
 public:

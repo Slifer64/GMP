@@ -23,7 +23,7 @@ train_method = 'LS';
 N_kernels = 30;
 kernels_std_scaling = 1;
 n_dof = size(Pd_data,1);
-gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
 tic
 offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
 offline_train_mse
@@ -55,18 +55,18 @@ pos_eq_constr = [];%repmat(GMPConstr(0,0,'='), length(xi), 1);
 % for j=1:length(xi)
 %     pos_eq_constr(j) = GMPConstr(xi(j),gmp.getYd(xi(j)),'=');
 % end
-pos_constr = [pos_eq_constr; GMP_nDoF_Opt.lowerBoundConstr(xi, pos_low_lim(ind)); GMP_nDoF_Opt.upperBoundConstr(xi, pos_up_lim(ind))];
+pos_constr = [pos_eq_constr; GMP_Opt.lowerBoundConstr(xi, pos_low_lim(ind)); GMP_Opt.upperBoundConstr(xi, pos_up_lim(ind))];
 % =======  Velocity constraints  =======
 vel_constr = [];%[GMPConstr(0,Zero,'='); GMPConstr(1,Zero,'=')];
 xi = 0:0.02:1;
-vel_constr = [vel_constr; GMP_nDoF_Opt.thresholdConstr(xi, 0.3*ones(n_dof,1))];
+vel_constr = [vel_constr; GMP_Opt.thresholdConstr(xi, 0.3*ones(n_dof,1))];
 % =======  Acceleration constraints  =======
 accel_constr = [GMPConstr(0,Zero,'='); GMPConstr(1,Zero,'=')];
 xi = 0:0.02:1;
-accel_constr = [accel_constr; GMP_nDoF_Opt.thresholdConstr(xi, 0.6*ones(n_dof,1))];
+accel_constr = [accel_constr; GMP_Opt.thresholdConstr(xi, 0.6*ones(n_dof,1))];
 
 tic
-gmp_opt = GMP_nDoF_Opt(gmp);
+gmp_opt = GMP_Opt(gmp);
 gmp_opt.setOptions(true, false, false, 1, 1, 1);
 % gmp_opt.constrOpt(200, tau, pos_constr, vel_constr, accel_constr);
 gmp_opt.constrOpt(200, tau, pos_constr, vel_constr, []);

@@ -44,7 +44,7 @@ x_ddot = 0;
 %% Initialize GMP
 N_kernels = 25;
 n_dofs = size(yd_data,1);
-gmp = GMP_nDoF(n_dofs, N_kernels, 2);
+gmp = GMP(n_dofs, N_kernels, 2);
 
 %% find the points where Pd and Ph differ
 ind2 = findUpdatePoints(yd_data, yh_data, 1e-5);
@@ -88,7 +88,7 @@ Swo = 1e-1*eye(N_kernels, N_kernels);
 % return 
 
 gmp.W = Wo;
-gmp_up = GMP_nDoF_Update(gmp);
+gmp_up = GMP_Update(gmp);
 gmp_up.setSigmaW(Swo);
 gmp_up.setMsrNoiseVar(1);
 gmp_up.enableSigmawUpdate(true);
@@ -330,7 +330,7 @@ function [W, Sw, eig_Sw] = recursive_LS(gmp, x, y, W0, Sw0, R)
     if (nargin < 6), R=1; end
     gmp.W = W0;
     
-    gmp_up = GMP_nDoF_Update(gmp);
+    gmp_up = GMP_Update(gmp);
     gmp_up.setSigmaW(Sw0);
     gmp_up.setMsrNoiseVar(R);
     gmp_up.enableSigmawUpdate(true);

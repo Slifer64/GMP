@@ -22,13 +22,13 @@ train_method = 'LS';
 N_kernels = 20;
 kernels_std_scaling = 1;
 n_dof = size(Pd_data,1);
-gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
 tic
 offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
 offline_train_mse
 toc
 
-gmp_up = GMP_nDoF_Update(gmp);
+gmp_up = GMP_Update(gmp);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.initSigmaWfromMsr(Timed/Timed(end));
 gmp_up.setMsrNoiseVar(1e-3);

@@ -9,7 +9,7 @@
 #include <streambuf>
 #include <armadillo>
 
-#include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP.h>
 #include <gmp_lib/GMP/GMPo.h>
 #include <gmp_lib/io/file_io.h>
 
@@ -20,32 +20,32 @@ namespace gmp_
 {
 
 /** Write the GMP model to a file.
-   * @param[in] gmp: Pointer to a @GMP_nDoF object.
+   * @param[in] gmp: Pointer to a @GMP object.
    * @param[in] filename: String with the name of the file.
    * @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
    */
-  void write(const gmp_::GMP_nDoF *gmp, const std::string &filename, const std::string &prefix="");
+  void write(const gmp_::GMP *gmp, const std::string &filename, const std::string &prefix="");
 
   /** Write the GMP model to a file.
-   * @param[in] gmp: Pointer to a @GMP_nDoF object.
+   * @param[in] gmp: Pointer to a @GMP object.
    * @param[in] fid: Object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
    */
-  void write(const gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix="");
+  void write(const gmp_::GMP *gmp, gmp_::FileIO &fid, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMP_nDoF object.
+   * @param[in] gmp: Pointer to a @GMP object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */
-  void read(gmp_::GMP_nDoF *gmp, const std::string &filename, const std::string &prefix="");
+  void read(gmp_::GMP *gmp, const std::string &filename, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMP_nDoF object.
+   * @param[in] gmp: Pointer to a @GMP object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */
-  void read(gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix="");
+  void read(gmp_::GMP *gmp, gmp_::FileIO &fid, const std::string &prefix="");
 
 
   /** Write the GMP model to a file.

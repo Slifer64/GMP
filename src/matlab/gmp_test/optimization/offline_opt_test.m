@@ -24,7 +24,7 @@ train_method = 'LS';
 N_kernels = 30;
 kernels_std_scaling = 1.5;
 n_dof = size(Pd_data,1);
-gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
 tic
 offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
 offline_train_mse
@@ -96,7 +96,7 @@ accel_eq = zeros(3,2);%[]; %
 
 tic
 
-gmp_opt = GMP_nDoF_Opt(gmp);
+gmp_opt = GMP_Opt(gmp);
 gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
 gmp_opt.setMotionDuration(tau);
 gmp_opt.setPosConstr(x_pos_lim, pos_lb, pos_ub, xeq_pos, pos_eq);

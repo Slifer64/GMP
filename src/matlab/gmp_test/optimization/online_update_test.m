@@ -36,7 +36,7 @@ x_ddot = 0;
 
 %% Calculate regressors
 N_kernels = 20;
-gmp = GMP_nDoF(1, N_kernels, 1);
+gmp = GMP(1, N_kernels, 1);
 % offline_train_mse = gmp.train('LS', Time/Time(end), Pd_data);
 % Wo = gmp.W';
 

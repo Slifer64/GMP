@@ -52,7 +52,7 @@ int main(int argc, char **argv)
   int N_kernels = 30;
   double kernels_std_scaling = 1.5;
   int n_dof = Pd_data.n_rows;
-  gmp_::GMP_nDoF::Ptr gmp( new gmp_::GMP_nDoF(n_dof, N_kernels, kernels_std_scaling) );
+  gmp_::GMP::Ptr gmp( new gmp_::GMP(n_dof, N_kernels, kernels_std_scaling) );
   Timer::tic();
   arma::vec offline_train_mse;
   gmp->train(train_method, Timed/Timed.back(), Pd_data, &offline_train_mse);
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
   // ===========  Solve constr-optimization problem  ===========
   Timer::tic();
 
-  gmp_::GMP_nDoF_Opt gmp_opt(gmp.get());
+  gmp_::GMP_Opt gmp_opt(gmp.get());
   gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
   gmp_opt.setMotionDuration(tau);
   gmp_opt.setPosConstr(x_pos_lim, pos_lb, pos_ub, xeq_pos, pos_eq);

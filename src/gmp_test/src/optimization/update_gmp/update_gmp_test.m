@@ -6,7 +6,7 @@ addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 %% Load GMP
-gmp = GMP_nDoF();
+gmp = GMP();
 gmp_.read(gmp, 'gmp_pos.bin','up_');
 
 n_dof = gmp.numOfDoFs();
@@ -59,7 +59,7 @@ Z5 = [p5_dot, p5_ddot];
 % make a deep copy of the original GMP
 gmp0 = gmp.deepCopy();
 
-gmp_up = GMP_nDoF_Update(gmp);
+gmp_up = GMP_Update(gmp);
 % gmp_up.initSigmaWfromMsr(0:0.01:1);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.setMsrNoiseVar(1e-4);

@@ -2,7 +2,7 @@
 %  Generalized movement primitive.
 %
 
-classdef GMP_nDoF < GMP_regressor
+classdef GMP < GMP_regressor
     
     methods (Access = public)
         
@@ -10,7 +10,7 @@ classdef GMP_nDoF < GMP_regressor
         %  @param[in] n_dofs: number of degrees of freedom.
         %  @param[in] N_kernels: the number of kernels
         %  @param[in] kern_std_scale: Scaling for std of kernels (optional, default=1).
-        function this = GMP_nDoF(n_dofs, N_kernels, kern_std_scale)
+        function this = GMP(n_dofs, N_kernels, kern_std_scale)
                 
             if (nargin < 1), n_dofs = 1; end
             if (nargin < 2), N_kernels = 2; end
@@ -93,7 +93,7 @@ classdef GMP_nDoF < GMP_regressor
         function setScaleMethod(this, traj_scale_obj)
            
             if (this.numOfDoFs() ~= traj_scale_obj.numOfDoFs())
-                error('[GMP_nDoF::setScaleMethod]: Incompatible number of DoFs...');
+                error('[GMP::setScaleMethod]: Incompatible number of DoFs...');
             end
             
             this.traj_sc = traj_scale_obj;
@@ -111,7 +111,7 @@ classdef GMP_nDoF < GMP_regressor
         function [train_err, Sw] = train(this, train_method, x, yd_data)
             
             if (~isempty(find(x>1 | x<0)))
-               warning('[GMP_nDoF::train]: The training timestamps are not normalized...') ;
+               warning('[GMP::train]: The training timestamps are not normalized...') ;
             end
             
             n_data = length(x);
@@ -302,7 +302,7 @@ classdef GMP_nDoF < GMP_regressor
     end
     
     
-    properties (Access = {?GMP_nDoF_Update, ?gmp_})
+    properties (Access = {?GMP_Update, ?gmp_})
         
         Y0 % initial position
         Yg % target position

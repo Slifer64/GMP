@@ -1,10 +1,10 @@
-#ifndef GMP_LIB_GMP_NDOF_OPT_H
-#define GMP_LIB_GMP_NDOF_OPT_H
+#ifndef GMP_LIB_GMP_OPT_H
+#define GMP_LIB_GMP_OPT_H
 
 // N-DoF GMP Optimization class
 //
 
-#include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP.h>
 
 namespace as64_
 {
@@ -12,14 +12,14 @@ namespace as64_
 namespace gmp_
 {
 
-class GMP_nDoF_Opt
+class GMP_Opt
 {
 public:
 
   /** GMP constructor.
    * @param[in] gmp: n_DoF dmp.
    */
-  GMP_nDoF_Opt(gmp_::GMP_nDoF *gmp);
+  GMP_Opt(gmp_::GMP *gmp);
 
   void setOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w);
 
@@ -56,7 +56,7 @@ private:
   //ex_flag_map; ///< maps the exit flag value to the msg describing the exit flag
   std::string exit_msg;
 
-  gmp_::GMP_nDoF *gmp; ///< n_DoF GMP pointer
+  gmp_::GMP *gmp; ///< n_DoF GMP pointer
 
   bool opt_pos; ///< flag indicating to optimize position
   bool opt_vel; ///< flag indicating to optimize velocity
@@ -90,10 +90,10 @@ private:
   arma::mat Aeq_a;
   arma::mat accel_eq;
 
-}; // GMP_nDoF_Opt
+}; // GMP_Opt
 
 } // namespace gmp_
 
 } // namespace as64_
 
-#endif // GMP_LIB_GMP_NDOF_OPT_H
+#endif // GMP_LIB_GMP_OPT_H

@@ -1,13 +1,13 @@
 %% N-DoF GMP Update class
 %
 
-classdef GMP_nDoF_Update < matlab.mixin.Copyable
+classdef GMP_Update < matlab.mixin.Copyable
 
     methods (Access = public)
         
         %% GMP constructor.
         %  @param[in] gmp: n_DoF dmp.
-        function this = GMP_nDoF_Update(gmp)
+        function this = GMP_Update(gmp)
                 
             this.gmp = gmp;
             

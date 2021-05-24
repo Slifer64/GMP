@@ -9,11 +9,11 @@ namespace gmp_
 
   const long double GMPo::zero_tol = 1e-8;
 
-// class GMPo : public GMP_nDoF
+// class GMPo : public GMP
 
 // public:
 
-  GMPo::GMPo(unsigned N_kernels, double kernels_std_scaling): GMP_nDoF(3, N_kernels, kernels_std_scaling)
+  GMPo::GMPo(unsigned N_kernels, double kernels_std_scaling): GMP(3, N_kernels, kernels_std_scaling)
   {
     this->setScaleMethod( gmp_::TrajScale::Ptr(new TrajScale_Rot_min()) );
 
@@ -34,7 +34,7 @@ namespace gmp_
     arma::mat qd_data(3, n_data);
     for (int j=0; j<n_data; j++) qd_data.col(j) = GMPo::quat2q(Quat_data.col(j), this->Q0);
 
-    GMP_nDoF::train(train_method, Time, qd_data, train_error, Sw);
+    GMP::train(train_method, Time, qd_data, train_error, Sw);
   }
 
   void GMPo::setQ0(const arma::vec &Q0)

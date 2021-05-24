@@ -53,8 +53,8 @@ read_from_file = false;
 
 if (read_from_file)
     
-    gmp = GMP_nDoF();
-    gmp_.read(gmp, 'gmp_ndof.bin', 't1_')
+    gmp = GMP();
+    gmp_.read(gmp, 'GMP.bin', 't1_')
 
 else
     
@@ -63,7 +63,7 @@ else
     N_kernels = 25;
     kernels_std_scaling = 1.5;
     n_dof = 3;
-    gmp = GMP_nDoF(n_dof, N_kernels, kernels_std_scaling);
+    gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
     tic
     offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
     offline_train_mse
@@ -78,7 +78,7 @@ else
 
 end
 
-% gmp_.write(gmp, 'gmp_ndof.bin', 't1_');
+% gmp_.write(gmp, 'GMP.bin', 't1_');
 
 %% DMP simulation
 disp('GMP simulation...');
@@ -93,7 +93,7 @@ Pg = spat_s.*(Pgd - P0) + P0;
 T = Timed(end) / temp_s;
 dt = Ts;
 
-[Time, P_data, dP_data, ddP_data] = simulateGMP_nDoF(gmp, P0, Pg, T, dt);
+[Time, P_data, dP_data, ddP_data] = simulateGMP(gmp, P0, Pg, T, dt);
 toc
 
 %% Reference trajectory (scaled)

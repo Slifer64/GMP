@@ -1,4 +1,4 @@
-#include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP.h>
 
 namespace as64_
 {
@@ -11,7 +11,7 @@ namespace gmp_
    *  @param[in] N_kernels: the number of kernels
    *  @param[in] kern_std_scale: Scaling for std of kernels (optional, default=1).
    */
-  GMP_nDoF::GMP_nDoF(unsigned n_dofs, unsigned N_kernels, double kern_std_scale) : GMP_regressor(N_kernels, kern_std_scale)
+  GMP::GMP(unsigned n_dofs, unsigned N_kernels, double kern_std_scale) : GMP_regressor(N_kernels, kern_std_scale)
   {
     this->K = 100 * arma::vec().ones(n_dofs);
     this->D = 30 * arma::vec().ones(n_dofs);
@@ -33,7 +33,7 @@ namespace gmp_
   /** Returns the number of DoFs.
    *  return: number of DoFs.
    */
-  unsigned GMP_nDoF::numOfDoFs() const
+  unsigned GMP::numOfDoFs() const
   {
     return this->W.n_rows;
   }
@@ -41,7 +41,7 @@ namespace gmp_
   /** Returns the number of kernels.
    *  @return: number of kernels.
    */
-  unsigned GMP_nDoF::numOfKernels() const
+  unsigned GMP::numOfKernels() const
   {
     return this->W.n_cols;
   }
@@ -49,18 +49,18 @@ namespace gmp_
   /** Sets the initial position.
    *  @param[in] y0: initial position.
    */
-  void GMP_nDoF::setY0(const arma::vec &y0)
+  void GMP::setY0(const arma::vec &y0)
   {
     this->Y0 = y0;
     this->traj_sc->setNewStartFinalPos(this->Y0, this->Yg);
   }
 
-  arma::vec GMP_nDoF::getY0() const
+  arma::vec GMP::getY0() const
   {
     return this->Y0;
   }
 
-  arma::vec GMP_nDoF::getY0d()
+  arma::vec GMP::getY0d()
   {
     return this->Y0d;
   }
@@ -69,41 +69,41 @@ namespace gmp_
   /** Set goal position.
    *  @param[in] g: goal position.
    */
-  void GMP_nDoF::setGoal(const arma::vec &g)
+  void GMP::setGoal(const arma::vec &g)
   {
     this->Yg = g;
     this->traj_sc->setNewStartFinalPos(this->Y0, this->Yg);
   }
 
-  arma::vec GMP_nDoF::getGoal() const
+  arma::vec GMP::getGoal() const
   {
     return this->Yg;
   }
 
-  arma::mat GMP_nDoF::getScaling() const
+  arma::mat GMP::getScaling() const
   {
     return this->traj_sc->getScaling();
   }
 
-  arma::mat GMP_nDoF::getInvScaling() const
+  arma::mat GMP::getInvScaling() const
   {
     return this->traj_sc->getInvScaling();
   }
 
-  void GMP_nDoF::setScaleMethod(const std::shared_ptr<gmp_::TrajScale> &traj_scale_obj)
+  void GMP::setScaleMethod(const std::shared_ptr<gmp_::TrajScale> &traj_scale_obj)
   {
       if (this->numOfDoFs() != traj_scale_obj->numOfDoFs())
-        throw std::runtime_error("[GMP_nDoF::setScaleMethod]: Incompatible number of DoFs...");
+        throw std::runtime_error("[GMP::setScaleMethod]: Incompatible number of DoFs...");
 
       this->traj_sc = traj_scale_obj;
       this->traj_sc->setNominalStartFinalPos(this->Y0, this->Yg);
       this->traj_sc->setNewStartFinalPos(this->Y0, this->Yg);
   }
 
-  void GMP_nDoF::train(const std::string &train_method, const arma::rowvec &x, const arma::mat &yd_data, arma::vec *train_err, arma::mat *Sw)
+  void GMP::train(const std::string &train_method, const arma::rowvec &x, const arma::mat &yd_data, arma::vec *train_err, arma::mat *Sw)
   {
     for (int i=0; i<x.size(); i++)
-    { if (x(i)>1 || x(i)<0) throw std::runtime_error("[GMP_nDoF::train]: The training timestamps are not normalized..."); }
+    { if (x(i)>1 || x(i)<0) throw std::runtime_error("[GMP::train]: The training timestamps are not normalized..."); }
 
     unsigned n_data = x.size();
     unsigned num_ker = this->numOfKernels();
@@ -140,7 +140,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF::update(const gmp_::Phase &s, const arma::vec &y, const arma::vec &z, arma::vec y_c, arma::vec z_c)
+  void GMP::update(const gmp_::Phase &s, const arma::vec &y, const arma::vec &z, arma::vec y_c, arma::vec z_c)
   {
     unsigned n_dofs = this->numOfDoFs();
 
@@ -155,17 +155,17 @@ namespace gmp_
     this->z_dot = this->K%(yd - y) + this->D%(yd_dot - z) + yd_ddot + z_c;
   }
 
-  arma::vec GMP_nDoF::getYdot() const
+  arma::vec GMP::getYdot() const
   {
     return this->y_dot;
   }
 
-  arma::vec GMP_nDoF::getZdot() const
+  arma::vec GMP::getZdot() const
   {
     return this->z_dot;
   }
 
-  arma::vec GMP_nDoF::getYddot(arma::vec yc_dot) const
+  arma::vec GMP::getYddot(arma::vec yc_dot) const
   {
     unsigned n_dofs = this->numOfDoFs();
     if (yc_dot.size()==1) yc_dot = arma::vec().ones(n_dofs)*yc_dot(0);
@@ -173,7 +173,7 @@ namespace gmp_
     return this->getZdot() + yc_dot;
   }
 
-  arma::vec GMP_nDoF::calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c, arma::vec z_c, arma::vec yc_dot)
+  arma::vec GMP::calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c, arma::vec z_c, arma::vec yc_dot)
   {
       unsigned n_dofs = this->numOfDoFs();
 
@@ -190,23 +190,23 @@ namespace gmp_
       return (z_dot + yc_dot);
   }
 
-  arma::vec GMP_nDoF::getYd(double x) const
+  arma::vec GMP::getYd(double x) const
   {
     return this->getScaling()*(this->W*this->regressVec(x) - this->Y0d) + this->Y0;
   }
 
-  arma::vec GMP_nDoF::getYdDot(double x, double x_dot) const
+  arma::vec GMP::getYdDot(double x, double x_dot) const
   {
     return this->getScaling()*this->W*this->regressVecDot(x,x_dot);
   }
 
 
-  arma::vec GMP_nDoF::getYdDDot(double x, double x_dot, double x_ddot) const
+  arma::vec GMP::getYdDDot(double x, double x_dot, double x_ddot) const
   {
     return this->getScaling()*this->W*this->regressVecDDot(x,x_dot,x_ddot);
   }
 
-  void GMP_nDoF::deepCopy(gmp_::GMP_nDoF *cp_obj) const
+  void GMP::deepCopy(gmp_::GMP *cp_obj) const
   {
     // make a shallow copy first
     *cp_obj = *this;

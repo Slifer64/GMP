@@ -20,8 +20,8 @@ ddP_new_data = fid.read('ddP_new_data');
 
 points = getPoint([], [], [], [], [], [], []);
 
-gmp = GMP_nDoF();
-GMP_nDoF_IO.read(gmp, 'gmp_pos.bin','up_');
+gmp = GMP();
+GMP_IO.read(gmp, 'gmp_pos.bin','up_');
 
 kt = 0.5;
 T = 10/kt;

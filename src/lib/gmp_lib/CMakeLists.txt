@@ -34,9 +34,9 @@ add_library(${PROJECT_NAME}
   #------------------------
   src/GMP/GMP_regressor.cpp
   #------------------------
-  src/GMP/GMP_nDoF.cpp
-  src/GMP/GMP_nDoF_Update.cpp
-  src/GMP/GMP_nDoF_Opt.cpp
+  src/GMP/GMP.cpp
+  src/GMP/GMP_Update.cpp
+  src/GMP/GMP_Opt.cpp
         #------------------------
   src/GMP/GMPo.cpp
 

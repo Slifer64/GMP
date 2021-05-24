@@ -1,4 +1,4 @@
-#include <gmp_lib/GMP/GMP_nDoF_Opt.h>
+#include <gmp_lib/GMP/GMP_Opt.h>
 
 #include <osqp_lib/quadprog.h>
 
@@ -8,9 +8,9 @@ namespace as64_
 namespace gmp_
 {
 
-#define GMP_nDoF_Opt_fun_ std::string("[GMP_nDoF_Opt::") + __func__ + "]: "
+#define GMP_Opt_fun_ std::string("[GMP_Opt::") + __func__ + "]: "
 
-  GMP_nDoF_Opt::GMP_nDoF_Opt(gmp_::GMP_nDoF *gmp)
+  GMP_Opt::GMP_Opt(gmp_::GMP *gmp)
   {
       /*this->ex_flag_map = containers.Map('KeyType','double','ValueType','char');
       this->ex_flag_map(-10) = 'Empty... Call ''constrOpt'' first.';
@@ -32,7 +32,7 @@ namespace gmp_
       this->setOptions(0.1,1,0, 1,1,1);
   }
 
-  void GMP_nDoF_Opt::setOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w)
+  void GMP_Opt::setOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w)
   {
     this->opt_pos = opt_pos;
     this->opt_vel = opt_vel;
@@ -43,7 +43,7 @@ namespace gmp_
     this->w_a = accel_obj_w;
   }
 
-  bool GMP_nDoF_Opt::optimize(unsigned num_points)
+  bool GMP_Opt::optimize(unsigned num_points)
   {
     int n_ker = this->gmp->numOfKernels();
     int n_dof = this->gmp->numOfDoFs();
@@ -168,12 +168,12 @@ namespace gmp_
     return solution.success;
   }
 
-  void GMP_nDoF_Opt::setMotionDuration(double tau)
+  void GMP_Opt::setMotionDuration(double tau)
   {
     this->tau = tau;
   }
 
-  void GMP_nDoF_Opt::setPosConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &p_eq)
+  void GMP_Opt::setPosConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &p_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     int n_dof = this->gmp->numOfDoFs();
@@ -184,9 +184,9 @@ namespace gmp_
     if (!x.empty())
     {
       int m = x.size();
-      if (lb.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (ub.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
+      if (lb.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (ub.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
 
       this->A_p.resize(m, n_ker);
       this->pos_lb.resize(m, n_dof);
@@ -203,7 +203,7 @@ namespace gmp_
     if (!x_eq.empty())
     {
       int m = x_eq.size();
-      if (p_eq.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
+      if (p_eq.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
 
       this->Aeq_p.resize(m, n_ker);
       this->pos_eq.resize(m, n_dof);
@@ -216,7 +216,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::setVelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &v_eq)
+  void GMP_Opt::setVelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &v_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     double x_dot = 1 / this->tau;
@@ -225,9 +225,9 @@ namespace gmp_
     if (!x.empty())
     {
       int m = x.size();
-      if (lb.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (ub.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
+      if (lb.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (ub.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
 
       this->vel_lb = lb.t();
       this->vel_ub = ub.t();
@@ -240,7 +240,7 @@ namespace gmp_
     if (!x_eq.empty())
     {
       int m = x_eq.size();
-      if (v_eq.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
+      if (v_eq.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
 
       this->vel_eq = v_eq.t();
       this->Aeq_v.resize(m, n_ker);
@@ -249,7 +249,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::setAccelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &a_eq)
+  void GMP_Opt::setAccelConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &a_eq)
   {
     int n_ker = this->gmp->numOfKernels();
     double x_dot = 1 / this->tau;
@@ -259,9 +259,9 @@ namespace gmp_
     if (!x.empty())
     {
       int m = x.size();
-      if (lb.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (ub.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
-      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
+      if (lb.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Lower bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (ub.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Upper bounds must have " + std::to_string(m) + " columns (constraints).");
+      if (lb.n_rows != ub.n_rows) throw std::runtime_error(GMP_Opt_fun_ + "Lower and Upper bounds must have the same number of rows (DoFs).");
 
       this->accel_lb = lb.t();
       this->accel_ub = ub.t();
@@ -273,7 +273,7 @@ namespace gmp_
     if (!x_eq.empty())
     {
       int m = x_eq.size();
-      if (a_eq.n_cols != m) throw std::runtime_error(GMP_nDoF_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
+      if (a_eq.n_cols != m) throw std::runtime_error(GMP_Opt_fun_ + "Equality values matrix must have " + std::to_string(m) + " columns (constraints).");
 
       this->accel_eq = a_eq.t();
       this->Aeq_a.resize(m, n_ker);
@@ -282,7 +282,7 @@ namespace gmp_
     }
   }
 
-  void GMP_nDoF_Opt::clearPosConstr()
+  void GMP_Opt::clearPosConstr()
   {
       this->A_p.clear();
       this->pos_lb.clear();
@@ -292,7 +292,7 @@ namespace gmp_
       this->pos_eq.clear();
   }
 
-  void GMP_nDoF_Opt::clearVelConstr()
+  void GMP_Opt::clearVelConstr()
   {
       this->A_v.clear();
       this->vel_lb.clear();
@@ -303,7 +303,7 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::clearAccelConstr()
+  void GMP_Opt::clearAccelConstr()
   {
       this->A_a.clear();
       this->accel_lb.clear();
@@ -314,14 +314,14 @@ namespace gmp_
 
   }
 
-  void GMP_nDoF_Opt::clearConstr()
+  void GMP_Opt::clearConstr()
   {
     this->clearPosConstr();
     this->clearVelConstr();
     this->clearAccelConstr();
   }
 
-  std::string GMP_nDoF_Opt::getExitMsg() const
+  std::string GMP_Opt::getExitMsg() const
   {
     return this->exit_msg;
   }

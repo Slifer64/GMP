@@ -1,10 +1,10 @@
-#ifndef GMP_LIB_GMP_NDOF_UPDATE_H
-#define GMP_LIB_GMP_NDOF_UPDATE_H
+#ifndef GMP_LIB_GMP_UPDATE_H
+#define GMP_LIB_GMP_UPDATE_H
 
 // N-DoF GMP Update class
 //
 
-#include <gmp_lib/GMP/GMP_nDoF.h>
+#include <gmp_lib/GMP/GMP.h>
 
 namespace as64_
 {
@@ -12,17 +12,17 @@ namespace as64_
 namespace gmp_
 {
 
-class GMP_nDoF_Update
+class GMP_Update
 {
 
 public:
 
-  typedef std::shared_ptr<GMP_nDoF_Update> Ptr;
+  typedef std::shared_ptr<GMP_Update> Ptr;
 
   /**GMP constructor.
    *  @param[in] gmp: n_DoF dmp.
    */
-  GMP_nDoF_Update(gmp_::GMP_nDoF *gmp);
+  GMP_Update(gmp_::GMP *gmp);
 
   void initSigmaw();
 
@@ -57,16 +57,16 @@ public:
 
 private:
 
-  gmp_::GMP_nDoF *gmp; ///< pointer to nDoF GMP object
+  gmp_::GMP *gmp; ///< pointer to nDoF GMP object
 
   arma::mat Sigma_w; ///< weights covariance for trajectory update
   double rv; ///< noise variance for trajectory update
   bool enable_Sigma_w_update;
 
-}; // GMP_nDoF_Update
+}; // GMP_Update
 
 } // namespace gmp_
 
 } // namespace as64_
 
-#endif // GMP_LIB_GMP_NDOF_UPDATE_H
+#endif // GMP_LIB_GMP_UPDATE_H

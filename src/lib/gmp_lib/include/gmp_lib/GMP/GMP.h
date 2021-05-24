@@ -1,5 +1,5 @@
-#ifndef GMP_LIB_GMP_NDOF_H
-#define GMP_LIB_GMP_NDOF_H
+#ifndef GMP_LIB_GMP_H
+#define GMP_LIB_GMP_H
 
 // N-DoF GMP class
 // Generalized movement primitive.
@@ -19,22 +19,22 @@ namespace as64_
 namespace gmp_
 {
 
-class GMP_nDoF_Update; // forward declaration
-class GMP_nDoF_IO; // forward declaration
+class GMP_Update; // forward declaration
+class GMP_IO; // forward declaration
 
-class GMP_nDoF: public GMP_regressor
+class GMP: public GMP_regressor
 {
 
 public:
 
-  typedef std::shared_ptr<GMP_nDoF> Ptr;
+  typedef std::shared_ptr<GMP> Ptr;
 
   /** GMP constructor.
    *  @param[in] n_dofs: number of degrees of freedom.
    *  @param[in] N_kernels: the number of kernels
    *  @param[in] kern_std_scale: Scaling for std of kernels (optional, default=1).
    */
-  GMP_nDoF(unsigned n_dofs=1, unsigned N_kernels=2, double kern_std_scale=1.0);
+  GMP(unsigned n_dofs=1, unsigned N_kernels=2, double kern_std_scale=1.0);
 
 
   /** Returns the number of DoFs.
@@ -146,7 +146,7 @@ public:
    */
   arma::vec getYdDDot(double x, double x_dot, double x_ddot=0) const;
 
-  void deepCopy(gmp_::GMP_nDoF *cp_obj) const;
+  void deepCopy(gmp_::GMP *cp_obj) const;
 
 public: // properties
 
@@ -161,10 +161,10 @@ public: // properties
 
 protected: // properties
 
-  friend void read(gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix);
+  friend void read(gmp_::GMP *gmp, gmp_::FileIO &fid, const std::string &prefix);
 
-  friend class GMP_nDoF_Update;
-  friend class GMP_nDoF_IO;
+  friend class GMP_Update;
+  friend class GMP_IO;
 
   arma::vec Y0; ///< initial position
   arma::vec Yg; ///< target position
@@ -176,10 +176,10 @@ protected: // properties
   arma::vec y_dot; ///< position derivative
   arma::vec z_dot; ///< scaled velocity derivative
 
-}; // GMP_nDoF
+}; // GMP
 
 } // namespace gmp_
 
 } // namespace as64_
 
-#endif // GMP_LIB_GMP_NDOF_H
+#endif // GMP_LIB_GMP_H

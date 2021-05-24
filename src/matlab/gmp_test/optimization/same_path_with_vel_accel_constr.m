@@ -23,7 +23,7 @@ Tf = Timed(end);
 %% train GMP
 N_kernels = 25;
 n_dofs = size(Pd_data,1);
-gmp = GMP_nDoF(n_dofs, N_kernels, 2);
+gmp = GMP(n_dofs, N_kernels, 2);
 train_err = gmp.train('LS', Timed/Tf, Pd_data);
 train_err
 
