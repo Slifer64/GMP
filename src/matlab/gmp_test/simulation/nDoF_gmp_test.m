@@ -53,8 +53,8 @@ read_from_file = false;
 
 if (read_from_file)
     
-    gmp = GMP_nDoF(1, 2);
-    GMP_nDoF_IO(gmp).read('gmp_ndof.bin', 't1_');
+    gmp = GMP_nDoF();
+    gmp_.read(gmp, 'gmp_ndof.bin', 't1_')
 
 else
     
@@ -78,7 +78,7 @@ else
 
 end
 
-% GMP_nDoF_IO(gmp).write('gmp_ndof.bin', 't1_');
+% gmp_.write(gmp, 'gmp_ndof.bin', 't1_');
 
 %% DMP simulation
 disp('GMP simulation...');

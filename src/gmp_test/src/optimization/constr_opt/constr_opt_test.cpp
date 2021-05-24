@@ -4,7 +4,6 @@
 #include <armadillo>
 
 #include <gmp_lib/gmp_lib.h>
-#include <gmp_lib/io/file_io.h>
 
 #include <gmp_test/utils/utils.h>
 

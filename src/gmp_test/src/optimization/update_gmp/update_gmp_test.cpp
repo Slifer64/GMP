@@ -4,7 +4,6 @@
 #include <armadillo>
 
 #include <gmp_lib/gmp_lib.h>
-#include <gmp_lib/io/file_io.h>
 
 #include <gmp_test/utils/utils.h>
 
@@ -23,7 +22,7 @@ int main(int argc, char **argv)
 
   // =============  Load GMP  =============
   gmp_::GMP_nDoF::Ptr gmp( new gmp_::GMP_nDoF() );
-  gmp_::GMP_nDoF_IO::read(gmp.get(), in_filename, "up_");
+  gmp_::read(gmp.get(), in_filename, "up_");
 
   int n_dof = gmp->numOfDoFs();
 

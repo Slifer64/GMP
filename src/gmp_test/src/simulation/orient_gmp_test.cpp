@@ -7,7 +7,6 @@
 #include <armadillo>
 
 #include <gmp_lib/gmp_lib.h>
-#include <gmp_lib/io/file_io.h>
 
 #include <gmp_test/utils/utils.h>
 
@@ -62,7 +61,7 @@ int main(int argc, char** argv)
   unsigned n_dof = 3;
   gmp_::GMPo::Ptr gmp_o(new gmp_::GMPo(2) );
 
-  if (read_gmp_from_file) gmp_::GMPo_IO::read(gmp_o.get(), gmp_filename, "");
+  if (read_gmp_from_file) gmp_::read(gmp_o.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
@@ -88,7 +87,7 @@ int main(int argc, char** argv)
 
   gmp_o->setScaleMethod(traj_sc);
 
-  if (write_gmp_to_file) gmp_::GMPo_IO::write(gmp_o.get(), gmp_filename, "");
+  if (write_gmp_to_file) gmp_::write(gmp_o.get(), gmp_filename, "");
 
   // =============  GMP simulation  =============
   PRINT_INFO_MSG("GMP_orient simulation...\n");

@@ -7,7 +7,6 @@
 #include <armadillo>
 
 #include <gmp_lib/gmp_lib.h>
-#include <gmp_lib/io/file_io.h>
 
 #include <gmp_test/utils/utils.h>
 
@@ -56,7 +55,7 @@ int main(int argc, char **argv)
   gmp_::GMP_nDoF::Ptr gmp(new gmp_::GMP_nDoF(1, 2) );
 
   unsigned n_dof = Pd_data.n_rows;
-  if (read_gmp_from_file) gmp_::GMP_nDoF_IO::read(gmp.get(), gmp_filename, "");
+  if (read_gmp_from_file) gmp_::read(gmp.get(), gmp_filename, "");
   else
   {
     // initialize and train GMP
@@ -82,7 +81,7 @@ int main(int argc, char **argv)
 
   gmp->setScaleMethod(traj_sc);
 
-  if (write_gmp_to_file) gmp_::GMP_nDoF_IO::write(gmp.get(), gmp_filename, "");
+  if (write_gmp_to_file) gmp_::write(gmp.get(), gmp_filename, "");
 
   // =============  GMP simulation  =============
   PRINT_INFO_MSG("GMP_nDoF simulation...\n");

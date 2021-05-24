@@ -33,24 +33,34 @@ Ts = Timed(2)-Timed(1);
 
 simulateGMPo = @simulateGMPo_in_Cart_space; % simulateGMPo_in_'log/quat/Cart'_space
 
-%% initialize and train GMP
-train_method = 'LS';
-N_kernels = 30;
-kernels_std_scaling = 1;
-gmp_o = GMPo(N_kernels, kernels_std_scaling);
-tic
-offline_train_mse = gmp_o.train(train_method, Timed/Timed(end), Qd_data);
-offline_train_mse
-toc
+read_from_file = true;
 
-% traj_sc = TrajScale_Prop(n_dof);
-% traj_sc = TrajScale_Rot_min();
-traj_sc = TrajScale_Rot_wb();
-traj_sc.setWorkBenchNormal([0; 0; 1]);
-gmp_o.setScaleMethod(traj_sc);
+if (read_from_file)
+    
+    gmp_o = GMPo();
+    gmp_.read(gmp_o, 'gmp_o.bin', 'o_');
 
-% gmp_o.exportToFile('data/gmp_o_model.bin');
-% gmp_o = GMPo.importFromFile('data/gmp_o_model.bin');
+else
+    
+    %% initialize and train GMP
+    train_method = 'LS';
+    N_kernels = 30;
+    kernels_std_scaling = 1;
+    gmp_o = GMPo(N_kernels, kernels_std_scaling);
+    tic
+    offline_train_mse = gmp_o.train(train_method, Timed/Timed(end), Qd_data);
+    offline_train_mse
+    toc
+
+    % traj_sc = TrajScale_Prop(n_dof);
+    % traj_sc = TrajScale_Rot_min();
+    traj_sc = TrajScale_Rot_wb();
+    traj_sc.setWorkBenchNormal([0; 0; 1]);
+    gmp_o.setScaleMethod(traj_sc);
+    
+end
+
+% gmp_.write(gmp_o, 'gmp_o.bin', 'o_');
 
 %% DMP simulation
 disp('GMP simulation...');

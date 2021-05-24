@@ -302,7 +302,7 @@ classdef GMP_nDoF < GMP_regressor
     end
     
     
-    properties (Access = {?GMP_nDoF_Update, ?GMP_nDoF_IO})
+    properties (Access = {?GMP_nDoF_Update, ?gmp_})
         
         Y0 % initial position
         Yg % target position

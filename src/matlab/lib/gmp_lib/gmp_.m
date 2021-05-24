@@ -4,8 +4,12 @@
 
 classdef gmp_
     
-    methods (Access = public, Static)
+    %% ========================================
+    %% ==============   MATH   ================
+    %% ========================================
         
+    methods (Access = public, Static)
+
         %% Returns the quaternion product between two quaternions.
         %  @param[in] Q1: First quaterion as a 4x1 vector.
         %  @param[in] Q2: Second quaterion as a 4x1 vector.
@@ -109,6 +113,154 @@ classdef gmp_
 
             v = gmp_.quatLog(gmp_.quatDiff(Q1,Q2));
 
+        end
+  
+    end
+    
+    %% ======================================
+    %% ==============   IO   ================
+    %% ======================================
+    methods (Access = public, Static)
+        
+        %% Write the GMP model to a file.
+        % @param[in] gmp: Pointer to a @GMP or @GMPo object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        function write(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            c = class(gmp);
+            if ( strcmpi(c, 'GMP_nDoF') ), gmp_.writeGMP(gmp, fid, prefix)
+            elseif ( strcmpi(c, 'GMPo') ), gmp_.writeGMPo(gmp, fid, prefix)
+            else, error('[gmp_::write]: Unsupported class type');
+            end
+            
+        end
+        
+        %% Reads the GMP model from a file.
+        % @param[in] gmp: Pointer to a @GMP or @GMPo object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        function read(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            c = class(gmp);
+            if ( strcmpi(c, 'GMP_nDoF') ), gmp_.readGMP(gmp, fid, prefix)
+            elseif ( strcmpi(c, 'GMPo') ), gmp_.readGMPo(gmp, fid, prefix)
+            else, error('[gmp_::read]: Unsupported class type');
+            end
+            
+        end
+        
+    end
+    
+    methods (Access = private, Static)
+        
+        %% Write the GMP model to a file.
+        % @param[in] gmp: Pointer to a @GMP_nDoF object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        function writeGMP(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            if (ischar(fid))
+               filename = fid;
+               fid = FileIO(filename, bitor(FileIO.out,FileIO.trunc));
+            end
+            
+            N_kernels = gmp.numOfKernels();
+            n_dofs = gmp.numOfDoFs();
+            
+            fid.write([prefix 'weights'], gmp.W);
+            fid.write([prefix 'damping'], gmp.D);
+            fid.write([prefix 'stiffness'], gmp.K);
+            fid.write([prefix 'N_kernels'], uint32(N_kernels) );
+            fid.write([prefix 'N_DoFs'], uint32(n_dofs) );
+            fid.write([prefix 'scale_type'], int32(gmp.traj_sc.getScaleType()) );
+            fid.write([prefix 'c'], gmp.c);
+            fid.write([prefix 'h'], gmp.h);
+            
+        end
+        
+        %% Reads the GMP model from a file.
+        % @param[in] gmp: Pointer to a @GMP_nDoF object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        function readGMP(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            if (ischar(fid))
+               filename = fid;
+               fid = FileIO(filename, FileIO.in);
+            end
+            
+            gmp.W = fid.read([prefix 'weights']);
+            gmp.D = fid.read([prefix 'damping']);
+            gmp.K = fid.read([prefix 'stiffness']);
+            %N_kernels = fid.read([prefix 'N_kernels']);
+            %n_dofs = fid.read([prefix 'N_DoFs']);
+            scale_type = fid.read([prefix 'scale_type']);
+            gmp.c = fid.read([prefix 'c']);
+            gmp.h = fid.read([prefix 'h']);
+            
+            gmp.Y0d = gmp.W*gmp.regressVec(0);
+            gmp.Ygd = gmp.W*gmp.regressVec(1);
+            
+            gmp.setY0(gmp.Y0d);
+            gmp.setGoal(gmp.Ygd);
+            
+            n_dofs = gmp.numOfDoFs();
+            gmp.y_dot = zeros(n_dofs,1);
+            gmp.z_dot = zeros(n_dofs,1);
+            
+            if (scale_type == TrajScale.PROP_SCALE), gmp.setScaleMethod(TrajScale_Prop(n_dofs));
+            elseif (scale_type == TrajScale.ROT_MIN_SCALE), gmp.setScaleMethod(TrajScale_Rot_min());
+            elseif (scale_type == TrajScale.ROT_WB_SCALE), gmp.setScaleMethod(TrajScale_Rot_wb());
+            else, error(['[GMP_nDoF_IO::read]: Unsupported scale type ''' num2str(scale_type) '''...']);
+            end
+            
+        end
+        
+        %% Write the GMP model to a file.
+        % @param[in] gmp: Pointer to a @GMPo object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        function writeGMPo(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            if (ischar(fid))
+                filename = fid;
+                fid = FileIO(filename, bitor(FileIO.out,FileIO.trunc));
+                gmp_.writeGMP(gmp, fid, prefix);
+                fid.write([prefix 'Qd0'], gmp.Qd0);
+            else
+                gmp_.writeGMP(gmp, fid, prefix);
+            end
+            
+        end
+        
+        %% Reads the GMP model from a file.
+        % @param[in] gmp: Pointer to a @GMPo object.
+        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        function readGMPo(gmp, fid, prefix)
+            
+            if (nargin < 3), prefix=''; end
+            
+            if (ischar(fid))
+                filename = fid;
+                fid = FileIO(filename, FileIO.in);
+                gmp_.readGMP(gmp, fid, prefix);
+                gmp.Qd0 = fid.read([prefix 'Qd0']);
+            else
+                gmp_.readGMP(gmp, fid, prefix);
+            end
+            
         end
         
     end

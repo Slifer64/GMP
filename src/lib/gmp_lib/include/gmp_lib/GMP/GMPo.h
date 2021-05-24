@@ -134,7 +134,10 @@ public:
 protected:
 
   // friend class GMPo_Update;
-  friend class GMPo_IO;
+  // friend class GMPo_IO;
+
+  friend void write(const gmp_::GMPo *gmp, gmp_::FileIO &fid, const std::string &prefix);
+  friend void read(gmp_::GMPo *gmp, gmp_::FileIO &fid, const std::string &prefix);
 
   arma::vec Q0; // initial orientation (as unit quaternion)
 

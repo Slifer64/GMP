@@ -26,7 +26,7 @@ add_library(${PROJECT_NAME}
 
   src/math/quaternions.cpp
   src/math/math.cpp
-  src/io/io.cpp
+  src/io/gmp_io.cpp
   src/io/file_io.cpp
 
   src/TrajScale/TrajScale.cpp
@@ -37,12 +37,10 @@ add_library(${PROJECT_NAME}
   src/GMP/GMP_nDoF.cpp
   src/GMP/GMP_nDoF_Update.cpp
   src/GMP/GMP_nDoF_Opt.cpp
-  src/GMP/GMP_nDoF_IO.cpp
-  #------------------------
+        #------------------------
   src/GMP/GMPo.cpp
-  src/GMP/GMPo_IO.cpp
 
-)
+        )
 
 add_dependencies(${PROJECT_NAME}
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

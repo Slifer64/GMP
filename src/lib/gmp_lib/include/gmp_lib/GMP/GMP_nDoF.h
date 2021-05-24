@@ -11,6 +11,8 @@
 #include <gmp_lib/TrajScale/TrajScale_Rot_min.h>
 #include <gmp_lib/TrajScale/TrajScale_Rot_wb.h>
 
+#include <gmp_lib/io/file_io.h>
+
 namespace as64_
 {
 
@@ -158,6 +160,8 @@ public: // properties
   arma::vec D; ///< num_DoF x 1 stiffness vector
 
 protected: // properties
+
+  friend void read(gmp_::GMP_nDoF *gmp, gmp_::FileIO &fid, const std::string &prefix);
 
   friend class GMP_nDoF_Update;
   friend class GMP_nDoF_IO;

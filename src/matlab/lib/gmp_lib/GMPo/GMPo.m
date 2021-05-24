@@ -16,7 +16,8 @@ classdef GMPo < GMP_nDoF
         %  \note: Each of the arguments 'N_kernels', 'D', 'K' can be scalar or a 3x1 vector.
         function this = GMPo(N_kernels, kernels_std_scaling)
 
-            if (nargin < 4), kernels_std_scaling=1; end
+            if (nargin < 1), N_kernels=2; end
+            if (nargin < 2), kernels_std_scaling=1; end
             
             this = this@GMP_nDoF(3, N_kernels, kernels_std_scaling);
             
@@ -378,12 +379,12 @@ classdef GMPo < GMP_nDoF
     
     properties (Constant)  
         
-          zero_tol = 1e-15;
+        zero_tol = 1e-15;
           
     end
     
        
-    properties  (Access = protected)
+    properties  (Access = {?gmp_})
         
         Q0 % initial orientation (as unit quaternion)
         
