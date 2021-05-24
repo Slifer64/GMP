@@ -103,7 +103,8 @@ classdef gmp_
         %  \note All quaternions must have the form Q = [u; v] where u is
         %  the scalar and v the 3x1 vector part.
         function Qdiff = quatDiff(Q1, Q2)
-
+            
+            if ( dot(Q1,Q2) < 0), Q2 = -Q2; end
             Qdiff = gmp_.quatProd(Q1, gmp_.quatInv(Q2));
 
         end

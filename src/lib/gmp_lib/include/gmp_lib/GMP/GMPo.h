@@ -49,6 +49,8 @@ public:
    */
   void setQ0(const arma::vec &Q0);
 
+  arma::vec getQ0() const { return this->Q0; }
+
 
   /** Sets the goal/target orientation.
    * @param[in] Qg: Goal/target orientation (as unit quaternion).

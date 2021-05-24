@@ -161,7 +161,7 @@ classdef GMP_Update < matlab.mixin.Copyable
         
     end
     
-    properties (Access = private)
+    properties (Access = protected)
 
         gmp % n_DoF GMP
         

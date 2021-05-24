@@ -60,6 +60,12 @@ classdef GMPo < GMP
             this.Q0 = Q0;
             
         end
+        
+        function Q0 = getQ0(this)
+            
+            Q0 = this.Q0;
+            
+        end
 
         
         %% Sets the goal/target orientation.
@@ -200,7 +206,7 @@ classdef GMPo < GMP
         %  @param[in] Q: Orientation as unit quaternion.
         %  @param[in] Q0: Initial quaternion.
         %  @return: The orientation w.r.t. Q0, i.e. Q1 = Q*Q0^{-1}.
-        function Q1 = getQ1(Q, Q0), Q1 = gmp_.quatProd(Q, gmp_.quatInv(Q0)); end
+        function Q1 = getQ1(Q, Q0), Q1 = gmp_.quatDiff(Q,Q0); end
 
         
         %% Returns the log of a given orientation w.r.t. the initial orientation.
