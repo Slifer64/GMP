@@ -111,6 +111,7 @@ classdef math_
         %  @return Qdiff: The quaternion difference Q1*inv(Q2)
         function Qdiff = quatDiff(Q1, Q2)
         
+            if (dot(Q1,Q2)<0), Q2 = -Q2; end
             Qdiff = math_.quatProd(Q1, math_.quatInv(Q2));
 
         end
