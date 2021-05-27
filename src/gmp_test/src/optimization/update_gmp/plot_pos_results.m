@@ -9,7 +9,7 @@ addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 %% Load data
-fid = FileIO('pos_results.bin', FileIO.in);
+fid = FileIO('data/pos_results.bin', FileIO.in);
 Time         = fid.read('Time');
 P_data       = fid.read('P_data');
 dP_data      = fid.read('dP_data');

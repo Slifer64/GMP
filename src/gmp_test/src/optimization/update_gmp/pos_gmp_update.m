@@ -7,7 +7,7 @@ import_gmp_lib();
 
 %% Load GMP
 gmp = GMP();
-gmp_.read(gmp, 'gmp_pos.bin','up_');
+gmp_.read(gmp, 'data/gmp_pos.bin','up_');
 
 n_dof = gmp.numOfDoFs();
 

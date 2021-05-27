@@ -33,9 +33,9 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "optimize_gmp_test_node");
 
-  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/pos_data.bin";
-  std::string constr_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/constraints.bin";
-  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/results.bin";
+  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/data/pos_data.bin";
+  std::string constr_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/data/constraints.bin";
+  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/data/results.bin";
 
   // ===========  Load training data  ===========
   arma::rowvec Timed;

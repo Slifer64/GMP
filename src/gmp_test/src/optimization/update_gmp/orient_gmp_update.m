@@ -8,7 +8,7 @@ addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 gmp_o = GMPo();
-gmp_.read(gmp_o, 'gmp_orient.bin','');
+gmp_.read(gmp_o, 'data/gmp_orient.bin','');
 
 Ts = 0.01;
 Timed = 0:Ts:10;

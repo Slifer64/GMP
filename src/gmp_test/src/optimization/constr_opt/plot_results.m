@@ -6,7 +6,7 @@ addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load results
-fid = FileIO('results.bin', FileIO.in);
+fid = FileIO('data/results.bin', FileIO.in);
 Time = fid.read('Time');
 P_data = fid.read('P_data');
 dP_data = fid.read('dP_data');
@@ -20,7 +20,7 @@ ddP_data2 = fid.read('ddP_data2');
 fid.close();
 
 %% Load constraints
-fid = FileIO('constraints.bin', FileIO.in);
+fid = FileIO('data/constraints.bin', FileIO.in);
 t_pos_lim = fid.read('t_pos_lim');
 pos_lb = fid.read('pos_lb');
 pos_ub = fid.read('pos_ub');

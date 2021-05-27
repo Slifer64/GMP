@@ -17,8 +17,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "update_gmp_test_node");
 
-  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/gmp_pos.bin";
-  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/pos_results.bin";
+  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/data/gmp_pos.bin";
+  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/data/pos_results.bin";
 
   // =============  Load GMP  =============
   gmp_::GMP::Ptr gmp( new gmp_::GMP() );

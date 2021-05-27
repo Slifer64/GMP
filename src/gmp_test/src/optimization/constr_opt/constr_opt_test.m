@@ -9,7 +9,7 @@ addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
-fid = FileIO('pos_data.bin', FileIO.in);
+fid = FileIO('data/pos_data.bin', FileIO.in);
 Timed = fid.read('Timed');
 Pd_data = fid.read('Pd_data');
 dPd_data = fid.read('dPd_data');
@@ -94,7 +94,7 @@ accel_eq = zeros(3,2);%[]; %
 
 %% Write constraints to file
 if (false) % set to 'true' to write constraints to file
-    fid = FileIO ('constraints.bin', bitor(FileIO.out, FileIO.trunc) );
+    fid = FileIO ('data/constraints.bin', bitor(FileIO.out, FileIO.trunc) );
     % -----------------------------
     fid.write('t_pos_lim', tau*x_pos_lim);
     fid.write('pos_lb', pos_lb);

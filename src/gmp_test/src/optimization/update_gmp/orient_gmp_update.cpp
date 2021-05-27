@@ -18,8 +18,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "update_gmp_test_node");
 
-  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/gmp_orient.bin";
-  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/orient_results.bin";
+  std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/data/gmp_orient.bin";
+  std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/update_gmp/data/orient_results.bin";
 
   // =============  Load GMP  =============
   gmp_::GMPo::Ptr gmp_o( new gmp_::GMPo() );

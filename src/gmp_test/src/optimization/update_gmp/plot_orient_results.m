@@ -6,7 +6,7 @@ addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load data
-fid = FileIO('orient_results.bin', FileIO.in);
+fid = FileIO('data/orient_results.bin', FileIO.in);
 Timed           = fid.read('Timed');
 q_data          = fid.read('q_data');
 vRot_data       = fid.read('vRot_data');
