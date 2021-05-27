@@ -45,8 +45,11 @@ target_link_libraries(orient_gmp_test ${LIBS} )
 
 # ===============  Optimization  ===============
 
-add_executable( update_gmp_test src/optimization/update_gmp/update_gmp_test.cpp ${SRC_LIST})
-target_link_libraries(update_gmp_test ${LIBS} )
+add_executable( pos_gmp_update src/optimization/update_gmp/pos_gmp_update.cpp ${SRC_LIST})
+target_link_libraries(pos_gmp_update ${LIBS} )
+
+add_executable( orient_gmp_update src/optimization/update_gmp/orient_gmp_update.cpp ${SRC_LIST})
+target_link_libraries(orient_gmp_update ${LIBS} )
 
 add_executable( constr_opt_test src/optimization/constr_opt/constr_opt_test.cpp ${SRC_LIST})
 target_link_libraries(constr_opt_test ${LIBS} )

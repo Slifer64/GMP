@@ -90,7 +90,7 @@ classdef GMPo < GMP
             %Qd2 = this.getQd(x+x_dot*Ts);
             %vd = gmp_.quatLog(quatDiff(Qd2,Qd)) / Ts;
             
-            Q1 = gmp_.gmp_.quatExp(this.getYd(x));
+            Q1 = gmp_.quatExp(this.getYd(x));
             vd = gmp_.qLogDot_to_rotVel(this.getYdDot(x,x_dot), Q1);
             
         end
@@ -102,7 +102,7 @@ classdef GMPo < GMP
             %vd2 = this.getVd(x + x_dot*Ts, x_dot + x_ddot*Ts);
             %vd_dot = (vd2 - vd) / Ts;
             
-            Q1 = gmp_.gmp_.quatExp(this.getYd(x));
+            Q1 = gmp_.quatExp(this.getYd(x));
             vd = gmp_.qLogDot_to_rotVel(this.getYdDot(x,x_dot), Q1);
             vd_dot = gmp_.qLogDDot_to_rotAccel(this.getYdDDot(x,x_dot,x_ddot), vd, Q1);
             

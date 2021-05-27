@@ -32,7 +32,7 @@ public:
    * @param[in] kernels_std_scaling: Scaling for std of kernels (optional, default=2).
    * \note: Each of the arguments 'N_kernels', 'D', 'K' can be scalar or a 3x1 vector.
    */
-  GMPo(unsigned N_kernels, double kernels_std_scaling=1.0);
+  GMPo(unsigned N_kernels=2, double kernels_std_scaling=1.0);
 
 
   /** Trains the GMPo::
@@ -105,6 +105,13 @@ public:
    * @param[in] Q: Current orientation (as unit quaternion).
    */
   arma::vec getZ(const arma::vec &rotVel, const arma::vec &Q) const;
+
+  void deepCopy(gmp_::GMPo *cp_obj) const
+  {
+    GMP::deepCopy(cp_obj);
+    cp_obj->Q0 = this->Q0;
+    cp_obj->Qd0 = this->Qd0;
+  }
 
   // ===========================================================
   // ************      Static Public Functions      ************

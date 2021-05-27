@@ -9,6 +9,10 @@ classdef GMP_Update < matlab.mixin.Copyable
         %  @param[in] gmp: n_DoF dmp.
         function this = GMP_Update(gmp)
                 
+%             if ( ~ strcmpi(class(gmp),'GMP') )
+%                 error(['[GMP_Update::GMP_Update]: argument of type ''GMP'' was expected, but a type ''' class(gmp) ''' was provided instead']);
+%             end
+            
             this.gmp = gmp;
             
             this.initSigmaw();

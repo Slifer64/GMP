@@ -9,7 +9,7 @@ addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 %% Load data
-fid = FileIO('results.bin', FileIO.in);
+fid = FileIO('pos_results.bin', FileIO.in);
 Time         = fid.read('Time');
 P_data       = fid.read('P_data');
 dP_data      = fid.read('dP_data');
@@ -21,7 +21,7 @@ ddP_new_data = fid.read('ddP_new_data');
 points = getPoint([], [], [], [], [], [], []);
 
 gmp = GMP();
-GMP_IO.read(gmp, 'gmp_pos.bin','up_');
+gmp_.read(gmp, 'gmp_pos.bin','up_');
 
 kt = 0.5;
 T = 10/kt;

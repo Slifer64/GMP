@@ -55,7 +55,7 @@ public:
    */
   void updateWeights(const std::vector<gmp_::Phase> &s, arma::mat Z, const std::vector<gmp_::UPDATE_TYPE> &type, arma::rowvec r_n={});
 
-private:
+protected:
 
   gmp_::GMP *gmp; ///< pointer to nDoF GMP object
 

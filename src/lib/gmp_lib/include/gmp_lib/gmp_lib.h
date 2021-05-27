@@ -3,6 +3,7 @@
 #include <gmp_lib/GMP/GMP_Opt.h>
 
 #include <gmp_lib/GMP/GMPo.h>
+#include <gmp_lib/GMP/GMPo_Update.h>
 
 #include <gmp_lib/io/gmp_io.h>
 

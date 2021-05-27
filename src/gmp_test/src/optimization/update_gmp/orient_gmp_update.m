@@ -1,38 +1,18 @@
 % function orient_gmp_test()
 
 clc;
-close all;
+% close all;
 clear;
 
-set_matlab_utils_path('../');
+addpath('../../../../matlab/lib/gmp_lib/');
+import_gmp_lib();
 
-%% Load training data
+gmp_o = GMPo();
+gmp_.read(gmp_o, 'gmp_orient.bin','');
 
-load('orient_data.mat', 'Data');
-Timed = Data.Time;
-Qd_data = Data.Quat;
-% vRot_new = Data.rotVel;
-% dvRot_new = Data.rotAccel;
-
-Ts = Timed(2)-Timed(1);
-
-%% initialize and train GMP
-train_method = 'LS';
-N_kernels = 30;
-kernels_std_scaling = 1.5;
-gmp_o = GMPo(N_kernels, kernels_std_scaling);
-tic
+Ts = 0.01;
+Timed = 0:Ts:10;
 x = Timed/Timed(end);
-offline_train_mse = gmp_o.train(train_method, x, Qd_data);
-offline_train_mse
-toc
-
-% traj_sc = TrajScale_Prop(3);
-% traj_sc = TrajScale_Rot_min();
-traj_sc = TrajScale_Rot_wb();
-traj_sc.setWorkBenchNormal([0; 0; 1]);
-gmp_o.setScaleMethod(traj_sc);
-
 n_data = length(x);
 
 %% Construct new orientation trajectory
@@ -42,7 +22,7 @@ Q0d = gmp_o.getQd(0);
 Qgd = gmp_o.getQd(1);
 
 Q0 = Q0d;
-Qg = quatmultiply( rotm2quat(rotx(30)*roty(-50)*rotz(70)), Qgd')';
+Qg = gmp_.quatProd( gmp_.quatExp([0.5, 0.2, -0.4]), Qgd);
 
 % generate nominal trajectory for the new init/target orientation
 gmp_o.setQ0(Q0);
@@ -80,14 +60,13 @@ gmp_up = GMPo_Update(gmp_o_new);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.setMsrNoiseVar(1e-4);
 
-rng(0);
 up_ind = [];
-k = 0;
+t_span = 0;
 for j=1:n_data
-    k = k + 1;
-    if ( norm(qd_new_data(:,j)-qd_data(:,j) ) > 0.05  && k>200)
+    t_span = t_span + 1000*Ts;
+    if ( norm(qd_new_data(:,j)-qd_data(:,j) ) > 0.05  && t_span>300) % update every 300 ms
         up_ind = [up_ind j];
-        k = 0;
+        t_span = 0;
     end
 end
 x_up = x(up_ind);
@@ -136,6 +115,7 @@ for i=1:3
        title('Quaternion logarithm', 'interpreter','latex', 'fontsize',17);
    end
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
+   axis tight;
 end
 
 figure;
@@ -151,6 +131,7 @@ for i=1:3
    end
    
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
+   axis tight;
 end
 
 figure;
@@ -165,4 +146,5 @@ for i=1:3
        title('Rotational Acceleration', 'interpreter','latex', 'fontsize',17);
    end
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
+   axis tight;
 end

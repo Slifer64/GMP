@@ -9,6 +9,10 @@ classdef GMPo_Update < GMP_Update
         %  @param[in] gmp: n_DoF dmp.
         function this = GMPo_Update(gmp)
                 
+            if ( ~ strcmpi(class(gmp),'GMPo') )
+                error(['[GMPo_Update::GMPo_Update]: argument of type ''GMPo'' was expected, but a type ''' class(gmp) ''' was provided instead']);
+            end
+                
             this@GMP_Update(gmp);
 
         end
@@ -41,8 +45,7 @@ classdef GMPo_Update < GMP_Update
             if (nargin < 4), r_n=this.rv; end
             
             y = GMPo.quat2q(Q, this.gmp.getQ0());
-            
-            this.updateWeights(GMP_phase(x,0,0), y, GMP_UpdateType.POS, r_n);
+            this.updatePos(x, y, r_n);
             
         end
         
@@ -52,8 +55,7 @@ classdef GMPo_Update < GMP_Update
             
             Q1 = GMPo.getQ1(Q, this.gmp.getQ0());
             y_dot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
-            
-            this.updateWeights(GMP_phase(x,x_dot,0), y_dot, GMP_UpdateType.VEL, r_n);
+            this.updateVel(x, x_dot, y_dot, r_n);
             
         end
         
@@ -63,9 +65,8 @@ classdef GMPo_Update < GMP_Update
             
             Q1 = GMPo.getQ1(Q, this.gmp.getQ0());
             y_ddot = gmp_.rotAccel_to_qLogDDot(rotAccel, rotVel, Q1);
-            
-            this.updateWeights(GMP_phase(x,x_dot,x_ddot), y_ddot, GMP_UpdateType.ACCEL, r_n);
-            
+            this.updateAccel(x,x_dot,x_ddot, y_ddot, r_n);
+          
         end
 
         % function updateWeights(this, s, Z, type, r_n)

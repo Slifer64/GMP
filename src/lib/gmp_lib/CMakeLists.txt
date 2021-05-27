@@ -37,10 +37,10 @@ add_library(${PROJECT_NAME}
   src/GMP/GMP.cpp
   src/GMP/GMP_Update.cpp
   src/GMP/GMP_Opt.cpp
-        #------------------------
+  #------------------------
   src/GMP/GMPo.cpp
-
-        )
+  src/GMP/GMPo_Update.cpp
+)
 
 add_dependencies(${PROJECT_NAME}
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
