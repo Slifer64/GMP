@@ -16,7 +16,7 @@ train_method = 'LS';
 N_kernels = 25;
 kernels_std_scaling = 1.5;
 
-train_filename = 'data/pos_data.bin';
+train_filename = 'data/orient_data.bin';
 
 scale_type = 'rot_wb'; % {"prop", "rot_min", "rot_wb"}
 wb_normal = [0; 0; 1]; % work-bench normal
@@ -27,16 +27,16 @@ temp_s = 1.2; % temporal scale
 read_gmp_from_file = false;
 write_gmp_to_file = false;
 
-gmp_filename = 'data/gmp_pos.bin';
+gmp_filename = 'data/gmp_orient.bin';
 
 
 %% Load training data
-
-load('orient_data.mat', 'Data');
-Timed = Data.Time;
-Qd_data = Data.Quat;
-vRotd_data = Data.rotVel;
-dvRotd_data = Data.rotAccel;
+fid = FileIO(train_filename, FileIO.in );
+Timed = fid.read('Timed');
+Qd_data = fid.read('Qd_data');
+vRotd_data = fid.read('vRotd_data');
+dvRotd_data = fid.read('dvRotd_data');
+fid.close();
 
 Ts = Timed(2)-Timed(1);
 
@@ -47,7 +47,7 @@ read_from_file = true;
 if (read_from_file)
     
     gmp_o = GMPo();
-    gmp_.read(gmp_o, 'gmp_o.bin', 'o_');
+    gmp_.read(gmp_o, gmp_filename, '');
 
 else
     
@@ -189,6 +189,243 @@ end
 
 %% ================================================
 %% ================================================
+
+function [Time, Q_data, rotVel_data, rotAccel_data] = simulateGMPo_in_Cart_space(gmp_o, Q0, Qg, T, dt)
+%% Simulates a dmp encoding Cartesian orientation usning unit quaternions.
+
+
+%% set initial values
+t_end = T;
+tau = t_end;
+
+Time = [];
+Q_data = [];
+rotVel_data = [];
+rotAccel_data = [];
+
+t = 0.0;
+x = 0.0;
+x_dot = 1/tau;
+x_ddot = 0;
+Q = Q0;
+rotVel = zeros(3,1);
+rotAccel = zeros(3,1);
+
+gmp_o.setQ0(Q0);   % set initial orientation
+gmp_o.setQg(Qg);   % set target orientation
+
+elaps_t = [];
+
+%% simulate
+while (true)
+
+    %% data logging
+    Time = [Time t];
+    Q_data = [Q_data Q];
+    rotVel_data = [rotVel_data rotVel];  
+    rotAccel_data = [rotAccel_data rotAccel];
+
+    tic;
+    
+    %% GMP simulation
+%     Qd = gmp_o.getQd(x);
+%     Vd = gmp_o.getVd(x, x_dot);
+%     Vd_dot = gmp_o.getVdDot(x, x_dot, x_ddot);
+    [Qd, Vd, Vd_dot] = gmp_o.getRefTraj(x, x_dot, x_ddot);
+    
+    rotAccel = Vd_dot + 5*(Vd-rotVel) + 20*math_.quatLog(math_.quatDiff(Qd,Q));
+    
+    elaps_t = [elaps_t toc()*1000];
+    
+    %% Stopping criteria   
+    if (t>1.5*t_end)
+        warning('Time limit reached... Stopping simulation!');
+        break;
+    end
+    
+    eo = gmp_.quatLog(gmp_.quatProd(Qg, gmp_.quatInv(Q)));
+    if (t>=t_end && norm(eo)<0.02)
+        break;
+    end
+
+    %% Numerical integration
+    t = t + dt;
+    x = x + x_dot*dt;
+    Q = gmp_.quatProd( gmp_.quatExp(rotVel*dt), Q);
+    rotVel = rotVel + rotAccel*dt;  
+    
+end
+
+mean_elaps_t = mean(elaps_t)
+std_elaps_t = std(elaps_t,1)
+
+end
+
+function [Time, Q_data, rotVel_data, rotAccel_data] = simulateGMPo_in_log_space(gmp_o, Q0, Qg, T, dt)
+%% Simulates a dmp encoding Cartesian orientation usning unit quaternions.
+
+
+%% set initial values
+t_end = T;
+tau = t_end;
+
+Time = [];
+Q_data = [];
+rotVel_data = [];
+rotAccel_data = [];
+
+t = 0.0;
+x = 0.0;
+x_dot = 1/tau;
+x_ddot = 0;
+Q = Q0;
+Q_prev = Q;
+rotVel = zeros(3,1);
+rotAccel = zeros(3,1);
+q = gmp_o.quat2q(Q0, Q0);
+qdot = zeros(3,1);
+dy = zeros(3,1);
+dz = zeros(3,1);
+
+gmp_o.setQ0(Q0);
+gmp_o.setQg(Qg);
+y = gmp_o.getY(Q);
+z = gmp_o.getZ(rotVel, Q);
+g = gmp_o.quat2q(Qg, Q0);
+
+elaps_t = [];
+
+%% simulate
+while (true)
+
+    %% data logging
+    Time = [Time t];
+    Q_data = [Q_data Q];
+    rotVel_data = [rotVel_data rotVel];  
+    rotAccel_data = [rotAccel_data rotAccel];
+    
+    yc_dot = 0;
+    
+    tic
+
+    %% DMP simulation
+    yc = zeros(3,1);
+    zc = zeros(3,1);
+    s = GMP_phase(x, x_dot, x_ddot);
+    gmp_o.update(s, y, z, yc, zc);
+
+    dy = gmp_o.getYdot();
+    dz = gmp_o.getZdot();
+    rotAccel = gmp_o.getRotAccel(Q, yc_dot);
+    
+    elaps_t = [elaps_t toc()*1000];
+
+    %% Stopping criteria   
+    if (t>1.5*t_end)
+        warning('Time limit reached... Stopping simulation!');
+        break;
+    end
+    
+    eo = quatLog(quatProd(Qg, quatInv(Q)));
+    if (t>=t_end && norm(eo)<0.02)
+        break;
+    end
+
+    %% Numerical integration
+    t = t + dt;
+    x = x + x_dot*dt;
+    y = y + dy*dt;
+    z = z + dz*dt;
+    
+    q = y;
+    dy = z;
+    qdot = dy;
+    
+    Q_prev = Q;
+    Q = gmp_o.q2quat(q, Q0);
+    if (Q_prev'*Q<0), Q = -Q; end
+    
+    Q1 = gmp_o.getQ1(Q, Q0);
+    rotVel = gmp_o.qLogDot_to_rotVel(qdot, Q1);
+    
+end
+
+mean_elaps_t = mean(elaps_t)
+std_elaps_t = std(elaps_t,1)
+
+end
+
+function [Time, Q_data, rotVel_data, rotAccel_data] = simulateGMPo_in_quat_space(gmp_o, Q0, Qg, T, dt)
+%% Simulates a dmp encoding Cartesian orientation usning unit quaternions.
+
+
+%% set initial values
+t_end = T;
+tau = t_end;
+
+Time = [];
+Q_data = [];
+rotVel_data = [];
+rotAccel_data = [];
+
+t = 0.0;
+x = 0.0;
+x_dot = 1/tau;
+x_ddot = 0;
+Q = Q0;
+rotVel = zeros(3,1);
+rotAccel = zeros(3,1);
+
+gmp_o.setQ0(Q0);   % set initial orientation
+gmp_o.setQg(Qg);   % set target orientation
+
+elaps_t = [];
+
+%% simulate
+while (true)
+
+    %% data logging
+    Time = [Time t];
+    Q_data = [Q_data Q];
+    rotVel_data = [rotVel_data rotVel];  
+    rotAccel_data = [rotAccel_data rotAccel];
+
+    tic;
+    
+    %% GMP simulation
+    yc = 0; % optional coupling for 'y' state
+    zc = 0; % optional coupling for 'z' state
+    yc_dot = 0; % derivative of coupling for 'y' state
+    s = GMP_phase(x,x_dot,x_ddot);
+    rotAccel = gmp_o.calcRotAccel(s, Q, rotVel, yc, zc, yc_dot);
+
+    elaps_t = [elaps_t toc()*1000];
+    
+    %% Stopping criteria   
+    if (t>1.5*t_end)
+        warning('Time limit reached... Stopping simulation!');
+        break;
+    end
+    
+    eo = quatLog(quatProd(Qg, quatInv(Q)));
+    if (t>=t_end && norm(eo)<0.02)
+        break;
+    end
+
+    
+    %% Numerical integration
+    t = t + dt;
+    x = x + x_dot*dt;
+    Q = quatProd( quatExp(rotVel*dt), Q);
+    rotVel = rotVel + rotAccel*dt;
+    
+end
+
+mean_elaps_t = mean(elaps_t)
+std_elaps_t = std(elaps_t,1)
+
+end
+
 
 
 
