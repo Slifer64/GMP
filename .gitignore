@@ -4,6 +4,7 @@ install/deps/eigen3
 .catkin_workspace
 .idea/
 
+
 ##---------------------------------------------------
 ## matlab
 ##---------------------------------------------------
@@ -158,5 +159,9 @@ CATKIN_IGNORE
 .idea/
 src/.idea/
 src/cmake-build-debug/
+
+
+!src/lib/osqp_lib/lib/libosqp.so
+!src/lib/osqp_lib/lib/libqdldl.so
 
 
