@@ -221,14 +221,18 @@ classdef GMP_Opt < matlab.mixin.Copyable
             
             if (nargin < 4), num_points = 50; end
             
+            n_dofs = this.gmp.numOfDoFs();
+            
+            if (isscalar(lower_bound)), lower_bound = lower_bound * ones(n_dofs,1); end
+            if (isscalar(upper_bound)), upper_bound = upper_bound * ones(n_dofs,1); end
+            
             dx = 1/num_points;
             x = 0:dx:1;
             
             n = length(x);
-            n_dofs = this.gmp.numOfDoFs();
             
-            lb = lower_bound * ones(n_dofs, n);
-            ub = upper_bound * ones(n_dofs, n);
+            lb = repmat(lower_bound, 1, n);
+            ub = repmat(upper_bound, 1, n);
             
             this.setPosConstr(x, lb, ub, [], []);
             
@@ -238,14 +242,18 @@ classdef GMP_Opt < matlab.mixin.Copyable
             
             if (nargin < 4), num_points = 50; end
             
+            n_dofs = this.gmp.numOfDoFs();
+            
+            if (isscalar(lower_bound)), lower_bound = lower_bound * ones(n_dofs,1); end
+            if (isscalar(upper_bound)), upper_bound = upper_bound * ones(n_dofs,1); end
+            
             dx = 1/num_points;
             x = 0:dx:1;
             
             n = length(x);
-            n_dofs = this.gmp.numOfDoFs();
             
-            lb = lower_bound * ones(n_dofs, n);
-            ub = upper_bound * ones(n_dofs, n);
+            lb = repmat(lower_bound, 1, n);
+            ub = repmat(upper_bound, 1, n);
             
             this.setVelConstr(x, lb, ub, [], []);
             
@@ -255,14 +263,18 @@ classdef GMP_Opt < matlab.mixin.Copyable
             
             if (nargin < 4), num_points = 50; end
             
+            n_dofs = this.gmp.numOfDoFs();
+            
+            if (isscalar(lower_bound)), lower_bound = lower_bound * ones(n_dofs,1); end
+            if (isscalar(upper_bound)), upper_bound = upper_bound * ones(n_dofs,1); end
+            
             dx = 1/num_points;
             x = 0:dx:1;
             
             n = length(x);
-            n_dofs = this.gmp.numOfDoFs();
             
-            lb = lower_bound * ones(n_dofs, n);
-            ub = upper_bound * ones(n_dofs, n);
+            lb = repmat(lower_bound, 1, n);
+            ub = repmat(upper_bound, 1, n);
             
             this.setAccelConstr(x, lb, ub, [], []);
             

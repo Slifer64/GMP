@@ -64,7 +64,10 @@ classdef FileIO < matlab.mixin.Copyable
         %  object goes out of scope.
         function close(this)
            
-            fclose(this.fid);
+            if (this.fid > 0)
+                fclose(this.fid);
+                this.fid = -5;
+            end
             
         end
         
