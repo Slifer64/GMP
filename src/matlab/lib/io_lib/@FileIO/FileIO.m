@@ -1,7 +1,6 @@
 %% FileIO class
 % 
 
-
 classdef FileIO < matlab.mixin.Copyable
 
     methods (Access = public)
@@ -60,15 +59,16 @@ classdef FileIO < matlab.mixin.Copyable
             
         end
         
-        
+        %% Closes the file.
+        %  If not called explicitly, it will be called eventually when this
+        %  object goes out of scope.
         function close(this)
            
-            if (this.fid > 0), fclose(this.fid); end
-            this.fid = -1;
+            fclose(this.fid);
             
         end
         
-        
+        %% Prints the contents of the file on the console.
         function printHeader(this)
         
             name_len = 0;
@@ -100,7 +100,11 @@ classdef FileIO < matlab.mixin.Copyable
             
         end
             
-        
+        %% Read a variable from the file. 
+        %  Openmode 'in' must be set.
+        %  If the requested variable name is not found, an exception is thrown.
+        %  @param[in] name_: the name of the variable.
+        %  @param[out] s: the value of the variable.
         function s = read(this, name_)
             
             i = this.findNameIndex(name_);
@@ -143,7 +147,11 @@ classdef FileIO < matlab.mixin.Copyable
             
         end
         
-        
+        %% Write a variable to the file. 
+        %  Openmode 'out' must be set.
+        %  If the requested variable already exists in the file, an exception is thrown.
+        %  @param[in] name_: the name of the variable.
+        %  @param[in] s: the value of the variable.
         function write(this, name_, s)
 
             if (~this.out_flag), error(['[FileIO::write]: ' FileIO.getErrMsg(FileIO.INVALID_OP_FOR_OPENMODE) ': "' this.getOpenModeName() '"']); end
@@ -156,7 +164,19 @@ classdef FileIO < matlab.mixin.Copyable
             
         end
         
+        %% Reads and returns all contents of the file as a struct.
+        %  Openmode 'in' must be set.
+        %  @param[out] s: a struct with attributes the names of the variables in the file.
+        function s = readAll(this)
+            
+            s = struct();
+            for i=1:length(this.name) s.(this.name{i}) = this.read(this.name{i}); end
+            
+        end
         
+        
+        %% Specify the c++ format for writing matrices.
+        %  @param[in] mat_type: Type of c++ matrix \in {FileIO.ARMA, FileIO.EIGEN}
         function setMatType(this, mat_type)
             
             if (mat_type == FileIO.ARMA), this.MAT_TYPE = FileIO.ARMA;

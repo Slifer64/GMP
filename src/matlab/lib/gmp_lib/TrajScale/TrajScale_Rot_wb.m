@@ -58,15 +58,17 @@ classdef TrajScale_Rot_wb < TrajScale
                 nd2 = nd - dot(k,nd)*k; % Ik*nd
                 n2 = n - dot(k,n)*k; % Ik*n
                 theta = acos( dot(n2,nd2) / (norm(n2)*norm(nd2)) );
-                
                 R = axang2rotm([k' theta]);
+                if (norm(n - R*nd) > 1e-8), R = axang2rotm([k' -theta]); end
+
+%                 k = this.calcAxis(nd, n);
+%                 [sth, cth] = this.calcAngle(nd, n, k);
+%                 theta = atan2(sth, cth);
+%                 R = axang2rotm([k' theta]);
                 
-                %k = calcAxis(nd, n);
-                %[sth, cth] = calcAngle(nd, n, k);
-                %theta = atan2(sth, cth);
-                %R = axang2rotm([k' theta]);
-                
-                % n_err = norm(n - R*nd)
+                if (norm(n - R*nd) > 1e-6)
+                   error('[TrajScale_Rot_wb::calcScaling]: R produces significant error...') ;
+                end
             end
             
             sc = R*norm(this.Yg - this.Y0)/norm(this.Ygd - this.Y0d);
@@ -81,7 +83,7 @@ classdef TrajScale_Rot_wb < TrajScale
 
         % ------------------------------------------
         
-        function axis = calcAxis(v1, v2)
+        function axis = calcAxis(this, v1, v2)
 
             n1 = v1 / norm(v1);
             n2 = v2 / norm(v2);
@@ -124,12 +126,12 @@ classdef TrajScale_Rot_wb < TrajScale
 
         end
         
-        function [sth, cth] = calcAngle( v1, v2, axis )
+        function [sth, cth] = calcAngle(this, v1, v2, axis )
 
             n1 = v1 / norm(v1);
             n2 = v2 / norm(v2);
 
-            K = math_.vector2ssMatrix(axis);
+            K = [0 -axis(3) axis(2); axis(3) 0 -axis(1); -axis(2) axis(1) 0];
             K1 = K * n1;
             K2 = K * K * n1;
             d = n2 - n1;

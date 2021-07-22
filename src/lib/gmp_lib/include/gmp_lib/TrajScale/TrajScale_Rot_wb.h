@@ -59,7 +59,11 @@ protected:
       double theta = std::acos( arma::dot(n2,nd2) / (arma::norm(n2)*arma::norm(nd2)) );
 
       R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({theta})) );
+      
+      if (arma::norm(n - R*nd) > 1e-8) R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({-theta})) );
     }
+
+    if (arma::norm(n - R*nd) > 1e-6) throw std::runtime_error("[TrajScale_Rot_wb::calcScaling]: R produces significant error...") ;
 
     return R * ( arma::norm(this->Yg - this->Y0)/arma::norm(this->Ygd - this->Y0d) );
 

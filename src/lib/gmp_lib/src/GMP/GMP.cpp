@@ -96,7 +96,7 @@ namespace gmp_
         throw std::runtime_error("[GMP::setScaleMethod]: Incompatible number of DoFs...");
 
       this->traj_sc = traj_scale_obj;
-      this->traj_sc->setNominalStartFinalPos(this->Y0, this->Yg);
+      this->traj_sc->setNominalStartFinalPos(this->Y0d, this->Ygd);
       this->traj_sc->setNewStartFinalPos(this->Y0, this->Yg);
   }
 

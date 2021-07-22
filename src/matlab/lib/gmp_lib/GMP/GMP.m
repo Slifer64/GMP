@@ -97,7 +97,7 @@ classdef GMP < GMP_regressor
             end
             
             this.traj_sc = traj_scale_obj;
-            this.traj_sc.setNominalStartFinalPos(this.Y0, this.Yg);
+            this.traj_sc.setNominalStartFinalPos(this.Y0d, this.Ygd);
             this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
 
         end
