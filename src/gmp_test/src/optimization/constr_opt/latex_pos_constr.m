@@ -2,33 +2,6 @@ clc;
 close all;
 clear;
 
-% pos_lim = [[-1.2 -1.2 0.1]' [1.2 1.2 0.6]'];
-% x1 = pos_lim(1,1);
-% x2 = pos_lim(1,2);
-% y1 = pos_lim(2,1);
-% y2 = pos_lim(2,2);
-% z1 = pos_lim(3,1);
-% z2 = pos_lim(3,2);
-% % 
-% % X = [x1 x1 x1 x1 x2 x2 x2 x2];
-% % Y = [y1 y2 y2 y1]
-% % Z = [z1 z1 z2 z2]
-% 
-% figure;
-% hold on;
-% patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-% patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-% 
-% patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z1 z1 z1 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-% patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z2 z2 z2 z2], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-%
-% patch( [x1 x1 x2 x2] , [y1 y1 y1 y1], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-% patch( [x1 x1 x2 x2] , [y2 y2 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none');
-% 
-% view(9.6, 19.2);
-% return
-
-
 addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
@@ -71,8 +44,8 @@ ks = diag([1 1 1]); % spatial scaling
 tau = taud/kt;
 y0 = yd0 + 0;
 % yg = ks*(ygd - yd0) + y0;
-% yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
-yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
+yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
+% yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
 
 
 % ks = (yg - y0)/(ygd - yd0);
@@ -97,23 +70,28 @@ accel_lim = [-0.4 0.4];
 % --------- Proportional scaling -----------
 gmp.setScaleMethod(TrajScale_Prop(3));
 [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
-data{1} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', 'color','blue', 'legend','prop');
+data{1} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
 % --------- Rotational scaling -----------
 gmp.setScaleMethod(TrajScale_Rot_wb());
 [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
-data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', 'color','cyan', 'legend','rot-wb');
+data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','cyan', 'legend','rot-wb', 'plot3D',true, 'plot2D',true);
 
 % --------- Demo -----------
-data{3} = struct('Time',Timed/kt, 'Pos',Pd_data, 'Vel',dPd_data*kt, 'Accel',ddPd_data*kt^2, 'linestyle','--', 'color','magenta', 'legend','demo');
+% data{3} = struct('Time',Timed, 'Pos',Pd_data, 'Vel',dPd_data, 'Accel',ddPd_data, 'linestyle','--', 'color','magenta', 'legend','demo');
+data{3} = struct('Time',Timed/kt, 'Pos',Pd_data, 'Vel',dPd_data*kt, 'Accel',ddPd_data*kt^2, 'linestyle','--', ...
+    'color',[0.7 0 0], 'legend','demo', 'plot3D',true, 'plot2D',false);
 
 % --------- Optimized DMP -> VEL -----------
 [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true);
-data{4} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', 'color','green', 'legend','opt-vel');
+data{4} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color','green', 'legend','opt-vel', 'plot3D',true, 'plot2D',true);
 
 [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false);
-data{5} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', 'color',[0 0.5 0], 'legend','opt-pos');
-
+data{5} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0.85 0.33 0.1], 'legend','opt-pos', 'plot3D',true, 'plot2D',true);
 
 %% ======== Plot Results ==========
 
@@ -122,17 +100,17 @@ fig = figure;
 fig.Position(3:4) = [815 716];
 ax = axes();
 hold on;
-plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',8);
-plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',8);
-plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',8);
+plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',12);
+plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',12);
+plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',12);
 legend_ = {};
 for k=1:length(data)
-    dat = data{k};
-    plot3(dat.Pos(1,:), dat.Pos(2,:), dat.Pos(3,:), 'LineWidth', 2, 'LineStyle',dat.linestyle, 'Color',dat.color);
-    legend_ = [legend_ dat.legend];
+    if (~data{k}.plot3D), continue; end
+    plot3(data{k}.Pos(1,:), data{k}.Pos(2,:), data{k}.Pos(3,:), 'LineWidth', 3, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    legend_ = [legend_ data{k}.legend];
 end
 plot3([ygd(1) yg(1)], [ygd(2) yg(2)], [ygd(3) yg(3)], 'LineWidth', 1, 'LineStyle','--', 'Color',[1 0 1 0.5]);
-legend(['$p_0$','$g$','$g_d$' legend_], 'interpreter','latex', 'fontsize',17, 'Position',[0.8014 0.6278 0.1531 0.3144]);
+legend(['$p_0$','$g$','$g_d$' legend_], 'interpreter','latex', 'fontsize',17, 'Position',[0.8174 0.6641 0.1531 0.3144]);
 axis tight;
 x_lim = ax.XLim + 0.05*[-1 1];
 y_lim = ax.YLim + 0.05*[-1 1];
@@ -144,50 +122,67 @@ ax.XLim=x_lim; ax.YLim=y_lim; ax.ZLim=z_lim;
 ax.FontSize = 14;
 hold off;
 
-
-
-
-return
+title_ = {'x coordinate', 'y coordinate', 'z coordinate'};
+label_font = 17;
+ax_fontsize = 14;
 
 for i=1:n_dof
-    figure;
-    ax = cell(3,1);
+    fig = figure;
+    fig.Position(3:4) = [842 1110];
 
-    ax{1} = subplot(3,1,1);
+    ax = subplot(3,1,1);
     hold on;
-    for k=1:length(data) 
-        plot(data{k}.Time, data{k}.Pos(i,:), 'LineWidth',2.0, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    % plot position trajectory
+    legend_ = {};
+    for k=1:length(data)
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Pos(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+        legend_ = [legend_ data{k}.legend];
     end
-    ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
-    title(['temporal scale: $' num2str(kt) '$     ,     spatial scale: $' num2str(det(ks)) '$'], 'interpreter','latex', 'fontsize',18);
-    scatter(nan, nan, 'MarkerEdgeColor',[0 0.7 0], 'Marker','o', 'MarkerEdgeAlpha',0.6, 'LineWidth',4, 'SizeData', 100); % dummy plot for legend
-    scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','^', 'MarkerEdgeAlpha',0.3, 'LineWidth',2, 'SizeData', 100); % dummy plot for legend
-    scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','v', 'MarkerEdgeAlpha',0.3, 'LineWidth',2, 'SizeData', 100); % dummy plot for legend
-    % legend({'GMP','ref','eq-constr','low-bound','upper-bound'}, 'interpreter','latex', 'fontsize',15);
     axis tight;
+    % plot start and final positions
+    plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',10);
+    plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
+    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
+    % plot bounds
+    plot(ax.XLim, [pos_lim(i,1) pos_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [pos_lim(i,2) pos_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    % labels, title ...
+    ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',label_font);
+%     title(title_{i}, 'interpreter','latex', 'fontsize',18);
+    legend(legend_, 'interpreter','latex', 'fontsize',17, 'Position',[0.2330 0.9345 0.5520 0.0294], 'Orientation', 'horizontal');
+    ax.FontSize = ax_fontsize;
     hold off;
 
-    ax{2} = subplot(3,1,2);
+    ax = subplot(3,1,2);
     hold on;
     for k=1:length(data) 
-        plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.0, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
     end
-    ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',15);
     axis tight;
+    % plot bounds
+    plot(ax.XLim, [vel_lim(1) vel_lim(1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [vel_lim(2) vel_lim(2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',label_font);
+    ax.FontSize = ax_fontsize;
     hold off;
 
-    ax{3} = subplot(3,1,3);
+    ax = subplot(3,1,3);
     hold on;
-    for k=1:length(data) 
-        plot(data{k}.Time, data{k}.Accel(i,:), 'LineWidth',2.0, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    for k=1:length(data)
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Accel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
     end
-    ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',15);
     axis tight;
+    % plot bounds
+    plot(ax.XLim, [accel_lim(1) accel_lim(1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [accel_lim(2) accel_lim(2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',label_font);
+    xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
+    ax.FontSize = ax_fontsize;
     hold off;
 
-%     plotConstr(tau*x_pos_lim, pos_lb, pos_ub, tau*xeq_pos, pos_eq, ax{1}, i);
-%     plotConstr(tau*x_vel_lim, vel_lb, vel_ub, tau*xeq_vel, vel_eq, ax{2}, i);
-%     plotConstr(tau*x_accel_lim, accel_lb, accel_ub, tau*xeq_accel, accel_eq, ax{3}, i);
 end
 
 % ======================================================
