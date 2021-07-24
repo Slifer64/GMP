@@ -141,6 +141,12 @@ classdef FileIO < matlab.mixin.Copyable
                 
                 [n_rows, ~] = this.readMatDim(name_);
                 s = fread(this.fid, [n_rows 1], [matlab_type '=>' matlab_type]);
+                % s = num2cell(s);
+                
+            elseif (t == FileIO.STRING)
+
+                n_elem = fread(this.fid, 1, [this.long_t '=>' this.long_t]);
+                s = fread(this.fid, [1 n_elem], 'char=>char');
 
             else
                 
@@ -159,8 +165,11 @@ classdef FileIO < matlab.mixin.Copyable
 
             if (~this.out_flag), error(['[FileIO::write]: ' FileIO.getErrMsg(FileIO.INVALID_OP_FOR_OPENMODE) ': "' this.getOpenModeName() '"']); end
                 
+            if (this.findNameIndex(name_) >=0), error(['[FileIO::write]: ' this.getErrMsg(FileIO.DUPLICATE_ENTRY) ': "' name_ '"']); end
+            
             if (isscalar(s)), this.writeScalar(name_, s);
             elseif (iscell(s)), this.writeCell(name_, s);
+            elseif (ischar(s)), this.writeString(name_, s);
             elseif (sum(size(s)) > 2), this.writeMat(name_, s);
             else, error(['[FileIO.write]: Unsopported type "' class(s) '".']);
             end
@@ -194,9 +203,6 @@ classdef FileIO < matlab.mixin.Copyable
     methods (Access = protected)
         
         function writeScalar(this, name_, s)
-  
-            i = this.findNameIndex(name_);
-            if (i>=0), error(['[FileIO.write]: ' this.getErrMsg(FileIO.DUPLICATE_ENTRY) ': "' name_ '"']); end
 
             k = length(this.name) + 1;
             
@@ -206,38 +212,60 @@ classdef FileIO < matlab.mixin.Copyable
             this.name_map(name_) = k;
             fseek(this.fid, this.header_start, 'bof');
             this.i_pos{k} = ftell(this.fid);
+            
             this.writeScalar_(s);
+            
             this.header_start = ftell(this.fid);
             this.writeHeader(); % overwrites previous header
             
         end
         
         function writeCell(this, name_, v)
-            
-            [n_rows, n_cols] = cast(size(v), this.long_t);
+
+            [n_rows, n_cols] = size(v);
             
             if (n_rows~=1 & n_cols~=1)
-                error('[FileIO.writeCell]: cell must be a vector.');
+                error('[FileIO::writeCell]: cell must be a vector.');
             end
             
             n_elem = max([n_rows, n_cols]);
-            n_rows = n_elem;
-            n_cols = 1;
-            
-            t = findScalarType(class(v{0}));
+            n_rows = cast(n_elem, this.long_t);
+            n_cols = cast(1, this.long_t);
+
+            t = this.findScalarType(class(v{1}));
             for i=1:n_elem
-                t_i = findScalarType(class(v{i}));
+                t_i = this.findScalarType(class(v{i}));
                 if (t ~= t_i)
-                   error('[FileIO.writeCell]: cell entries must be of the same class(data type).');
+                   error('[FileIO::writeCell]: cell entries must be of the same class(data type).');
                 end
             end
             
-            this.writeMatDim(class(v{0}), name_, FileIO.STD_VEC, n_rows, n_cols);
-            fwrite(this.fid, cell2mat(v), class(v{0}));
+            this.writeMatDim(class(v{1}), name_, FileIO.CELL, n_rows, n_cols);
+            fwrite(this.fid, cell2mat(v), class(v{1}));
 
             this.header_start = ftell(this.fid);
             this.writeHeader(); % overwrites previous header
     
+        end
+        
+        function writeString(this, name_, s)
+
+            k = length(this.name) + 1;
+            this.name{k} = name_;
+            this.type{k} = FileIO.STRING;
+            this.sc_type{k} = FileIO.ScType_NA;
+            this.name_map(name_) = k;
+            fseek(this.fid, this.header_start, 'bof');
+            this.i_pos{k} = ftell(this.fid);
+            
+            n_elem = cast( length(s), this.long_t);
+            
+            fwrite(this.fid, n_elem, class(n_elem));
+            fwrite(this.fid, s, class(s));
+
+            this.header_start = ftell(this.fid);
+            this.writeHeader(); % overwrites previous header
+            
         end
         
         function writeMat(this, name_, m)
@@ -264,9 +292,6 @@ classdef FileIO < matlab.mixin.Copyable
         end
         
         function writeMatDim(this, sc_t, name_, t, n_rows, n_cols)
-  
-            i = this.findNameIndex(name_);
-            if (i>=0), error(['[FileIO.write]: ' this.getErrMsg(FileIO.DUPLICATE_ENTRY) ': "' name_ '"']); end
 
             k = length(this.name) + 1;
             this.name{k} = name_;
@@ -342,7 +367,6 @@ classdef FileIO < matlab.mixin.Copyable
                 this.i_pos{k} = i;
                 this.name{k} = name_i;
                 this.name_map(name_i) = k;
-
             end
             
         end
@@ -465,6 +489,8 @@ classdef FileIO < matlab.mixin.Copyable
                 sc_t_name = 'single';
             elseif (sc_t == FileIO.DOUBLE)
                 sc_t_name = 'double';
+            elseif (sc_t == FileIO.ScType_NA)
+                sc_t_name = '';
             else
                 sc_t_name = 'N/A';
             end
@@ -492,6 +518,8 @@ classdef FileIO < matlab.mixin.Copyable
                 sc_t_name = 'float';
             elseif (sc_t == FileIO.DOUBLE)
                 sc_t_name = 'double';
+            elseif (sc_t == FileIO.ScType_NA)
+                sc_t_name = '';
             else
                 sc_t_name = 'N/A';
             end
@@ -508,6 +536,8 @@ classdef FileIO < matlab.mixin.Copyable
                 t_name = 'mat';
             elseif (t == FileIO.CELL)
                 t_name = 'cell';
+            elseif (t == FileIO.STRING)
+                t_name = 'string';
             else
                 t_name = 'N/A';
             end
@@ -515,8 +545,11 @@ classdef FileIO < matlab.mixin.Copyable
         end
         
         function full_t_name = getFullTypeName(type, sc_type)
-           
-            full_t_name = [FileIO.getTypeName(type) '<' FileIO.getScalarTypeName(sc_type) '>'];
+            
+            sc_t = FileIO.getScalarTypeName(sc_type);
+            if (isempty(sc_t)), full_t_name = FileIO.getTypeName(type);
+            else, full_t_name = [FileIO.getTypeName(type) '<' sc_t '>'];
+            end
             
         end
         
@@ -578,6 +611,7 @@ classdef FileIO < matlab.mixin.Copyable
         ARMA = int32(1002);      % arma (Mat, Col, Row), Eigen (Matrix, Vecotr, RowVector)
         EIGEN = int32(1003);
         CELL = int32(1004);      % std::vector
+        STRING = int32(1005);      % std::string
         % CUSTOM ?
 
 
@@ -592,6 +626,7 @@ classdef FileIO < matlab.mixin.Copyable
         FLOAT = int32(2008);     % single (float)
         DOUBLE = int32(2009);    % double (double)
         UNKNOWN = int32(2010);   % unsupported type
+        ScType_NA = int32(2011);   % for Types where the scalar type is redundant, like strings
 
       
         % enum Error

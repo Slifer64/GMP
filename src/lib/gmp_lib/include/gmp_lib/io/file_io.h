@@ -21,31 +21,38 @@ namespace gmp_
 {
 
 typedef long long_t; // type for matrix/vector dimensions
-typedef unsigned long long size_t_; // size_t type
+typedef unsigned long size_t_; // size_t type
+
+#define FILE_IO_fun_ std::string("[FileIO::") + __func__ + "]: "
 
 // -------------------------------------------------------------
 
+// Warning: Add new 'Type' or  new 'ScalarType' at the end of the enums, to preserve backwards compatibility!
+
 enum Type
 {
-  SCALAR,   // scalar, see @ScalarType
-  ARMA,     // arma (Mat, Col, Row)
-  EIGEN,    // Eigen (Matrix, Vecotr, RowVector)
-  STD_VEC,  // std::vector
+  SCALAR = 0,   // scalar, see @ScalarType
+  ARMA = 1,     // arma (Mat, Col, Row)
+  EIGEN = 2,    // Eigen (Matrix, Vecotr, RowVector)
+  STD_VEC = 3,  // std::vector
+  STD_STRING = 4 // std::string
   // CUSTOM ?
 };
 
 enum ScalarType
 {
-  BOOL,     // bool
-  INT,      // int
-  UINT,     // unsigned int
-  LONG,     // long
-  ULONG,    // unsigned long
-  LLONG,    // long long
-  ULLONG,   // unsigned long long
-  FLOAT,    // float
-  DOUBLE,   // double
-  UNKNOWN   // unsupported type
+
+  BOOL = 0,     // bool
+  INT = 1,      // int
+  UINT = 2,     // unsigned int
+  LONG = 3,     // long
+  ULONG = 4,    // unsigned long
+  LLONG = 5,    // long long
+  ULLONG = 6,   // unsigned long long
+  FLOAT = 7,    // float
+  DOUBLE = 8,   // double
+  UNKNOWN = 9,  // unsupported type
+  ScType_NA = 10 // for Types where the scalar type is redundant, like strings
 };
 
 enum Error
@@ -105,10 +112,10 @@ public:
   template<typename T>
   void write(const std::string &name_, T s)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     int i = findNameIndex(name_);
-    if (i>=0) throw std::runtime_error("[FileIO::write]: " + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
+    if (i>=0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
 
     current_name = name_;
 
@@ -123,6 +130,13 @@ public:
     this->writeHeader(); // overwrites previous header
   }
 
+  /* Writes an std::string to the file.
+   * @param[in] name_: the name of the string.
+   * @param[in] s: the string.
+   */
+  void write(const std::string &name_, const std::string &s);
+  void write(const std::string &name_, const char *s);
+
   /* Writes an std vector to the file.
    * @param[in] name_: the name of the vector.
    * @param[in] v: std::vector<T> of scalar type T.
@@ -130,7 +144,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const std::vector<T> &v)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = v.size();
     long_t n_cols = 1;
@@ -155,7 +169,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const arma::Mat<T> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = m.n_rows;
     long_t n_cols = m.n_cols;
@@ -170,7 +184,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const arma::Col<T> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = m.n_rows;
     long_t n_cols = 1;
@@ -185,7 +199,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const arma::Row<T> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = 1;
     long_t n_cols = m.n_cols;
@@ -200,7 +214,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = m.rows();
     long_t n_cols = m.cols();
@@ -215,7 +229,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const Eigen::Matrix<T,Eigen::Dynamic,1> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = m.rows();
     long_t n_cols = 1;
@@ -230,7 +244,7 @@ public:
   template<typename T>
   void write(const std::string &name_, const Eigen::Matrix<T,1,Eigen::Dynamic> &m)
   {
-    if (!out_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows = 1;
     long_t n_cols = m.cols();
@@ -247,10 +261,10 @@ public:
   template<typename T>
   void read(const std::string &name_, T &s)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     int i = findNameIndex(name_);
-    if (i<0) throw std::runtime_error("[FileIO::read]: " + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
+    if (i<0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
 
     current_name = name_;
 
@@ -261,6 +275,12 @@ public:
     FileIO::readScalar_(s, this->fid);
   }
 
+  /* Reads an std::string from the file.
+   * @param[in] name_: the name of the string.
+   * @param[out] s: the string.
+   */
+  void read(const std::string &name_, std::string &s);
+
   /* Reads an std vector from the file.
    * @param[in] name_: the name of the vector.
    * @param[out] v: std::vector<T> of scalar type T.
@@ -268,14 +288,14 @@ public:
   template<typename T>
   void read(const std::string &name_, std::vector<T> &m)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::STD_VEC, n_rows, n_cols);
 
     if (n_rows!=1 && n_cols!=1)
-      throw std::runtime_error(std::string("[FileIO::read]: ") + getErrMsg(DIMENSIONS_MISMATCH) + ": "
-                               + "input argument is std::vector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
+      throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DIMENSIONS_MISMATCH) + ": entry \"" + name_
+                               + "\": input argument is std::vector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
 
     long_t n_elem = n_rows*n_cols;
     m.resize(n_elem);
@@ -293,7 +313,7 @@ public:
   template<typename T>
   void read(const std::string &name_, arma::Mat<T> &m)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::ARMA, n_rows, n_cols);
@@ -307,14 +327,14 @@ public:
   template<typename T>
   void read(const std::string &name_, arma::Col<T> &m)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::ARMA, n_rows, n_cols);
 
     if (n_cols != 1)
-      throw std::runtime_error(std::string("[FileIO::read]: ") + getErrMsg(DIMENSIONS_MISMATCH) + ": "
-      + "input argument is arma::Col, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
+      throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DIMENSIONS_MISMATCH) + ": "
+      + "entry \"" + name_ + "\": input argument is arma::Col, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
 
     readVector<arma::Col<T>, T>(m, n_rows);
   }
@@ -326,14 +346,14 @@ public:
   template<typename T>
   void read(const std::string &name_, arma::Row<T> &m)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::ARMA, n_rows, n_cols);
 
     if (n_rows != 1)
-      throw std::runtime_error(std::string("[FileIO::read]: ") + getErrMsg(DIMENSIONS_MISMATCH) + ": "
-      + "input argument is arma::Row, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
+      throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DIMENSIONS_MISMATCH) + ": entry \"" + name_
+      + "\": input argument is arma::Row, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
 
     readVector<arma::Row<T>, T>(m, n_cols);
   }
@@ -345,7 +365,7 @@ public:
   template<typename T>
   void read(const std::string &name_, Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> &s)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::EIGEN, n_rows, n_cols);
@@ -359,14 +379,14 @@ public:
   template<typename T>
   void read(const std::string &name_, Eigen::Matrix<T,Eigen::Dynamic,1> &s)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::EIGEN, n_rows, n_cols);
 
     if (n_cols != 1)
-      throw std::runtime_error(std::string("[FileIO::read]: ") + getErrMsg(DIMENSIONS_MISMATCH) + ": "
-      + "input argument is Eigen::Vector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
+      throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DIMENSIONS_MISMATCH) + ": entry \"" + name_
+      + "\": input argument is Eigen::Vector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
 
     readVector<Eigen::Matrix<T,Eigen::Dynamic,1>, T>(s, n_rows);
   }
@@ -378,14 +398,14 @@ public:
   template<typename T>
   void read(const std::string &name_, Eigen::Matrix<T,1,Eigen::Dynamic> &s)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::write]: " + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
 
     long_t n_rows, n_cols;
     readMatDim<T>(name_, Type::EIGEN, n_rows, n_cols);
 
     if (n_rows != 1)
-      throw std::runtime_error(std::string("[FileIO::read]: ") + getErrMsg(DIMENSIONS_MISMATCH) + ": "
-      + "input argument is Eigen::RowVector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
+      throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DIMENSIONS_MISMATCH) + ": entry \"" + name_
+      + "\": input argument is Eigen::RowVector, file data is " + std::to_string(n_rows) + " x " + std::to_string(n_cols) + " matrix" );
 
     readVector<Eigen::Matrix<T,1,Eigen::Dynamic>, T>(s, n_cols);
   }
@@ -438,7 +458,7 @@ protected:
     else if (std::is_same<T, double>::value) t = ScalarType::DOUBLE;
     else t = ScalarType::UNKNOWN;
 
-    if (t == ScalarType::UNKNOWN) throw std::runtime_error("[FileIO::findScalarType]: entry \"" + current_name + "\", " + getErrMsg(UNKNOWN_TYPE));
+    if (t == ScalarType::UNKNOWN) throw std::runtime_error(FILE_IO_fun_ + "entry \"" + current_name + "\", " + getErrMsg(UNKNOWN_TYPE));
 
     return t;
   }
@@ -482,7 +502,7 @@ protected:
   void readMatDim(const std::string &name_, Type t, long_t &n_rows, long_t &n_cols)
   {
     int i = findNameIndex(name_);
-    if (i<0) throw std::runtime_error("[FileIO::read]: " + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
+    if (i<0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
 
     current_name = name_;
 
@@ -495,7 +515,7 @@ protected:
     FileIO::readScalar_(n_cols, this->fid);
 
     if (n_rows<0 || n_cols<0)
-      throw std::runtime_error(std::string("[FileIO::read]: ") +
+      throw std::runtime_error(FILE_IO_fun_ +
                                getErrMsg(CORRUPTED_HEADER) + ": Negative matrix dimensions: \"" +
                                name_ + "\" " + std::to_string(n_rows) + " x " + std::to_string(n_cols) );
   }
@@ -534,7 +554,7 @@ protected:
   void writeMatDim(const std::string &name_, Type t, long_t n_rows, long_t n_cols)
   {
     int i = findNameIndex(name_);
-    if (i>=0) throw std::runtime_error("[FileIO::write]: " + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
+    if (i>=0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
 
     current_name = name_;
 

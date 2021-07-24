@@ -17,6 +17,8 @@ class TrajScale_Prop : public TrajScale
 // ===================================
 public:
 
+  typedef std::shared_ptr<TrajScale_Prop> Ptr;
+
   /** Constructor.
    *  @param[in] n_dof: degrees of freedom.
    */

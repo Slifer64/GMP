@@ -14,6 +14,8 @@ class TrajScale_Rot_min: public TrajScale
 {
 public:
 
+  typedef std::shared_ptr<TrajScale_Rot_min> Ptr;
+
   /** Constructor.
    *  @param[in] n_dof: degrees of freedom.
    */

@@ -33,6 +33,8 @@ public:
    */
   bool optimize(unsigned num_points = 200);
 
+  bool optimize(const arma::rowvec &x_data);
+
   void setMotionDuration(double tau);
 
   void setPosConstr(const arma::rowvec &x, const arma::mat &lb, const arma::mat &ub, const arma::rowvec &x_eq, const arma::mat &p_eq);

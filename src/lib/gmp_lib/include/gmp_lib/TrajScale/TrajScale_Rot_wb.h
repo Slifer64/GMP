@@ -13,6 +13,9 @@ namespace gmp_
 class TrajScale_Rot_wb : public TrajScale
 {
 public:
+
+  typedef std::shared_ptr<TrajScale_Rot_wb> Ptr;
+
   /** Constructor.
    *  @param[in] n_dof: degrees of freedom.
    */
@@ -59,7 +62,7 @@ protected:
       double theta = std::acos( arma::dot(n2,nd2) / (arma::norm(n2)*arma::norm(nd2)) );
 
       R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({theta})) );
-      
+
       if (arma::norm(n - R*nd) > 1e-8) R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({-theta})) );
     }
 

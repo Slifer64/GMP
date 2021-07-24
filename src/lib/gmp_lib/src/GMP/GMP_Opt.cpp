@@ -45,6 +45,12 @@ namespace gmp_
 
   bool GMP_Opt::optimize(unsigned num_points)
   {
+    arma::rowvec x_data = arma::linspace<arma::rowvec>(0,1, num_points);
+    this->optimize(x_data);
+  }
+
+  bool GMP_Opt::optimize(const arma::rowvec &x_data)
+  {
     int n_ker = this->gmp->numOfKernels();
     int n_dof = this->gmp->numOfDoFs();
 
@@ -53,8 +59,6 @@ namespace gmp_
 
     bool success = true;
     this->exit_msg = "";
-
-    arma::rowvec x_data = arma::linspace<arma::rowvec>(0,1, num_points);
 
     // calculate cost function: J = 0.5w'Hw + f'w
     int N = x_data.size();

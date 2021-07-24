@@ -9,10 +9,25 @@ addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
-load('train_data_pos_constr.mat','Timed','Pd_data','dPd_data','ddPd_data');
+% load('data/constr_opt_pos_test_train_data.mat','Timed','Pd_data','dPd_data','ddPd_data');
+
 % data = FileIO('train_data_pos_constr.bin', FileIO.in).readAll();
 % Timed = data.Timed;
 % Pd_data = data.Pd_data;
+
+% fid = FileIO('data/constr_opt_pos_test_train_data.bin', bitor(FileIO.out, FileIO.trunc) );
+% fid.write('Timed',Timed);
+% fid.write('Pd_data',Pd_data);
+% fid.write('dPd_data',dPd_data);
+% fid.write('ddPd_data',ddPd_data);
+% fid.close();
+
+fid = FileIO('data/constr_opt_pos_test_train_data.bin', FileIO.in);
+Timed = fid.read('Timed');
+Pd_data = fid.read('Pd_data');
+dPd_data = fid.read('dPd_data');
+ddPd_data = fid.read('ddPd_data');
+fid.close();
 
 Ts = Timed(2)-Timed(1);
 
@@ -44,8 +59,8 @@ ks = diag([1 1 1]); % spatial scaling
 tau = taud/kt;
 y0 = yd0 + 0;
 % yg = ks*(ygd - yd0) + y0;
-yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
-% yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
+% yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
+yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
 
 
 % ks = (yg - y0)/(ygd - yd0);
@@ -60,8 +75,9 @@ yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
 
 
 %% ======== Limits ==========
+%            lower limit     upper limit
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
-vel_lim = [-0.3 0.3];
+vel_lim = [-0.3 0.3];  % lower and upper limit, same for all DoFs
 accel_lim = [-0.4 0.4];
 
 
@@ -74,7 +90,9 @@ data{1} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'li
     'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
 % --------- Rotational scaling -----------
-gmp.setScaleMethod(TrajScale_Rot_wb());
+traj_sc = TrajScale_Rot_wb();
+traj_sc.setWorkBenchNormal([0; 0; 1]);
+gmp.setScaleMethod(traj_sc);
 [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
 data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
     'color','cyan', 'legend','rot-wb', 'plot3D',true, 'plot2D',true);
@@ -89,6 +107,7 @@ data{3} = struct('Time',Timed/kt, 'Pos',Pd_data, 'Vel',dPd_data*kt, 'Accel',ddPd
 data{4} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
     'color','green', 'legend','opt-vel', 'plot3D',true, 'plot2D',true);
 
+% --------- Optimized DMP -> POS -----------
 [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false);
 data{5} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
     'color',[0.85 0.33 0.1], 'legend','opt-pos', 'plot3D',true, 'plot2D',true);

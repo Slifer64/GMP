@@ -23,7 +23,8 @@ const char *FileIO::TypeName[] =
   "scalar",
   "arma::Mat",
   "Eigen::Matrix",
-  "std::vector"
+  "std::vector",
+  "std::string"
 };
 
 const char *FileIO::ScalarTypeName[] =
@@ -37,7 +38,8 @@ const char *FileIO::ScalarTypeName[] =
   "unsigned long long",
   "float",
   "double",
-  "N/A"
+  "N/A",
+  "",  // ScType_NA
 };
 
 
@@ -57,23 +59,23 @@ FileIO::FileIO(const std::string &filename, int open_mode)
 
   if (!out_flag)
   {
-    if (!in_flag) throw std::runtime_error("[FileIO::FileIO]: Open-mode \"in\" and/or \"out\" must be specified!");
-    if (in_flag && trunc_flag) throw std::runtime_error("[FileIO::FileIO]: Setting only \"in\" and \"trunc\" makes no sense :P ...");
-    if (in_flag && !file_exist) throw std::runtime_error("[FileIO::FileIO]: Open-mode \"in\" was specified but file \"" + filename + "\" doesn't exist or cannot be accessed...");
+    if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + "Open-mode \"in\" and/or \"out\" must be specified!");
+    if (in_flag && trunc_flag) throw std::runtime_error(FILE_IO_fun_ + "Setting only \"in\" and \"trunc\" makes no sense :P ...");
+    if (in_flag && !file_exist) throw std::runtime_error(FILE_IO_fun_ + "Open-mode \"in\" was specified but file \"" + filename + "\" doesn't exist or cannot be accessed...");
   }
 
   if (trunc_flag && file_exist)
   {
     if (std::remove(filename.c_str()) != 0) // or fid.open(filename, ios::out | ios::trunc) ?
     // if (!std::ofstream(filename, std::ios::out | std::ios::trunc))  // have to also write empty header...
-      throw std::runtime_error("[FileIO::FileIO]: Cannot discard the previous contents of the file \"" + filename + "\"...");
+      throw std::runtime_error(FILE_IO_fun_ + "Cannot discard the previous contents of the file \"" + filename + "\"...");
     file_exist = false;
   }
 
   if (out_flag && !file_exist) // create the file and add empty header
   {
     fid.open(filename, std::ios::out);
-    if (!fid) throw std::runtime_error("[FileIO::FileIO]: Failed to create file \"" + filename + "\"...");
+    if (!fid) throw std::runtime_error(FILE_IO_fun_ + "Failed to create file \"" + filename + "\"...");
     this->writeHeader(); // write empty header
     fid.close();
   }
@@ -83,7 +85,7 @@ FileIO::FileIO(const std::string &filename, int open_mode)
   if (out_flag) op_mode |= std::ios::out | std::ios::in; // add "in" to avoid overriding previous contents
 
   fid.open(filename, op_mode);
-  if (!fid) throw std::ios_base::failure(std::string("[FileIO::FileIO]: Failed to open file \"") + filename + "\". The file "
+  if (!fid) throw std::ios_base::failure(std::string(FILE_IO_fun_ + "Failed to open file \"") + filename + "\". The file "
                                                       "may not exist or it cannot be accessed...\n");
 
   this->readHeader();
@@ -93,6 +95,56 @@ FileIO::~FileIO()
 {
   fid.close();
 }
+
+void FileIO::write(const std::string &name_, const char *s)
+{
+  write(name_, std::string(s) );
+}
+
+void FileIO::write(const std::string &name_, const std::string &s)
+{
+  if (!out_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+
+  int i = findNameIndex(name_);
+  if (i>=0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(DUPLICATE_ENTRY) + ": \"" + name_ + "\"");
+
+  current_name = name_;
+
+  this->name.push_back(name_);
+  this->type.push_back(Type::STD_STRING);
+  this->sc_type.push_back(ScalarType::ScType_NA);
+  this->name_map[name_] = this->name.size()-1;
+  fid.seekp(this->header_start, fid.beg);
+  this->i_pos.push_back(fid.tellp());
+
+  // write string:
+  long_t n_elem = s.size();
+  this->fid.write(reinterpret_cast<const char *>(&n_elem), sizeof(n_elem) );
+  this->fid.write(s.data(), n_elem*sizeof(char) );
+
+  this->header_start = fid.tellp();
+  this->writeHeader(); // overwrites previous header
+}
+
+void FileIO::read(const std::string &name_, std::string &s)
+{
+  if (!in_flag) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(INVALID_OP_FOR_OPENMODE) + ": \"" + getOpenModeName() + "\"");
+
+  int i = findNameIndex(name_);
+  if (i<0) throw std::runtime_error(FILE_IO_fun_ + getErrMsg(ENTRY_NOT_EXIST) + "\"" + name_ + "\"");
+
+  current_name = name_;
+
+  checkType(i, Type::STD_STRING, ScalarType::ScType_NA);
+  size_t_ pos = i_pos[i];
+  fid.seekg(pos, fid.beg);
+  // read string
+  long_t n_elem = s.size();
+  this->fid.read(reinterpret_cast<char *>(&n_elem), sizeof(n_elem) );
+  s.resize(n_elem);
+  this->fid.read(&s[0], n_elem*sizeof(char) );
+}
+
 
 void FileIO::printHeader(std::ostream &out) const
 {
@@ -143,7 +195,7 @@ void FileIO::checkType(int i, enum Type t2, enum ScalarType sc_t2) const
   ScalarType sc_t = sc_type[i];
 
   if (t!=t2 | sc_t!=sc_t2)
-    throw std::runtime_error("[FileIO::checkType]: entry \"" + current_name + "\", " + getErrMsg(TYPE_MISMATCH) +
+    throw std::runtime_error(FILE_IO_fun_ + "entry \"" + current_name + "\", " + getErrMsg(TYPE_MISMATCH) +
                              ": " + getFullTypeName(t,sc_t) + " != " + getFullTypeName(t2,sc_t2));
 }
 
@@ -199,13 +251,13 @@ void FileIO::readHeader()
   size_t_ i_start = fid.tellg();
   fid.seekg (0, fid.end);
   size_t_ i_end = fid.tellg();
-  if (i_start == i_end) throw std::runtime_error("[FileIO::readHeader]: " + FileIO::getErrMsg(EMPTY_HEADER));
+  if (i_start == i_end) throw std::runtime_error(FILE_IO_fun_ + FileIO::getErrMsg(EMPTY_HEADER));
 
   long_t header_len;
   this->fid.seekg(-sizeof(header_len), this->fid.end);
   i_end = this->fid.tellg();
   this->fid.read(reinterpret_cast<char *>(&header_len), sizeof(header_len));
-  if (header_len < 0) throw std::runtime_error("[FileIO::readHeader]: " + FileIO::getErrMsg(CORRUPTED_HEADER));
+  if (header_len < 0) throw std::runtime_error(FILE_IO_fun_ + FileIO::getErrMsg(CORRUPTED_HEADER));
 
   this->fid.seekg(-header_len, this->fid.end);
   this->header_start = this->fid.tellg();
@@ -217,7 +269,7 @@ void FileIO::readHeader()
     long_t len;
     char *name_i;
     this->fid.read(reinterpret_cast<char *>(&len), sizeof(len));
-    if (len < 0) throw std::runtime_error("[FileIO::readHeader]: " + FileIO::getErrMsg(CORRUPTED_HEADER));
+    if (len < 0) throw std::runtime_error(FILE_IO_fun_ + FileIO::getErrMsg(CORRUPTED_HEADER));
     name_i = new char[len+1];
     this->fid.read(reinterpret_cast<char *>(name_i), len);
     name_i[len] = '\0';
@@ -251,7 +303,9 @@ std::string FileIO::getOpenModeName() const
 
 std::string FileIO::getFullTypeName(enum Type type, enum ScalarType sc_type)
 {
-  return getTypeName(type) + "<" + getScalarTypeName(sc_type) + ">";
+  std::string sc_t = getScalarTypeName(sc_type);
+  if (sc_t.empty()) return getTypeName(type);
+  else return getTypeName(type) + "<" + sc_t + ">";
 }
 
 std::string FileIO::getTypeName(enum Type type)
