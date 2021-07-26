@@ -64,7 +64,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "optimize_gmp_test_node");
 
   int case_ = 1;
-  if (argc > 0) case_ = atoi(argv[1]);
+  if (argc > 1) case_ = atoi(argv[1]);
 
   std::string in_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/data/constr_opt_pos_test_train_data.bin";
   std::string out_filename = ros::package::getPath(PROJECT_NAME_) + "/src/optimization/constr_opt/data/results.bin";

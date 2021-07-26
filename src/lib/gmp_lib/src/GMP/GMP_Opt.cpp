@@ -2,6 +2,8 @@
 
 #include <osqp_lib/quadprog.h>
 
+#include <thread>
+
 namespace as64_
 {
 
@@ -164,10 +166,25 @@ namespace gmp_
     // A = sparse(A);
 
     // solve optimization problem
+
     osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq);
 
     if (solution.success) this->gmp->W = this->gmp->getInvScaling()*solution.x.t();
     else this->exit_msg = solution.exit_msg;
+
+    /*
+    int n_dofs = f.n_cols;
+    std::vector<std::thread> thr(n_dofs);
+    for (int i=0; i<n_dofs; i++)
+    {
+      thr[i] = std::thread( [&H,&f, &A,&lb,&ub, &Aeq,&beq, i]()
+      {
+        osqp_::QuadProgSolution solution = osqp_::quadprog(H,f.col(i), A,lb.col(i),ub.col(i), Aeq,beq.col(i));
+      });
+
+    }
+    for (int i=0; i<n_dofs; i++) thr[i].join();
+    */
 
     return solution.success;
   }

@@ -4,6 +4,8 @@ install/deps/eigen3
 .catkin_workspace
 .idea/
 
+.vscode/
+src/.vscode/
 
 ##---------------------------------------------------
 ## matlab
