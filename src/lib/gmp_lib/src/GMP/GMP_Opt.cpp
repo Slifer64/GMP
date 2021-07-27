@@ -45,13 +45,13 @@ namespace gmp_
     this->w_a = accel_obj_w;
   }
 
-  bool GMP_Opt::optimize(unsigned num_points)
+  GMP_Opt::SolutionStatus GMP_Opt::optimize(unsigned num_points)
   {
     arma::rowvec x_data = arma::linspace<arma::rowvec>(0,1, num_points);
-    this->optimize(x_data);
+    return this->optimize(x_data);
   }
 
-  bool GMP_Opt::optimize(const arma::rowvec &x_data)
+  GMP_Opt::SolutionStatus GMP_Opt::optimize(const arma::rowvec &x_data)
   {
     int n_ker = this->gmp->numOfKernels();
     int n_dof = this->gmp->numOfDoFs();
@@ -167,10 +167,18 @@ namespace gmp_
 
     // solve optimization problem
 
-    osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq);
+    osqp_::QuadProgOptions options;
+    options.time_limit = 0.05;
+    options.max_iters = 1500;
+    options.polish = false;
+    options.verbose = false;
+    options.warm_start = true;
 
-    if (solution.success) this->gmp->W = this->gmp->getInvScaling()*solution.x.t();
-    else this->exit_msg = solution.exit_msg;
+    osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq, options);
+
+    if (solution.status == osqp_::OPTIMAL || solution.status == osqp_::SUBOPTIMAL) 
+      this->gmp->W = this->gmp->getInvScaling()*solution.x.t();
+    this->exit_msg = solution.exit_msg;
 
     /*
     int n_dofs = f.n_cols;
@@ -186,7 +194,9 @@ namespace gmp_
     for (int i=0; i<n_dofs; i++) thr[i].join();
     */
 
-    return solution.success;
+    if (solution.status == osqp_::OPTIMAL) return GMP_Opt::OPTIMAL;
+    else if (solution.status == osqp_::SUBOPTIMAL) return GMP_Opt::SUBOPTIMAL;
+    else /*if (solution.status == osqp_::FAILED)*/ return GMP_Opt::FAILED;
   }
 
   void GMP_Opt::setMotionDuration(double tau)

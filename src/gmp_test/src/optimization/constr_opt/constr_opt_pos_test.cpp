@@ -272,9 +272,11 @@ void getOptGMPTrajectory(gmp_::GMP::Ptr gmp, double tau, const arma::vec &y0, co
 
   // gmp_opt.optimize(100);
   Timer::tic();
-  gmp_opt.optimize( arma::linspace<arma::rowvec>(0,1, 100) );
+  gmp_::GMP_Opt::SolutionStatus status = gmp_opt.optimize( arma::linspace<arma::rowvec>(0,1, 100) );
   std::cout << "Optimization finished: "; Timer::toc();
-  std::cout << gmp_opt.getExitMsg() << "\n";
+  if (status == gmp_::GMP_Opt::OPTIMAL) PRINT_INFO_MSG( gmp_opt.getExitMsg() + "\n" );
+  else if (status == gmp_::GMP_Opt::SUBOPTIMAL) PRINT_WARNING_MSG( gmp_opt.getExitMsg() + "\n" );
+  else /*if (status == gmp_::GMP_Opt::FAILED)*/ PRINT_ERROR_MSG( gmp_opt.getExitMsg() + "\n" );
 
   getGMPTrajectory(gmp2, tau, y0, yg, Time, P_data, dP_data, ddP_data);
 

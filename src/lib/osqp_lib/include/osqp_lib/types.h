@@ -175,6 +175,37 @@ typedef struct {
 # endif // ifdef PROFILING
 } OSQPSettings;
 
+/**
+ * Define linsys_solver prototype structure
+ *
+ * NB: The details are defined when the linear solver is initialized depending
+ *      on the choice
+ */
+struct linsys_solver {
+  enum linsys_solver_type type;                 ///< linear system solver type functions
+  c_int (*solve)(LinSysSolver *self,
+                 c_float      *b);              ///< solve linear system
+
+# ifndef EMBEDDED
+  void (*free)(LinSysSolver *self);             ///< free linear system solver (only in desktop version)
+# endif // ifndef EMBEDDED
+
+# if EMBEDDED != 1
+  c_int (*update_matrices)(LinSysSolver *s,
+                           const csc *P,            ///< update matrices P
+                           const csc *A);           //   and A in the solver
+
+  c_int (*update_rho_vec)(LinSysSolver  *s,
+                          const c_float *rho_vec);  ///< Update rho_vec
+# endif // if EMBEDDED != 1
+
+# ifndef EMBEDDED
+  c_int nthreads; ///< number of threads active
+# endif // ifndef EMBEDDED
+};
+
+
+#include <stdio.h>
 
 /**
  * OSQP Workspace
@@ -286,37 +317,46 @@ typedef struct {
   c_int summary_printed; ///< Has last summary been printed? (true/false)
 # endif // ifdef PRINTING
 
+  void printVector(const c_float *data, c_int n, const char *s=NULL) const
+  {
+    if (s) printf("%s: ", s);
+    for (int i=0; i<n; i++) printf("%.3f ", data[i]);
+    printf("\n");
+  }
+
+  void printVector(const c_int *data, c_int n, const char *s=NULL) const
+  {
+    if (s) printf("%s: ", s);
+    for (int i=0; i<n; i++) printf("%lld ", data[i]);
+    printf("\n");
+  }
+
+  void print() const
+  {
+    c_int n = data->n;
+    c_int m = data->m;
+
+    printf("==> n : %lld\n", n);
+    printf("==> m : %lld\n", m);
+
+    printf("pol->n_low: %lld\n", pol->n_low);
+    printf("pol->n_upp: %lld\n", pol->n_upp);
+
+    printf("linsys_solver->nthreads: %lld\n", this->linsys_solver->nthreads);
+
+    // printVector(rho_vec, m, "==> rho_vec");
+    // printVector(rho_inv_vec, m, "==> rho_inv_vec");
+    // printVector(x, n, "==> x");
+    // printVector(y, m, "==> y");
+    // printVector(z, m, "==> z");
+    // printVector(xz_tilde, n+m, "==> xz_tilde");
+
+    // printVector(constr_type, m, "==> constr_type");
+  }
+
 } OSQPWorkspace;
 
 
-/**
- * Define linsys_solver prototype structure
- *
- * NB: The details are defined when the linear solver is initialized depending
- *      on the choice
- */
-struct linsys_solver {
-  enum linsys_solver_type type;                 ///< linear system solver type functions
-  c_int (*solve)(LinSysSolver *self,
-                 c_float      *b);              ///< solve linear system
-
-# ifndef EMBEDDED
-  void (*free)(LinSysSolver *self);             ///< free linear system solver (only in desktop version)
-# endif // ifndef EMBEDDED
-
-# if EMBEDDED != 1
-  c_int (*update_matrices)(LinSysSolver *s,
-                           const csc *P,            ///< update matrices P
-                           const csc *A);           //   and A in the solver
-
-  c_int (*update_rho_vec)(LinSysSolver  *s,
-                          const c_float *rho_vec);  ///< Update rho_vec
-# endif // if EMBEDDED != 1
-
-# ifndef EMBEDDED
-  c_int nthreads; ///< number of threads active
-# endif // ifndef EMBEDDED
-};
 
 
 # ifdef __cplusplus

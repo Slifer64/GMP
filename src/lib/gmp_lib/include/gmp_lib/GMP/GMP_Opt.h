@@ -16,6 +16,13 @@ class GMP_Opt
 {
 public:
 
+  enum SolutionStatus
+  {
+    OPTIMAL = 0,
+    SUBOPTIMAL,
+    FAILED
+  };
+
   /** GMP constructor.
    * @param[in] gmp: n_DoF dmp.
    */
@@ -29,11 +36,11 @@ public:
    * @param[in] pos_constr: Vector of @GMPConstr position constraints. For no constraints pass '[]'.
    * @param[in] vel_constr: Vector of @GMPConstr velocity constraints. For no constraints pass '[]'.
    * @param[in] accel_constr: Vector of @GMPConstr acceleration constraints. For no constraints pass '[]'.
-   * @param[out] success: true if minimum found, false otherwise.
+   * @return: enum of type @GMP_Opt::SolutionStatus.
    */
-  bool optimize(unsigned num_points = 200);
+  GMP_Opt::SolutionStatus optimize(unsigned num_points = 200);
 
-  bool optimize(const arma::rowvec &x_data);
+  GMP_Opt::SolutionStatus optimize(const arma::rowvec &x_data);
 
   void setMotionDuration(double tau);
 
