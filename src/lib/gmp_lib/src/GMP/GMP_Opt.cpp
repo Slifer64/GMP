@@ -31,18 +31,40 @@ namespace gmp_
 
       this->tau = 8;
 
-      this->setOptions(0.1,1,0, 1,1,1);
+      // set optimization options
+      options.opt_pos = false;
+      options.opt_vel = true;
+      options.opt_accel = false;
+
+      options.w_p = 1.0;
+      options.w_v = 1.0;
+      options.w_a = 1.0;
+
+      options.max_iters = 2000;
+      options.warm_start = true;
+      options.polish = false;
+      options.time_limit = 0;
+      options.verbose = false;
   }
 
-  void GMP_Opt::setOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w)
+  void GMP_Opt::setProblemOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w)
   {
-    this->opt_pos = opt_pos;
-    this->opt_vel = opt_vel;
-    this->opt_accel = opt_accel;
+    options.opt_pos = opt_pos;
+    options.opt_vel = opt_vel;
+    options.opt_accel = opt_accel;
 
-    this->w_p = pos_obj_w;
-    this->w_v = vel_obj_w;
-    this->w_a = accel_obj_w;
+    options.w_p = pos_obj_w;
+    options.w_v = vel_obj_w;
+    options.w_a = accel_obj_w;
+  }
+
+  void GMP_Opt::setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool verbose)
+  {
+    options.max_iters = max_iters;
+    options.time_limit = time_limit;
+    options.warm_start = warm_start;
+    options.polish = polish;
+    options.verbose = verbose;
   }
 
   GMP_Opt::SolutionStatus GMP_Opt::optimize(unsigned num_points)
@@ -69,7 +91,7 @@ namespace gmp_
     arma::mat f = arma::mat().zeros(n_ker, n_dof);
     arma::vec phi;
 
-    if (this->opt_pos)
+    if (options.opt_pos)
     {
         arma::mat y_offset = - this->gmp->getY0() + this->gmp->getScaling()*this->gmp->getY0d();
         arma::mat H1 = arma::mat().zeros(n_ker, n_ker);
@@ -80,11 +102,11 @@ namespace gmp_
           H1 = H1 + phi*phi.t();
           f1 = f1 - phi*(this->gmp->getYd(x_data(i)) + y_offset).t();
         }
-        H = H + this->w_p*H1;
-        f = f + this->w_p*f1;
+        H = H + options.w_p*H1;
+        f = f + options.w_p*f1;
     }
 
-    if (this->opt_vel)
+    if (options.opt_vel)
     {
         arma::mat H2 = arma::mat().zeros(n_ker, n_ker);
         arma::mat f2 = arma::mat().zeros(n_ker, n_dof);
@@ -94,11 +116,11 @@ namespace gmp_
           H2 = H2 + phi*phi.t();
           f2 = f2 - phi*this->gmp->getYdDot(x_data(i), x_dot).t();
         }
-        H = H + this->w_v*H2;
-        f = f + this->w_v*f2;
+        H = H + options.w_v*H2;
+        f = f + options.w_v*f2;
     }
 
-    if (this->opt_accel)
+    if (options.opt_accel)
     {
         arma::mat H3 = arma::mat().zeros(n_ker, n_ker);
         arma::mat f3 = arma::mat().zeros(n_ker, n_dof);
@@ -108,8 +130,8 @@ namespace gmp_
           H3 = H3 + phi*phi.t();
           f3 = f3 - phi*this->gmp->getYdDDot(x_data(i), x_dot, x_ddot).t();
         }
-        H = H + this->w_a*H3;
-        f = f + this->w_a*f3;
+        H = H + options.w_a*H3;
+        f = f + options.w_a*f3;
     }
 
     // inequality constraints
@@ -167,14 +189,14 @@ namespace gmp_
 
     // solve optimization problem
 
-    osqp_::QuadProgOptions options;
-    options.time_limit = 0.05;
-    options.max_iters = 1500;
-    options.polish = false;
-    options.verbose = false;
-    options.warm_start = true;
+    osqp_::QuadProgOptions qp_options;
+    qp_options.time_limit = options.time_limit;
+    qp_options.max_iters = options.max_iters;
+    qp_options.polish = options.polish;
+    qp_options.verbose = options.verbose;
+    qp_options.warm_start = options.warm_start;
 
-    osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq, options);
+    osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq, qp_options);
 
     if (solution.status == osqp_::OPTIMAL || solution.status == osqp_::SUBOPTIMAL) 
       this->gmp->W = this->gmp->getInvScaling()*solution.x.t();

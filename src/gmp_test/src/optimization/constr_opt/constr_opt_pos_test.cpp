@@ -235,7 +235,8 @@ void getOptGMPTrajectory(gmp_::GMP::Ptr gmp, double tau, const arma::vec &y0, co
   //Timer::tic();
 
   gmp_::GMP_Opt gmp_opt(gmp2.get());
-  gmp_opt.setOptions(opt_pos, opt_vel, false, 1, 1, 0.1);
+  gmp_opt.setProblemOptions(opt_pos, opt_vel, false, 1, 1, 0.1);
+  gmp_opt.setOptimizationOptions(2000, 0.05, true, false, false);
   gmp_opt.setMotionDuration(tau);
 
   int n_points = 100;

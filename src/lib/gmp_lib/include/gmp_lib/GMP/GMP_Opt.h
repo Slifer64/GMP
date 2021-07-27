@@ -16,6 +16,23 @@ class GMP_Opt
 {
 public:
 
+  typedef struct
+  {
+    bool opt_pos; ///< flag indicating to optimize position
+    bool opt_vel; ///< flag indicating to optimize velocity
+    bool opt_accel; ///< flag indicating to optimize acceleration
+
+    double w_p; ///< position objective weight
+    double w_v; ///< velocity objective weight
+    double w_a; ///< acceleration objective weight
+
+    long max_iters;
+    bool warm_start;
+    bool polish;
+    double time_limit;
+    bool verbose;
+  } Options;
+
   enum SolutionStatus
   {
     OPTIMAL = 0,
@@ -28,7 +45,9 @@ public:
    */
   GMP_Opt(gmp_::GMP *gmp);
 
-  void setOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w);
+  void setProblemOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w);
+
+  void setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool verbose = false);
 
   /** Trajectory optimization.
    * @param[in] num_points: Number of discreet points to use in the objective function.
@@ -60,20 +79,14 @@ public:
 
   std::string getExitMsg() const;
 
+  Options options;
+
 private:
 
   //ex_flag_map; ///< maps the exit flag value to the msg describing the exit flag
   std::string exit_msg;
 
   gmp_::GMP *gmp; ///< n_DoF GMP pointer
-
-  bool opt_pos; ///< flag indicating to optimize position
-  bool opt_vel; ///< flag indicating to optimize velocity
-  bool opt_accel; ///< flag indicating to optimize acceleration
-
-  double w_p; ///< position objective weight
-  double w_v; ///< velocity objective weight
-  double w_a; ///< acceleration objective weight
 
   double tau; ///< motion duration
 

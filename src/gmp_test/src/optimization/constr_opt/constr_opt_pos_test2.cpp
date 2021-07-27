@@ -121,7 +121,7 @@ int main(int argc, char **argv)
   Timer::tic();
 
   gmp_::GMP_Opt gmp_opt(gmp.get());
-  gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
+  gmp_opt.setProblemOptions(true, true, false, 0.1, 1, 0.1);
   gmp_opt.setMotionDuration(tau);
   gmp_opt.setPosConstr(x_pos_lim, pos_lb, pos_ub, xeq_pos, pos_eq);
   gmp_opt.setVelConstr(x_vel_lim, vel_lb, vel_ub, xeq_vel, vel_eq);
