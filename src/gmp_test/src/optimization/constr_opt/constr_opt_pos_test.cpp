@@ -149,9 +149,9 @@ int main(int argc, char **argv)
   getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true, Time, P_data, dP_data, ddP_data);
   Data(Time, P_data, dP_data, ddP_data, "-", {0, 1, 0}, "opt-vel", true, true).write(fid, "4_");
 
-  // --------- Optimized DMP -> POS -----------
-  getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false, Time, P_data, dP_data, ddP_data);
-  Data(Time, P_data, dP_data, ddP_data, "-", {0.85, 0.33, 0.1}, "opt-pos", true, true).write(fid, "5_");
+  // // --------- Optimized DMP -> POS -----------
+  // getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false, Time, P_data, dP_data, ddP_data);
+  // Data(Time, P_data, dP_data, ddP_data, "-", {0.85, 0.33, 0.1}, "opt-pos", true, true).write(fid, "5_");
 
 
   fid.write("pos_lim", pos_lim);
@@ -233,10 +233,10 @@ void getOptGMPTrajectory(gmp_::GMP::Ptr gmp, double tau, const arma::vec &y0, co
   gmp2->setGoal(yg);
 
   //Timer::tic();
-
+ 
   gmp_::GMP_Opt gmp_opt(gmp2.get());
   gmp_opt.setProblemOptions(opt_pos, opt_vel, false, 1, 1, 0.1);
-  gmp_opt.setOptimizationOptions(2000, 0.05, true, false, false);
+  gmp_opt.setOptimizationOptions(2000, 0.035, true, true, false);
   gmp_opt.setMotionDuration(tau);
 
   int n_points = 100;

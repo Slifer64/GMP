@@ -11,7 +11,7 @@ data{1} = readData(fid, '1_');
 data{2} = readData(fid, '2_');
 data{3} = readData(fid, '3_');
 data{4} = readData(fid, '4_');
-data{5} = readData(fid, '5_');
+% data{5} = readData(fid, '5_');
 
 pos_lim = fid.read('pos_lim');
 vel_lim = fid.read('vel_lim');

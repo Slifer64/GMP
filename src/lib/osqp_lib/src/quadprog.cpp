@@ -10,7 +10,7 @@ namespace osqp_
 template<typename T>
 T *vector_deepCopy(const T *src, c_int n)
 {
-  return const_cast<T *>(src);
+  // return const_cast<T *>(src);
 
   T *dest = (T *)c_malloc(n*sizeof(T));
   memcpy( (void *)dest, (void *)src, sizeof(T)*n);
@@ -24,35 +24,32 @@ csc *csc_deepCopy(const csc *obj)
 
 OSQPPolish *OSQPPolish_deepCopy(const OSQPPolish *obj, c_int n, c_int m)
 {
-  return const_cast<OSQPPolish *>(obj);
+  // return const_cast<OSQPPolish *>(obj);
   
   OSQPPolish *cp = (OSQPPolish *)c_malloc(sizeof(OSQPPolish));
 
   // make shallow copy first
-  *cp = *obj;
+  // *cp = *obj;
 
-  std::cerr << "Ok 12\n";
+  cp->n_low = obj->n_low;
+  cp->n_upp = obj->n_upp;
+
+  cp->obj_val = obj->obj_val;
+  cp->pri_res = obj->pri_res;
+  cp->dua_res = obj->dua_res;
 
   // then make deepCopy for the required attributes
+
   // cp->Ared = csc_deepCopy(obj->Ared);
 
-  std::cerr << "Ok 13\n";
-
-  std::cerr << "n_low = " << obj->n_low << "\n";
-  std::cerr << "n_upp = " << obj->n_upp << "\n";
-
-  cp->A_to_Alow = vector_deepCopy(obj->A_to_Alow, obj->n_low);
-  cp->A_to_Aupp = vector_deepCopy(obj->A_to_Aupp, obj->n_upp);
-  cp->Alow_to_A = vector_deepCopy(obj->Alow_to_A, obj->n_low);
-  cp->Aupp_to_A = vector_deepCopy(obj->Aupp_to_A, obj->n_upp);
-
-  std::cerr << "Ok 30\n";
+  cp->A_to_Alow = vector_deepCopy(obj->A_to_Alow, m);
+  cp->A_to_Aupp = vector_deepCopy(obj->A_to_Aupp, m);
+  cp->Alow_to_A = vector_deepCopy(obj->Alow_to_A, m);
+  cp->Aupp_to_A = vector_deepCopy(obj->Aupp_to_A, m);
 
   cp->x = vector_deepCopy(obj->x, n);
   cp->y = vector_deepCopy(obj->y, m);
   cp->z = vector_deepCopy(obj->z, m);
-
-  std::cerr << "Ok 35\n";
 
   return cp;
 }
@@ -70,7 +67,7 @@ LinSysSolver *LinSysSolver_deepCopy(const LinSysSolver *obj)
 
 OSQPTimer *OSQPTimer_deepCopy(const OSQPTimer *obj)
 {
-  return const_cast<OSQPTimer *>(obj);
+  // return const_cast<OSQPTimer *>(obj);
 
   OSQPTimer *cp = (OSQPTimer *)c_malloc(sizeof(OSQPTimer));
 
@@ -100,14 +97,19 @@ OSQPData *OSQPData_deepCopy(const OSQPData *obj)
 
 OSQPSettings *OSQPSettings_deepCopy(const OSQPSettings *obj)
 {
-  return const_cast<OSQPSettings *>(obj);
+  //return const_cast<OSQPSettings *>(obj);
 
-  return copy_settings(obj);
+  // return copy_settings(obj);
+
+  OSQPSettings *cp = (OSQPSettings *)c_malloc(sizeof(OSQPSettings));
+  *cp = *obj;
+
+  return cp;
 }
 
 OSQPScaling *OSQPScaling_deepCopy(const OSQPScaling *obj, c_int n, c_int m)
 {
-  return const_cast<OSQPScaling *>(obj);
+  // return const_cast<OSQPScaling *>(obj);
 
   OSQPScaling *cp = (OSQPScaling *)c_malloc(sizeof(OSQPScaling));
 
@@ -125,7 +127,7 @@ OSQPScaling *OSQPScaling_deepCopy(const OSQPScaling *obj, c_int n, c_int m)
 
 OSQPSolution *OSQPSolution_deepCopy(const OSQPSolution *obj, c_int n, c_int m)
 {
-  return const_cast<OSQPSolution *>(obj);
+  // return const_cast<OSQPSolution *>(obj);
 
   OSQPSolution *cp = (OSQPSolution *)c_malloc(sizeof(OSQPSolution));
 
@@ -138,10 +140,9 @@ OSQPSolution *OSQPSolution_deepCopy(const OSQPSolution *obj, c_int n, c_int m)
 
 OSQPInfo *OSQPInfo_deepCopy(const OSQPInfo *obj)
 {
-  return const_cast<OSQPInfo *>(obj);
+  // return const_cast<OSQPInfo *>(obj);
 
   OSQPInfo *cp = (OSQPInfo *)c_malloc(sizeof(OSQPInfo));
-
   *cp = *obj;
 
   return cp;
@@ -154,22 +155,18 @@ OSQPWorkspace *OSQPWorkspace_deepCopy(const OSQPWorkspace *work)
 
   OSQPWorkspace *cp = (OSQPWorkspace *)c_malloc(sizeof(OSQPWorkspace));
 
-  *cp = *work;
+  // *cp = *work;
 
   cp->data = OSQPData_deepCopy(work->data);
 
   c_int n = cp->data->n;
   c_int m = cp->data->m;
 
-  cp->linsys_solver = LinSysSolver_deepCopy(work->linsys_solver);
-
-  return cp;
+  // cp->linsys_solver = LinSysSolver_deepCopy(work->linsys_solver);
+  cp->linsys_solver = work->linsys_solver;
 
   # ifndef EMBEDDED
-    cp->pol = OSQPPolish_deepCopy(work->pol, n, m);
-    // std::cerr << "Pol 1\n";
-    // cp->pol = (OSQPPolish *)c_malloc(sizeof(OSQPPolish));
-    // std::cerr << "Pol 3\n";
+    if (work->settings->polish) cp->pol = OSQPPolish_deepCopy(work->pol, n, m);
   # endif // ifndef EMBEDDED
 
   // Vector used to store a vectorized rho parameter
@@ -209,7 +206,6 @@ OSQPWorkspace *OSQPWorkspace_deepCopy(const OSQPWorkspace *work)
   cp->D_temp = vector_deepCopy(work->D_temp, n); // temporary primal variable scaling vectors
   cp->D_temp_A = vector_deepCopy(work->D_temp_A, n); // temporary primal variable scaling vectors storing norms of A columns
   cp->E_temp = vector_deepCopy(work->E_temp, m); // temporary constraints scaling vectors storing norms of A' columns
-
 
   cp->settings = OSQPSettings_deepCopy(work->settings); // problem settings
   cp->scaling = OSQPScaling_deepCopy(work->scaling, n, m); // scaling vectors
@@ -279,6 +275,37 @@ void printQSQPSettings(const OSQPSettings *settings)
   # endif // ifdef PROFILING
 }
 
+void printQSQPInfo(const OSQPWorkspace *work)
+{
+  // OSQPPolish *pol = work->pol;
+  // std::cout << "#########  OSQPPolish  #########\n";
+  // std::cout << "Ared: " << pol->Ared << "\n"
+  //           << "n_low: " << pol->n_low << "\n"
+  //           << "n_upp: " << pol->n_upp << "\n"
+  //           << "A_to_Alow: " << pol->A_to_Alow << "\n"
+  //           << "A_to_Aupp: " << pol->A_to_Aupp << "\n"
+  //           << "Alow_to_A: " << pol->Alow_to_A << "\n"
+  //           << "Aupp_to_A: " << pol->Aupp_to_A << "\n"
+  //           << "x: " << pol->x << "\n"
+  //           << "y: " << pol->y << "\n"
+  //           << "z: " << pol->z << "\n"
+  //           << "obj_val: " << pol->obj_val << "\n"
+  //           << "pri_res: " << pol->pri_res << "\n"
+  //           << "dua_res: " << pol->dua_res << "\n";
+  // std::cout << "################################\n";
+
+  // LinSysSolver *solver = work->linsys_solver;
+  // std::cout << "#########  LinSysSolver  #########\n";
+  // std::cout << "type: " << solver->type << "\n"
+  //           << "solve: " << solver->solve << "\n"
+  //           << "free: " << solver->free << "\n"
+  //           << "update_matrices: " << solver->update_matrices << "\n"
+  //           << "update_rho_vec: " << solver->update_rho_vec << "\n"
+  //           << "nthreads: " << solver->nthreads << "\n";
+  // std::cout << "################################\n";
+}
+
+
 QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::mat &A, const arma::mat &lb, const arma::mat &ub,
               const arma::mat &Aeq, const arma::mat &beq, const QuadProgOptions &options)
 {
@@ -332,26 +359,114 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
   // Setup workspace
   OSQPWorkspace *work_temp;
   exitflag = osqp_setup(&work_temp, data, settings);
-  if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work->info->status + "\n");
-
-  work = OSQPWorkspace_deepCopy(work_temp);
-  // work = work_temp;
-
-  // std::cerr << "====================================\n";
-  // work->print();
-  // std::cerr << "====================================\n";
+  if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_temp->info->status + "\n");
 
   QuadProgSolution solution;
   solution.x.resize(n_var, n_dim);
   solution.status = QuadProgSolutionStatus::OPTIMAL;
   solution.exit_msg = "";
 
+
+  std::vector<OSQPWorkspace *> work_(n_dim);
+  work_[0] = work_temp;
+  for (int i=1; i<n_dim; i++)
+  {
+    work_[i] = OSQPWorkspace_deepCopy(work_temp);
+
+    exitflag = osqp_update_lin_cost(work_[i], &(f_.col(i)(0)));
+    if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
+
+    exitflag = osqp_update_bounds(work_[i], &(lb_.col(i)(0)), &(ub_.col(i)(0)));
+    if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
+  }
+  
+
+/*
+  std::vector<std::string> exit_msg(n_dim);
+  std::vector<arma::vec> x_solution(n_dim);
+  std::vector<QuadProgSolutionStatus> solution_status(n_dim);
+  std::vector<std::thread> thr(n_dim);
   for (int k=0; k<n_dim; k++)
   {
-//    // Setup workspace
-//    exitflag = osqp_setup(&work, data, settings);
-//    exitflag = osqp_warm_start_x(work, &(x0.col(k)(0)) );
+    OSQPWorkspace *work = work_[k];
+    thr[k] = std::thread( [work, k, &x_solution, &solution_status, &exit_msg]()
+    {
+      // Solve Problem
+      osqp_solve(work);
 
+      c_int n_var = work->data->n;
+
+      c_int sol_status = work->info->status_val;
+      if (sol_status == OSQP_SOLVED)
+      {
+        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": Function converged to the solution.";
+        solution_status[k] = QuadProgSolutionStatus::OPTIMAL;
+      }
+      else if (sol_status == OSQP_SOLVED_INACCURATE || sol_status == OSQP_MAX_ITER_REACHED || sol_status == OSQP_TIME_LIMIT_REACHED)
+      {
+        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+        solution_status[k] = QuadProgSolutionStatus::SUBOPTIMAL;
+      }
+      else
+      {
+        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+        solution_status[k] = QuadProgSolutionStatus::FAILED;
+      }
+      x_solution[k] = arma::mat(work->solution->x, n_var, 1, true);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+  }
+  for (int i=0; i<n_dim; i++) thr[i].join();
+
+  for (int i=0; i<n_dim; i++)
+  {
+    solution.x.col(i) = x_solution[i];
+    solution.exit_msg += exit_msg[i] + "\n";
+    if (solution_status[i] == QuadProgSolutionStatus::FAILED) 
+      solution.status = QuadProgSolutionStatus::FAILED;
+    if (solution.status != QuadProgSolutionStatus::FAILED && solution_status[i] == QuadProgSolutionStatus::SUBOPTIMAL)
+      solution.status = QuadProgSolutionStatus::SUBOPTIMAL;
+  }
+*/
+ 
+
+  for (int k=0; k<n_dim; k++)
+  {
+    OSQPWorkspace *work = work_[k];
+
+    // Solve Problem
+    osqp_solve(work);
+
+    c_int sol_status = work->info->status_val;
+    if (!solution.exit_msg.empty()) solution.exit_msg += "\n";
+    if (sol_status == OSQP_SOLVED)
+    {
+      solution.exit_msg += std::string("Dim ") + std::to_string(k+1) + ": Function converged to the solution.";
+      solution.x.col(k) = arma::mat(work->solution->x, n_var, 1, true);
+    }
+    else if (sol_status == OSQP_SOLVED_INACCURATE || sol_status == OSQP_MAX_ITER_REACHED || sol_status == OSQP_TIME_LIMIT_REACHED)
+    {
+      solution.exit_msg += std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+      solution.status = QuadProgSolutionStatus::SUBOPTIMAL;
+      solution.x.col(k) = arma::mat(work->solution->x, n_var, 1, true);
+    }
+    else
+    {
+      solution.exit_msg += std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+      solution.status = QuadProgSolutionStatus::FAILED;
+      // do not assign failed solution
+    }
+  }
+
+  for (int i=1; i<n_dim; i++) osqp_cleanup(work_[i]);
+
+
+/*
+  work = work_temp;
+  for (int k=0; k<n_dim; k++)
+  {
     // Solve Problem
     osqp_solve(work);
 
@@ -381,10 +496,10 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
       osqp_update_bounds(work, &(lb_.col(k + 1)(0)), &(ub_.col(k + 1)(0)));
     }
   }
+  osqp_cleanup(work);
+*/
 
-  // std::cerr << "====================================\n";
-  // work->print();
-  // std::cerr << "====================================\n";
+
 
   // Cleanup
   if (data)
@@ -394,9 +509,6 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
     c_free(data);
   }
   if (settings) c_free(settings);
-
-  osqp_cleanup(work);
-  // osqp_cleanup(work_temp);
 
   return solution;
 }
