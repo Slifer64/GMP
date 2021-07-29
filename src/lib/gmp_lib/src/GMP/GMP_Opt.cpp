@@ -58,12 +58,13 @@ namespace gmp_
     options.w_a = accel_obj_w;
   }
 
-  void GMP_Opt::setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool verbose)
+  void GMP_Opt::setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool parallel, bool verbose)
   {
     options.max_iters = max_iters;
     options.time_limit = time_limit;
     options.warm_start = warm_start;
     options.polish = polish;
+    options.parallel = parallel;
     options.verbose = verbose;
   }
 
@@ -195,6 +196,7 @@ namespace gmp_
     qp_options.polish = options.polish;
     qp_options.verbose = options.verbose;
     qp_options.warm_start = options.warm_start;
+    qp_options.parallel = options.parallel;
 
     osqp_::QuadProgSolution solution = osqp_::quadprog(H,f, A,lb,ub, Aeq,beq, qp_options);
 

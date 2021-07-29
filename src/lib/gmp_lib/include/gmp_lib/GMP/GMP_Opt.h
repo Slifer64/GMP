@@ -31,6 +31,7 @@ public:
     bool polish;
     double time_limit;
     bool verbose;
+    bool parallel;
   } Options;
 
   enum SolutionStatus
@@ -47,7 +48,7 @@ public:
 
   void setProblemOptions(bool opt_pos, bool opt_vel, bool opt_accel, double pos_obj_w, double vel_obj_w, double accel_obj_w);
 
-  void setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool verbose = false);
+  void setOptimizationOptions(long max_iters, double time_limit, bool warm_start, bool polish, bool parallel, bool verbose = false);
 
   /** Trajectory optimization.
    * @param[in] num_points: Number of discreet points to use in the objective function.

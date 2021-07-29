@@ -29,6 +29,7 @@ public:
     polish = false;
     time_limit = 0;
     verbose = false;
+    parallel = false;
   }
 
   int max_iters;
@@ -36,6 +37,7 @@ public:
   bool polish;
   double time_limit;
   bool verbose;
+  bool parallel;
 };
 
 typedef struct

@@ -356,82 +356,102 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
   data->l = &(lb_.col(0)(0));
   data->u = &(ub_.col(0)(0));
 
-  // Setup workspace
+  // ========  Setup workspace  =========
   OSQPWorkspace *work_temp;
-  exitflag = osqp_setup(&work_temp, data, settings);
-  if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_temp->info->status + "\n");
+  // exitflag = osqp_setup(&work_temp, data, settings);
+  // if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_temp->info->status + "\n");
 
   QuadProgSolution solution;
   solution.x.resize(n_var, n_dim);
   solution.status = QuadProgSolutionStatus::OPTIMAL;
   solution.exit_msg = "";
 
+  // std::vector<OSQPWorkspace *> work_(n_dim);
+  // work_[0] = work_temp;
+  // for (int i=1; i<n_dim; i++)
+  // {
+  //   work_[i] = OSQPWorkspace_deepCopy(work_temp);
 
-  std::vector<OSQPWorkspace *> work_(n_dim);
-  work_[0] = work_temp;
-  for (int i=1; i<n_dim; i++)
+  //   exitflag = osqp_update_lin_cost(work_[i], &(f_.col(i)(0)));
+  //   if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
+
+  //   exitflag = osqp_update_bounds(work_[i], &(lb_.col(i)(0)), &(ub_.col(i)(0)));
+  //   if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
+  // }
+
+  if (options.parallel)
   {
-    work_[i] = OSQPWorkspace_deepCopy(work_temp);
 
-    exitflag = osqp_update_lin_cost(work_[i], &(f_.col(i)(0)));
-    if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
-
-    exitflag = osqp_update_bounds(work_[i], &(lb_.col(i)(0)), &(ub_.col(i)(0)));
-    if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_[i]->info->status + "\n");
-  }
-  
-
-/*
-  std::vector<std::string> exit_msg(n_dim);
-  std::vector<arma::vec> x_solution(n_dim);
-  std::vector<QuadProgSolutionStatus> solution_status(n_dim);
-  std::vector<std::thread> thr(n_dim);
-  for (int k=0; k<n_dim; k++)
-  {
-    OSQPWorkspace *work = work_[k];
-    thr[k] = std::thread( [work, k, &x_solution, &solution_status, &exit_msg]()
+    std::vector<OSQPWorkspace *> work_(n_dim);
+    for (int i=0; i<n_dim; i++)
     {
-      // Solve Problem
-      osqp_solve(work);
+      data->q = &(f_.col(i)(0));
+      data->l = &(lb_.col(i)(0));
+      data->u = &(ub_.col(i)(0));
 
-      c_int n_var = work->data->n;
+      exitflag = osqp_setup(&work_temp, data, settings);
+      if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work_temp->info->status + "\n");
 
-      c_int sol_status = work->info->status_val;
-      if (sol_status == OSQP_SOLVED)
-      {
-        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": Function converged to the solution.";
-        solution_status[k] = QuadProgSolutionStatus::OPTIMAL;
-      }
-      else if (sol_status == OSQP_SOLVED_INACCURATE || sol_status == OSQP_MAX_ITER_REACHED || sol_status == OSQP_TIME_LIMIT_REACHED)
-      {
-        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
-        solution_status[k] = QuadProgSolutionStatus::SUBOPTIMAL;
-      }
-      else
-      {
-        exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
-        solution_status[k] = QuadProgSolutionStatus::FAILED;
-      }
-      x_solution[k] = arma::mat(work->solution->x, n_var, 1, true);
-    });
+      work_[i] = work_temp;
+    }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+    std::vector<std::string> exit_msg(n_dim);
+    std::vector<arma::vec> x_solution(n_dim);
+    std::vector<QuadProgSolutionStatus> solution_status(n_dim);
+    std::vector<std::thread> thr(n_dim);
+    for (int k=0; k<n_dim; k++)
+    {
+      OSQPWorkspace *work = work_[k];
+      thr[k] = std::thread( [work, k, &x_solution, &solution_status, &exit_msg]()
+      {
+        // Solve Problem
+        osqp_solve(work);
+
+        c_int n_var = work->data->n;
+
+        c_int sol_status = work->info->status_val;
+        if (sol_status == OSQP_SOLVED)
+        {
+          exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": Function converged to the solution.";
+          solution_status[k] = QuadProgSolutionStatus::OPTIMAL;
+        }
+        else if (sol_status == OSQP_SOLVED_INACCURATE || sol_status == OSQP_MAX_ITER_REACHED || sol_status == OSQP_TIME_LIMIT_REACHED)
+        {
+          exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+          solution_status[k] = QuadProgSolutionStatus::SUBOPTIMAL;
+        }
+        else
+        {
+          exit_msg[k] = std::string("Dim ") + std::to_string(k+1) + ": " + work->info->status;
+          solution_status[k] = QuadProgSolutionStatus::FAILED;
+        }
+        x_solution[k] = arma::mat(work->solution->x, n_var, 1, true);
+
+        osqp_cleanup(work);
+      });
+
+    }
+    for (int i=0; i<n_dim; i++) thr[i].join();
+
+    for (int i=0; i<n_dim; i++)
+    {
+      solution.x.col(i) = x_solution[i];
+      solution.exit_msg += exit_msg[i] + "\n";
+      if (solution_status[i] == QuadProgSolutionStatus::FAILED) 
+        solution.status = QuadProgSolutionStatus::FAILED;
+      if (solution.status != QuadProgSolutionStatus::FAILED && solution_status[i] == QuadProgSolutionStatus::SUBOPTIMAL)
+        solution.status = QuadProgSolutionStatus::SUBOPTIMAL;
+    }
 
   }
-  for (int i=0; i<n_dim; i++) thr[i].join();
-
-  for (int i=0; i<n_dim; i++)
+  else
   {
-    solution.x.col(i) = x_solution[i];
-    solution.exit_msg += exit_msg[i] + "\n";
-    if (solution_status[i] == QuadProgSolutionStatus::FAILED) 
-      solution.status = QuadProgSolutionStatus::FAILED;
-    if (solution.status != QuadProgSolutionStatus::FAILED && solution_status[i] == QuadProgSolutionStatus::SUBOPTIMAL)
-      solution.status = QuadProgSolutionStatus::SUBOPTIMAL;
+    
   }
-*/
  
 
+/*
   for (int k=0; k<n_dim; k++)
   {
     OSQPWorkspace *work = work_[k];
@@ -460,8 +480,8 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
     }
   }
 
-  for (int i=1; i<n_dim; i++) osqp_cleanup(work_[i]);
-
+  // for (int i=1; i<n_dim; i++) osqp_cleanup(work_[i]);
+*/
 
 /*
   work = work_temp;
@@ -498,7 +518,6 @@ QuadProgSolution quadprog(const arma::mat &H, const arma::mat &f, const arma::ma
   }
   osqp_cleanup(work);
 */
-
 
 
   // Cleanup
