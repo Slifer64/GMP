@@ -75,7 +75,7 @@ end
 disp('GMP simulation...');
 tic
 Qd0 = Qd_data(:,1);
-Q0 = Qd0; %math_.quatProd(rotm2quat(rotz(57))',Qd0);
+Q0 = Qd0; %gmp_.quatProd(rotm2quat(rotz(57))',Qd0);
 Qgd = Qd_data(:,end);
 ks = diag([1.2 1.3 1.1]);
 kt = 2;
@@ -105,7 +105,7 @@ for j=1:size(Pqd_data,2)
 end
 
 for j=1:size(vRotd_data,2)-1
-    vRotd_data(:,j) = math_.quatLog(math_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
+    vRotd_data(:,j) = gmp_.quatLog(gmp_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
 end
 vRotd_data(:,j) = zeros(3,1);
 for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
@@ -233,7 +233,7 @@ while (true)
 %     Vd_dot = gmp_o.getVdDot(x, x_dot, x_ddot);
     [Qd, Vd, Vd_dot] = gmp_o.getRefTraj(x, x_dot, x_ddot);
     
-    rotAccel = Vd_dot + 5*(Vd-rotVel) + 20*math_.quatLog(math_.quatDiff(Qd,Q));
+    rotAccel = Vd_dot + 5*(Vd-rotVel) + 20*gmp_.quatLog(gmp_.quatDiff(Qd,Q));
     
     elaps_t = [elaps_t toc()*1000];
     

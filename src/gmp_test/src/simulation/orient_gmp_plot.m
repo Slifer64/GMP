@@ -2,7 +2,7 @@ clc;
 close all;
 clear;
 
-addpath('../../matlab/lib/io_lib/');
+addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 % ------------------------------------------
