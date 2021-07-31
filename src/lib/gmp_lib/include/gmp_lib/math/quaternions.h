@@ -26,6 +26,8 @@ arma::vec quatLog(const arma::vec &quat, double zero_tol=1e-16);
 
 arma::vec quatDiff(const arma::vec &quat1, const arma::vec &quat2);
 
+arma::vec quatLogDiff(const arma::vec &quat1, const arma::vec &quat2);
+
 // ===========================================================
 // ===========================================================
 

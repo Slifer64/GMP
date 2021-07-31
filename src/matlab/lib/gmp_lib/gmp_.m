@@ -175,15 +175,16 @@ classdef gmp_
             w = Q1(1);
             v = Q1(2:4);
             norm_v = norm(v);
-            eta = v / norm_v;
+            k = v / norm_v;
             s_th = norm_v;
             c_th = w;
             th = atan2(s_th, c_th);
-            Eta = eta*eta';
+            Pk = k*k';
+            I_Pk = eye(3,3) - Pk;
 
             JQq = zeros(4,3);
-            JQq(1,:) = -0.5 * s_th * eta';
-            JQq(2:4,:) = 0.5 * ( (eye(3,3) - Eta)*s_th/th + c_th*Eta );
+            JQq(1,:) = -0.5 * s_th * k';
+            JQq(2:4,:) = 0.5 * ( I_Pk*s_th/th + c_th*Pk );
 
         end
         

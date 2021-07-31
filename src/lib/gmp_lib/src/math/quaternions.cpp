@@ -176,6 +176,11 @@ arma::vec quatDiff(const arma::vec &quat1, const arma::vec &quat2)
   return quatD;
 }
 
+arma::vec quatLogDiff(const arma::vec &quat1, const arma::vec &quat2)
+{
+  return gmp_::quatLog(gmp_::quatDiff(quat1,quat2));
+}
+
 // ===========================================================
 // ===========================================================
 

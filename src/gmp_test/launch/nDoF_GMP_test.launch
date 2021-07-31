@@ -3,7 +3,7 @@
 <launch>
 
     <node pkg="gmp_test" type="nDoF_gmp_test" name="nDoF_gmp_test_node"
-          output="screen" cwd="node" required="true">
+          output="screen" cwd="node">
 
         <rosparam>
 

@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 
   arma::mat ks = arma::diagmat(spat_s);
   double kt = temp_s;
-  arma::vec e0 = ks*gmp_::quatLog(gmp_::quatDiff(Qgd,Qd0));
+  arma::vec e0 = ks*gmp_::quatLogDiff(Qgd,Qd0);
   arma::vec Qg = gmp_::quatProd(gmp_::quatExp(e0), Q0);
   double T = Timed(i_end) / kt;
   double dt = Ts;
@@ -117,8 +117,8 @@ int main(int argc, char** argv)
     gmp_::FileIO fid(results_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
     fid.write("Timed", Timed);
     fid.write("Qd_data", Qd_data);
-    fid.write("vRotd_data", vRotd_data);
-    fid.write("dvRotd_data", dvRotd_data);
+    // fid.write("vRotd_data", vRotd_data);
+    // fid.write("dvRotd_data", dvRotd_data);
     fid.write("Time", Time);
     fid.write("Q_data", Q_data);
     fid.write("vRot_data", vRot_data);

@@ -21,7 +21,7 @@ train_filename = 'data/orient_data.bin';
 scale_type = 'rot_wb'; % {"prop", "rot_min", "rot_wb"}
 wb_normal = [0; 0; 1]; % work-bench normal
 
-spat_s = [2; 3; 1.1]; % spatial scale
+spat_s = [1.2 1.3 1.1]; % spatial scale
 temp_s = 1.2; % temporal scale
 
 read_gmp_from_file = false;
@@ -52,19 +52,23 @@ if (read_from_file)
 else
     
     %% initialize and train GMP
-    train_method = 'LS';
-    N_kernels = 30;
-    kernels_std_scaling = 1;
     gmp_o = GMPo(N_kernels, kernels_std_scaling);
     tic
     offline_train_mse = gmp_o.train(train_method, Timed/Timed(end), Qd_data);
     offline_train_mse
     toc
 
-    % traj_sc = TrajScale_Prop(n_dof);
-    % traj_sc = TrajScale_Rot_min();
-    traj_sc = TrajScale_Rot_wb();
-    traj_sc.setWorkBenchNormal([0; 0; 1]);
+    if ( strcmpi(scale_type, 'prop') )
+       traj_sc = TrajScale_Prop(n_dof);
+    elseif ( strcmpi(scale_type, 'rot_min') )
+        traj_sc = TrajScale_Rot_min();
+    elseif ( strcmpi(scale_type, 'rot_wb') )
+        traj_sc = TrajScale_Rot_wb();
+        traj_sc.setWorkBenchNormal(wb_normal);
+    else
+        error(['Unsupported scale method ''' scale_type '''...']);
+    end
+    
     gmp_o.setScaleMethod(traj_sc);
     
 end
@@ -77,9 +81,9 @@ tic
 Qd0 = Qd_data(:,1);
 Q0 = Qd0; %gmp_.quatProd(rotm2quat(rotz(57))',Qd0);
 Qgd = Qd_data(:,end);
-ks = diag([1.2 1.3 1.1]);
-kt = 2;
-e0 = ks*gmp_.quatLog(gmp_.quatDiff(Qgd,Qd0));
+ks = diag(spat_s);
+kt = temp_s;
+e0 = ks*gmp_.quatLogDiff(Qgd,Qd0);
 Qg = gmp_.quatProd(gmp_.quatExp(e0), Q0);
 T = Timed(end) / kt;
 dt = Ts;
@@ -104,11 +108,14 @@ for j=1:size(Pqd_data,2)
     Qd_data(:,j) = GMPo.q2quat(Pqd_data(:,j), Q0);
 end
 
+dTime = diff(Timed);
+
 for j=1:size(vRotd_data,2)-1
-    vRotd_data(:,j) = gmp_.quatLog(gmp_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
+    vRotd_data(:,j) = gmp_.quatLogDiff(Qd_data(:,j+1),Qd_data(:,j)) / dTime(j);
 end
 vRotd_data(:,j) = zeros(3,1);
-for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
+
+for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:))./dTime 0]; end
 
 
 Pq_data = zeros(3, size(Q_data,2));
@@ -156,8 +163,6 @@ for i=1:4
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
    hold off;
 end
-
-return
 
 figure;
 vRot_labels = {'$\omega_x$','$\omega_y$', '$\omega_z$'};

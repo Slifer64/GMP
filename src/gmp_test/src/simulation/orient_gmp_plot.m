@@ -1,5 +1,5 @@
 clc;
-close all;
+% close all;
 clear;
 
 addpath('../../../matlab/lib/io_lib/');
@@ -11,8 +11,8 @@ fid = FileIO('data/orient_gmp_test_results.bin', FileIO.in);
 
 Timed = fid.read('Timed');
 Qd_data = fid.read('Qd_data');
-vRotd_data = fid.read('vRotd_data');
-dvRotd_data = fid.read('dvRotd_data');
+% vRotd_data = fid.read('vRotd_data');
+% dvRotd_data = fid.read('dvRotd_data');
 Time = fid.read('Time');
 Q_data = fid.read('Q_data');
 vRot_data = fid.read('vRot_data');
@@ -36,11 +36,15 @@ for j=1:size(Pqd_data,2)
     Qd_data(:,j) = GMPo.q2quat(Pqd_data(:,j), Q0);
 end
 
-% for j=1:size(vRotd_data,2)-1
-%     vRotd_data(:,j) = math_.quatLog(math_.quatDiff(Qd_data(:,j+1),Qd_data(:,j)))/Ts;
-% end
-% vRotd_data(:,j) = zeros(3,1);
-% for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:)) 0]/Ts; end
+dTime = diff(Timed);
+
+vRotd_data = zeros(3, length(Timed));
+for j=1:size(vRotd_data,2)-1
+    vRotd_data(:,j) = gmp_.quatLogDiff(Qd_data(:,j+1),Qd_data(:,j))/dTime(j);
+end
+
+dvRotd_data = zeros(3, length(Timed));
+for i=1:3, dvRotd_data(i,:)=[diff(vRotd_data(i,:))./dTime 0]; end
 
 
 Pq_data = zeros(3, size(Q_data,2));
@@ -88,8 +92,6 @@ for i=1:4
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
    hold off;
 end
-
-return
 
 figure;
 vRot_labels = {'$\omega_x$','$\omega_y$', '$\omega_z$'};
