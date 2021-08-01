@@ -121,17 +121,49 @@ classdef gmp_
         %  @return: Derivative of log.
         function qdot = rotVel_to_qLogDot(rotVel, Q1)
             
-            JqQ = gmp_.jacob_qLog_Q(Q1);
-            qdot = 0.5*JqQ * gmp_.quatProd([0; rotVel], Q1);
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                inv_Jn = eye(3,3);
+            else
+                w = Q1(1);
+                v = Q1(2:4);
+                norm_v = norm(v);
+                k = v / norm_v;
+                s_th2 = norm_v;
+                c_th2 = w;
+                th2 = atan2(s_th2, c_th2);
+                k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+
+                inv_Jn = k*k' + (eye(3,3) - k*k')*th2*c_th2/s_th2 - th2*k_cross;
+            end
+            qdot = inv_Jn * rotVel;
+            
+%             JqQ = gmp_.jacob_qLog_Q(Q1);
+%             qdot = 0.5*JqQ * gmp_.quatProd([0; rotVel], Q1);
 
         end
         
         
         function rotVel = qLogDot_to_rotVel(qdot, Q1)
             
-            JQq = gmp_.jacob_Q_qLog(Q1);
-            rotVel = 2 * gmp_.quatProd( JQq*qdot, gmp_.quatInv(Q1) );
-            rotVel = rotVel(2:4);
+            if ( (1-abs(Q1(1))) <= 1e-15)
+                Jn = eye(3,3);
+            else
+                w = Q1(1);
+                v = Q1(2:4);
+                norm_v = norm(v);
+                k = v / norm_v;
+                s_th2 = norm_v;
+                c_th2 = w;
+                th2 = atan2(s_th2, c_th2);
+                k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+                
+                Jn = k*k' + (eye(3,3) - k*k')*s_th2*c_th2/th2 + (s_th2^2/th2)*k_cross;
+            end
+            rotVel = Jn * qdot;
+
+%             JQq = gmp_.jacob_Q_qLog(Q1);
+%             rotVel = 2 * gmp_.quatProd( JQq*qdot, gmp_.quatInv(Q1) );
+%             rotVel = rotVel(2:4);
 
         end
         
@@ -176,15 +208,15 @@ classdef gmp_
             v = Q1(2:4);
             norm_v = norm(v);
             k = v / norm_v;
-            s_th = norm_v;
-            c_th = w;
-            th = atan2(s_th, c_th);
+            s_th2 = norm_v;
+            c_th2 = w;
+            th2 = atan2(s_th2, c_th2);
             Pk = k*k';
             I_Pk = eye(3,3) - Pk;
 
             JQq = zeros(4,3);
-            JQq(1,:) = -0.5 * s_th * k';
-            JQq(2:4,:) = 0.5 * ( I_Pk*s_th/th + c_th*Pk );
+            JQq(1,:) = -0.5 * s_th2 * k';
+            JQq(2:4,:) = 0.5 * ( I_Pk*s_th2/th2 + c_th2*Pk );
 
         end
         
@@ -202,14 +234,18 @@ classdef gmp_
             w = Q1(1);
             v = Q1(2:4);
             norm_v = norm(v);
-            eta = v / norm_v;
-            s_th = norm_v;
-            c_th = w;
-            th = atan2(s_th, c_th);
+            k = v / norm_v;
+            s_th2 = norm_v;
+            c_th2 = w;
+            th2 = atan2(s_th2, c_th2);
+            Pk = k*k';
+            I_Pk = eye(3,3) - Pk;
 
             JqQ = zeros(3,4);
-            JqQ(:,1) = 2*eta*(th*c_th - s_th)/s_th^2;
-            JqQ(:,2:4) = 2*eye(3,3)*th/s_th;
+            JqQ(:,1) = -2 * s_th2 * k;
+            JqQ(:,2:4) = 2 * ( I_Pk*th2/s_th2 + c_th2*Pk );
+%             JqQ(:,1) = 2*k*(th*c_th - s_th)/s_th^2;
+%             JqQ(:,2:4) = 2*eye(3,3)*th/s_th;
 
         end
        
@@ -247,7 +283,7 @@ classdef gmp_
         %  @param[in] Q1: The orientation w.r.t. the initial orientation.
         %  @return: Jacobian time derivative.
         function JQq_dot = jacobDot_Q_qLog(Q1, rotVel)
-            
+
             qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
 
             if ( (1-abs(Q1(1))) <= 1e-15)

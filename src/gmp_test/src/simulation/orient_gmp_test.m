@@ -237,7 +237,7 @@ while (true)
 %     Vd = gmp_o.getVd(x, x_dot);
 %     Vd_dot = gmp_o.getVdDot(x, x_dot, x_ddot);
     [Qd, Vd, Vd_dot] = gmp_o.getRefTraj(x, x_dot, x_ddot);
-    
+
     rotAccel = Vd_dot + 5*(Vd-rotVel) + 20*gmp_.quatLog(gmp_.quatDiff(Qd,Q));
     
     elaps_t = [elaps_t toc()*1000];
@@ -258,6 +258,10 @@ while (true)
     x = x + x_dot*dt;
     Q = gmp_.quatProd( gmp_.quatExp(rotVel*dt), Q);
     rotVel = rotVel + rotAccel*dt;  
+    
+    Q = Qd;
+    rotVel = Vd;
+    rotAccel = Vd_dot;
     
 end
 
