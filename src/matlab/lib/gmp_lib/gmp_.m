@@ -122,7 +122,8 @@ classdef gmp_
         function qdot = rotVel_to_qLogDot(rotVel, Q1)
             
             if ( (1-abs(Q1(1))) <= 1e-15)
-                inv_Jn = eye(3,3);
+                % inv_Jn = eye(3,3);
+                qdot = rotVel;
             else
                 w = Q1(1);
                 v = Q1(2:4);
@@ -131,11 +132,13 @@ classdef gmp_
                 s_th2 = norm_v;
                 c_th2 = w;
                 th2 = atan2(s_th2, c_th2);
-                k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
-
-                inv_Jn = k*k' + (eye(3,3) - k*k')*th2*c_th2/s_th2 - th2*k_cross;
+                % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+                % inv_Jn = k*k' + (eye(3,3) - k*k')*th2*c_th2/s_th2 - th2*k_cross;
+                Pk_rotVel = k*dot(k,rotVel); % project rotVel on k
+                qdot = Pk_rotVel + (rotVel - Pk_rotVel)*th2*c_th2/s_th2 - th2*cross(k,rotVel);
             end
-            qdot = inv_Jn * rotVel;
+
+            % qdot = inv_Jn * rotVel;
             
 %             JqQ = gmp_.jacob_qLog_Q(Q1);
 %             qdot = 0.5*JqQ * gmp_.quatProd([0; rotVel], Q1);
@@ -146,7 +149,8 @@ classdef gmp_
         function rotVel = qLogDot_to_rotVel(qdot, Q1)
             
             if ( (1-abs(Q1(1))) <= 1e-15)
-                Jn = eye(3,3);
+                % Jn = eye(3,3);
+                rotVel = qdot;
             else
                 w = Q1(1);
                 v = Q1(2:4);
@@ -155,11 +159,12 @@ classdef gmp_
                 s_th2 = norm_v;
                 c_th2 = w;
                 th2 = atan2(s_th2, c_th2);
-                k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
-                
-                Jn = k*k' + (eye(3,3) - k*k')*s_th2*c_th2/th2 + (s_th2^2/th2)*k_cross;
+                % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+                % Jn = k*k' + (eye(3,3) - k*k')*s_th2*c_th2/th2 + (s_th2^2/th2)*k_cross;
+                Pk_qdot = k*dot(k,qdot); % project rotVel on k
+                rotVel = Pk_qdot + (qdot - Pk_qdot)*s_th2*c_th2/th2 + (s_th2^2/th2)*cross(k,qdot);
             end
-            rotVel = Jn * qdot;
+            % rotVel = Jn * qdot;
 
 %             JQq = gmp_.jacob_Q_qLog(Q1);
 %             rotVel = 2 * gmp_.quatProd( JQq*qdot, gmp_.quatInv(Q1) );
@@ -244,8 +249,8 @@ classdef gmp_
             JqQ = zeros(3,4);
             JqQ(:,1) = -2 * s_th2 * k;
             JqQ(:,2:4) = 2 * ( I_Pk*th2/s_th2 + c_th2*Pk );
-%             JqQ(:,1) = 2*k*(th*c_th - s_th)/s_th^2;
-%             JqQ(:,2:4) = 2*eye(3,3)*th/s_th;
+%             JqQ(:,1) = 2*k*(th2*c_th2 - s_th2)/s_th2^2;
+%             JqQ(:,2:4) = 2*eye(3,3)*th2/s_th2;
 
         end
        
@@ -265,17 +270,22 @@ classdef gmp_
             w = Q1(1);
             v = Q1(2:4);
             norm_v = norm(v);
-            eta = v / norm_v;
-            s_th = norm_v;
-            c_th = w;
-            th = atan2(s_th, c_th);
-            Eta = eta*eta';
-            temp = (th*c_th-s_th)/s_th^2;
+            k = v / norm_v;
+            s_th2 = norm_v;
+            c_th2 = w;
+            th2 = atan2(s_th2, c_th2);
+            Pk = k*k';
+            I_Pk = eye(3,3) - Pk;
+            temp = (th2*c_th2-s_th2)/s_th2^2;
 
+%             JqQ_dot = zeros(3,4);
+%             JqQ_dot(:,1) = ((-th2/s_th2 - 2*c_th2*temp/s_th2)*Pk + (temp/th2)*(eye(3,3)-Pk))*qdot;
+%             JqQ_dot(:,2:4) = -temp*dot(k,qdot)*eye(3,3);
+            
             JqQ_dot = zeros(3,4);
-            JqQ_dot(:,1) = ((-th/s_th - 2*c_th*temp/s_th)*Eta + temp*(eye(3,3)-Eta)/th)*qdot;
-            JqQ_dot(:,2:4) = -temp*dot(eta,qdot)*eye(3,3);
-
+            JqQ_dot(:,1) = -(c_th2*Pk + (s_th2/th2)*I_Pk) * qdot;
+            JqQ_dot(:,2:4) = dot(k,qdot)*( -temp*I_Pk - s_th2*Pk ) + (c_th2/th2 - 1/s_th2)*( k*(qdot'*I_Pk) + (I_Pk*qdot)*k' );
+            
         end
         
         
@@ -294,18 +304,18 @@ classdef gmp_
             w = Q1(1);
             v = Q1(2:4);
             norm_v = norm(v);
-            eta = v / norm_v;
-            s_th = norm_v;
-            c_th = w;
-            th = atan2(s_th, c_th);
-            Eta = eta*eta';
-            I_eta = eye(3,3) - Eta;
-            temp = ((th*c_th-s_th)/th^2);
+            k = v / norm_v;
+            s_th2 = norm_v;
+            c_th2 = w;
+            th2 = atan2(s_th2, c_th2);
+            Pk = k*k';
+            I_Pk = eye(3,3) - Pk;
+            temp = ((th2*c_th2-s_th2)/th2^2);
 
             JQq_dot = zeros(4,3);
-            JQq_dot(1,:) = -0.25 * qdot' * (c_th*Eta + (s_th/th)*I_eta);
-            JQq_dot(2:4,:) = 0.25*dot(eta,qdot)*( temp*I_eta - s_th*Eta ) + 0.25*temp*( eta*(qdot'*I_eta) + (I_eta*qdot)*eta' );
-
+            JQq_dot(1,:) = -0.25 * qdot' * (c_th2*Pk + (s_th2/th2)*I_Pk);
+            JQq_dot(2:4,:) = 0.25*dot(k,qdot)*( temp*I_Pk - s_th2*Pk ) + 0.25*temp*( k*(qdot'*I_Pk) + (I_Pk*qdot)*k' );
+            
         end
         
     end
