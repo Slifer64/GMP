@@ -175,27 +175,95 @@ classdef gmp_
 
         function qddot = rotAccel_to_qLogDDot(rotAccel, rotVel, Q1)
             
-            rotVelQ = [0; rotVel];
-            rotAccelQ = [0; rotAccel];
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
+                qddot = rotAccel;
+                return;
+            end
 
-            J = gmp_.jacob_qLog_Q(Q1);
-            Jdot = gmp_.jacobDot_qLog_Q(Q1, rotVel);
-
-            qddot = 0.5 * (Jdot * gmp_.quatProd(rotVelQ, Q1) + J * gmp_.quatProd( rotAccelQ+0.5*gmp_.quatProd(rotVelQ,rotVelQ), Q1 ) );
+            v = Q1(2:4); % quaternion vector part
+            norm_v = norm(v);
+            k = v / norm_v; % axis of rotation
+            s_th = norm_v; % sin(theta/2)
+            c_th = w;      % cos(theta/2)
+            th = atan2(s_th, c_th); % theta/2
+            
+            th_cth_over_sth = th*c_th/s_th;
+            
+            Pk_rotVel = k*dot(k,rotVel); % projection of rotVel on k
+            rotVel_bot = rotVel - Pk_rotVel;
+            qdot = Pk_rotVel + rotVel_bot*th_cth_over_sth - th*cross(k,rotVel);
+            % qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+            
+            k_dot = 0.5*(qdot - dot(k,qdot)*k)/th;
+            th2_dot = 0.5*dot(k,qdot);
+            
+            invJnDot_rotVel = (1 - th_cth_over_sth)*(dot(k,rotVel)*k_dot + dot(k_dot,rotVel)*k) + ...
+                    -th*cross(k_dot,rotVel) - th2_dot*cross(k,rotVel) ...
+                    +( (s_th*c_th - th) / s_th^2 )*th2_dot*rotVel_bot;
+                
+            Pk_rotAccel = k*dot(k,rotAccel); % project rotAccel on k
+            invJn_rotAccel = Pk_rotAccel + (rotAccel - Pk_rotAccel)*th_cth_over_sth - th*cross(k,rotAccel);
+                
+            %invJn_rotAccel = gmp_.rotVel_to_qLogDot(rotAccel, Q1);
+            
+            qddot = invJn_rotAccel + invJnDot_rotVel;
+            
+%             rotVelQ = [0; rotVel];
+%             rotAccelQ = [0; rotAccel];
+% 
+%             J = gmp_.jacob_qLog_Q(Q1);
+%             Jdot = gmp_.jacobDot_qLog_Q(Q1, rotVel);
+% 
+%             qddot = 0.5 * (Jdot * gmp_.quatProd(rotVelQ, Q1) + J * gmp_.quatProd( rotAccelQ+0.5*gmp_.quatProd(rotVelQ,rotVelQ), Q1 ) );
 
         end
         
 
         function rotAccel = qLogDDot_to_rotAccel(qddot, rotVel, Q1)
 
-            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
-            invQ1 = gmp_.quatInv(Q1);
-            J = gmp_.jacob_Q_qLog(Q1);
-            Jdot = gmp_.jacobDot_Q_qLog(Q1, rotVel);
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
+                rotAccel = qddot;
+                return;
+            end
 
-            rotAccel = 2 * ( gmp_.quatProd( Jdot*qdot+J*qddot, invQ1 ) );
-            rotAccel = rotAccel(2:4);
-
+            v = Q1(2:4); % quaternion vector part
+            norm_v = norm(v);
+            k = v / norm_v; % axis of rotation
+            s_th = norm_v; % sin(theta/2)
+            c_th = w;      % cos(theta/2)
+            th = atan2(s_th, c_th); % theta/2
+            
+            Pk_rotVel = k*dot(k,rotVel); % projection of rotVel on k
+            qdot = Pk_rotVel + (rotVel - Pk_rotVel)*th*c_th/s_th - th*cross(k,rotVel);
+            % qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+            
+            qdot_bot = qdot - dot(k,qdot)*k; % projection of qdot on plane normal to k
+            k_dot = 0.5*qdot_bot/th;
+            th2_dot = 0.5*dot(k,qdot);
+            
+            sc_over_th = (s_th * c_th) / th;
+            
+            JnDot_qdot = (1 - sc_over_th)*(dot(k,qdot)*k_dot + dot(k_dot,qdot)*k) + ...
+                    (s_th^2/th)*cross(k_dot,qdot) + ...
+                    ( (1 - 2*s_th^2)/th - sc_over_th/th )*th2_dot*qdot_bot + ...
+                    (2*sc_over_th - (s_th/th)^2)*th2_dot*cross(k,qdot);
+            
+            Pk_qddot = dot(k,qddot)*k; % projection of qddot on k
+            Jn_qddot = Pk_qddot + (qddot - Pk_qddot)*sc_over_th + (s_th^2/th)*cross(k,qddot);
+            %Jn_qddot = gmp_.qLogDot_to_rotVel(qddot, Q1);
+            
+            rotAccel = Jn_qddot + JnDot_qdot;
+            
+%             qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
+%             invQ1 = gmp_.quatInv(Q1);
+%             J = gmp_.jacob_Q_qLog(Q1);
+%             Jdot = gmp_.jacobDot_Q_qLog(Q1, rotVel);
+% 
+%             rotAccel = 2 * ( gmp_.quatProd( Jdot*qdot+J*qddot, invQ1 ) );
+%             rotAccel = rotAccel(2:4);
+            
         end
         
         
