@@ -25,3 +25,10 @@ omega_dot2 = gmp_.qLogDDot_to_rotAccel(qddot, omega, Q);
 norm(omega_dot2 - omega_dot)
 
 % norm(omega) / norm(qDot)
+
+torque = rand(3,1);
+logTorq = gmp_.torque_to_qLogTorque(torque, Q);
+
+torque2 = gmp_.qLogTorque_to_torque(logTorq, Q);
+
+norm(torque2 - torque)

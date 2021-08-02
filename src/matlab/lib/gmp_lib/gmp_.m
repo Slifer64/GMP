@@ -9,12 +9,14 @@ classdef gmp_
     %% ========================================    
     methods (Access = public, Static)
 
-        %% Returns the quaternion product between two quaternions.
+        %% quatProd
+        %  Returns the quaternion product between two quaternions.
         %  @param[in] Q1: First quaterion as a 4x1 vector.
         %  @param[in] Q2: Second quaterion as a 4x1 vector.
         %  @return: the quaternion product Q1*Q2.
         %  \note All quaternions must have the form Q = [u; v] where u is
-        %  the scalar and v the 3x1 vector part.
+        %  the scalar and v the 3x1 vector part. The quaternions need not
+        %  be unit.
         function Q12 = quatProd(Q1, Q2)
 
             Q1 = Q1(:);
@@ -34,10 +36,11 @@ classdef gmp_
 
         end
         
-        
-        %% Returns the inverse of a quaternion.
+        %% quatInv
+        %  Returns the inverse of a quaternion.
         %  @param[in] Q: Quaterion as a 4x1 vector [u; v], with u the scalar and v the vector part.
         %  @return: the inverse quaternion Q^{-1}.
+        %  \note The quaternion need not be unit.
         function invQ = quatInv(Q)
             
             invQ = zeros(size(Q));
@@ -55,8 +58,8 @@ classdef gmp_
 
         end
         
-        
-        %% Returns the logarithm map of a unit quaternion.
+        %% quatLog
+        %  Returns the logarithm map of a unit quaternion.
         %  @param[in] Q: Unit quaterion as a 4x1 vector [u; v], with u the scalar and v the vector part.
         %  @return: the quaternion logarithm log(Q).
         function log_Q = quatLog(Q)
@@ -74,10 +77,9 @@ classdef gmp_
 
         end
         
-        
-        %% Returns the quaternion exponential map.
-        %  @param[in] v: 3x1 vector, representing the product k*theta
-        %  of a rotation in unit time.
+        %% quatExp
+        %  Returns the quaternion exponential map.
+        %  @param[in] v: 3x1 vector.
         %  @return: the quaternion exponential exp(log_Q).
         function Q = quatExp(v)
 
@@ -95,8 +97,9 @@ classdef gmp_
 
         end
 
-
-        %% Returns the quaternion difference between two quaternions as Q1*(Q2^{-1})
+        %% quatDiff
+        %  Returns the quaternion difference between two quaternions 
+        %  as Q1*(Q2^{-1})
         %  @param[in] Q1: First quaterion as a 4x1 vector.
         %  @param[in] Q2: Second quaterion as a 4x1 vector.
         %  @return: the quaternion difference Q1*(Q2^{-1}).
@@ -109,70 +112,78 @@ classdef gmp_
 
         end
         
+        %% quatLogDiff
+        % Returns the quaternion logarithm of the difference between two 
+        % quaternions as log( Q1*(Q2^{-1}) )
         function v = quatLogDiff(Q1, Q2)
 
             v = gmp_.quatLog(gmp_.quatDiff(Q1,Q2));
 
         end
         
-        %% Returns derivative of log given the rotational velocity and orientation (expressed w.r.t. the initial orientation)
-        %  @param[in] rotVel: Rotational velocity.
-        %  @param[in] Q1: Orientation expressed w.r.t. the initial orientation.
-        %  @return: Derivative of log.
+        %% rotVel_to_qLogDot
+        %  Returns the time derivative of the quaternion logarithm of a given 
+        %  orientation given a rotational velocity in Cartesian space.
+        %  @param[in] rotVel: rotational velocity in Cartesian space.
+        %  @param[in] Q1: an orientation as unit quaternion.
+        %  @return: time derivative of the quaternion logarithm of Q1.
         function qdot = rotVel_to_qLogDot(rotVel, Q1)
             
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                % inv_Jn = eye(3,3);
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
                 qdot = rotVel;
-            else
-                w = Q1(1);
-                v = Q1(2:4);
-                norm_v = norm(v);
-                k = v / norm_v;
-                s_th2 = norm_v;
-                c_th2 = w;
-                th2 = atan2(s_th2, c_th2);
-                % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
-                % inv_Jn = k*k' + (eye(3,3) - k*k')*th2*c_th2/s_th2 - th2*k_cross;
-                Pk_rotVel = k*dot(k,rotVel); % project rotVel on k
-                qdot = Pk_rotVel + (rotVel - Pk_rotVel)*th2*c_th2/s_th2 - th2*cross(k,rotVel);
+                return;
             end
 
+            v = Q1(2:4); % quaternion vector part
+            norm_v = norm(v);
+            k = v / norm_v; % axis of rotation
+            s_th = norm_v; % sin(theta/2)
+            c_th = w;      % cos(theta/2)
+            th = atan2(s_th, c_th); % theta/2
+            Pk_rotVel = k*dot(k,rotVel); % project rotVel on k
+            qdot = Pk_rotVel + (rotVel - Pk_rotVel)*th*c_th/s_th - th*cross(k,rotVel);
+            % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+            % inv_Jn = k*k' + (eye(3,3) - k*k')*th2*c_th2/s_th2 - th2*k_cross;
             % qdot = inv_Jn * rotVel;
-            
-%             JqQ = gmp_.jacob_qLog_Q(Q1);
-%             qdot = 0.5*JqQ * gmp_.quatProd([0; rotVel], Q1);
 
         end
         
-        
+        %% qLogDot_to_rotVel
+        %  Returns the Cartesian rotational velocity given a unit quaternion
+        %  and its quaternion logarithm time derivative.
+        %  @param[in] qdot: time derivative of quaternion logarithm of Q1.
+        %  @param[in] Q1: orientation as unit quaternion.
+        %  @return: Cartesian rotational velocity.
         function rotVel = qLogDot_to_rotVel(qdot, Q1)
             
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                % Jn = eye(3,3);
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
                 rotVel = qdot;
-            else
-                w = Q1(1);
-                v = Q1(2:4);
-                norm_v = norm(v);
-                k = v / norm_v;
-                s_th2 = norm_v;
-                c_th2 = w;
-                th2 = atan2(s_th2, c_th2);
-                % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
-                % Jn = k*k' + (eye(3,3) - k*k')*s_th2*c_th2/th2 + (s_th2^2/th2)*k_cross;
-                Pk_qdot = k*dot(k,qdot); % project rotVel on k
-                rotVel = Pk_qdot + (qdot - Pk_qdot)*s_th2*c_th2/th2 + (s_th2^2/th2)*cross(k,qdot);
+                return;
             end
+
+            v = Q1(2:4); % quaternion vector part
+            norm_v = norm(v);
+            k = v / norm_v; % axis of rotation
+            s_th = norm_v; % sin(theta/2)
+            c_th = w;      % cos(theta/2)
+            th = atan2(s_th, c_th); % theta/2
+            % k_cross = [0 -k(3) k(2); k(3) 0 -k(1); -k(2) k(1) 0];
+            % Jn = k*k' + (eye(3,3) - k*k')*s_th2*c_th2/th2 + (s_th2^2/th2)*k_cross;
+            Pk_qdot = k*dot(k,qdot); % project rotVel on k
+            rotVel = Pk_qdot + (qdot - Pk_qdot)*s_th*c_th/th + (s_th^2/th)*cross(k,qdot);
             % rotVel = Jn * qdot;
 
-%             JQq = gmp_.jacob_Q_qLog(Q1);
-%             rotVel = 2 * gmp_.quatProd( JQq*qdot, gmp_.quatInv(Q1) );
-%             rotVel = rotVel(2:4);
-
         end
-        
 
+        %% rotAccel_to_qLogDDot
+        %  Returns the 2nd time derivative of the quaternion logarithm of a given 
+        %  orientation given a rotational velocity and acceleration in Cartesian space.
+        %  @param[in] rotAccel: rotational acceleration in Cartesian space.
+        %  @param[in] rotVel: rotational velocity in Cartesian space.
+        %  @param[in] Q1: an orientation as unit quaternion.
+        %  @return: 2nd time derivative of the quaternion logarithm of Q1.
         function qddot = rotAccel_to_qLogDDot(rotAccel, rotVel, Q1)
             
             w = Q1(1); % quaternion scalar part
@@ -203,23 +214,20 @@ classdef gmp_
                     +( (s_th*c_th - th) / s_th^2 )*th2_dot*rotVel_bot;
                 
             Pk_rotAccel = k*dot(k,rotAccel); % project rotAccel on k
-            invJn_rotAccel = Pk_rotAccel + (rotAccel - Pk_rotAccel)*th_cth_over_sth - th*cross(k,rotAccel);
-                
+            invJn_rotAccel = Pk_rotAccel + (rotAccel - Pk_rotAccel)*th_cth_over_sth - th*cross(k,rotAccel); 
             %invJn_rotAccel = gmp_.rotVel_to_qLogDot(rotAccel, Q1);
             
             qddot = invJn_rotAccel + invJnDot_rotVel;
-            
-%             rotVelQ = [0; rotVel];
-%             rotAccelQ = [0; rotAccel];
-% 
-%             J = gmp_.jacob_qLog_Q(Q1);
-%             Jdot = gmp_.jacobDot_qLog_Q(Q1, rotVel);
-% 
-%             qddot = 0.5 * (Jdot * gmp_.quatProd(rotVelQ, Q1) + J * gmp_.quatProd( rotAccelQ+0.5*gmp_.quatProd(rotVelQ,rotVelQ), Q1 ) );
 
         end
-        
 
+        %% qLogDDot_to_rotAccel
+        % Returns the Cartesian rotational acceleration given a unit quaternion, its 
+        % quaternion logarithm 2nd time derivative and a Cartesian rotational velocity.
+        %  @param[in] qddot: 2nd time derivative of quaternion logarithm of Q1.
+        %  @param[in] rotVel: rotational velocity in Cartesian space.
+        %  @param[in] Q1: orientation as unit quaternion.
+        %  @return: Cartesian rotational acceleration.
         function rotAccel = qLogDDot_to_rotAccel(qddot, rotVel, Q1)
 
             w = Q1(1); % quaternion scalar part
@@ -255,134 +263,54 @@ classdef gmp_
             %Jn_qddot = gmp_.qLogDot_to_rotVel(qddot, Q1);
             
             rotAccel = Jn_qddot + JnDot_qdot;
-            
-%             qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
-%             invQ1 = gmp_.quatInv(Q1);
-%             J = gmp_.jacob_Q_qLog(Q1);
-%             Jdot = gmp_.jacobDot_Q_qLog(Q1, rotVel);
-% 
-%             rotAccel = 2 * ( gmp_.quatProd( Jdot*qdot+J*qddot, invQ1 ) );
-%             rotAccel = rotAccel(2:4);
-            
-        end
-        
-        
-        %% Returns the Jacobian from the derivative of log to the derivative of Q.
-        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
-        %  @return: Jacobian.
-        function JQq = jacob_Q_qLog(Q1)
-
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                JQq = [zeros(1, 3); eye(3,3)];
-                return;
-            end
-
-            w = Q1(1);
-            v = Q1(2:4);
-            norm_v = norm(v);
-            k = v / norm_v;
-            s_th2 = norm_v;
-            c_th2 = w;
-            th2 = atan2(s_th2, c_th2);
-            Pk = k*k';
-            I_Pk = eye(3,3) - Pk;
-
-            JQq = zeros(4,3);
-            JQq(1,:) = -0.5 * s_th2 * k';
-            JQq(2:4,:) = 0.5 * ( I_Pk*s_th2/th2 + c_th2*Pk );
 
         end
         
-        
-        %% Returns the Jacobian from the derivative of Q to the derivative of log.
-        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
-        %  @return: Jacobian.
-        function JqQ = jacob_qLog_Q(Q1)
+        %% torque_to_qLogTorque
+        %  Converts a Cartesian torque in the quaternion logarithm space.
+        %  @param[in] torque: torque in Cartesian space.
+        %  @param[in] Q1: an orientation as unit quaternion.
+        %  @return: torque in the quaternion logarithm space.
+        function logTorq = torque_to_qLogTorque(torque, Q1)
             
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                JqQ = [zeros(3,1) eye(3,3)];
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
+                logTorq = torque;
                 return;
             end
-
-            w = Q1(1);
+            
             v = Q1(2:4);
             norm_v = norm(v);
             k = v / norm_v;
-            s_th2 = norm_v;
-            c_th2 = w;
-            th2 = atan2(s_th2, c_th2);
-            Pk = k*k';
-            I_Pk = eye(3,3) - Pk;
-
-            JqQ = zeros(3,4);
-            JqQ(:,1) = -2 * s_th2 * k;
-            JqQ(:,2:4) = 2 * ( I_Pk*th2/s_th2 + c_th2*Pk );
-%             JqQ(:,1) = 2*k*(th2*c_th2 - s_th2)/s_th2^2;
-%             JqQ(:,2:4) = 2*eye(3,3)*th2/s_th2;
+            s_th = norm_v;
+            c_th = w;
+            th = atan2(s_th, c_th);
+            Pk_torq = k*dot(k,torque); % project torque on k
+            logTorq = Pk_torq + (torque - Pk_torq)*s_th*c_th/th - (s_th^2/th)*cross(k,torque);
 
         end
-       
         
-        %% Returns the time derivative of the Jacobian from the derivative of log to the derivative of Q.
-        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
-        %  @return: Jacobian time derivative.
-        function JqQ_dot = jacobDot_qLog_Q(Q1, rotVel)
-
-            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
-
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                JqQ_dot = [-qdot/3 zeros(3,3)];
+        %% qLogTorque_to_torque
+        %  Converts a torque from the quaternion logarithm to the Cartesian space.
+        %  @param[in] logTorq: torque in the quaternion logarithm space.
+        %  @param[in] Q1: an orientation as unit quaternion.
+        %  @return: torque in Cartesian space.
+        function torque = qLogTorque_to_torque(logTorq, Q1)
+           
+            w = Q1(1); % quaternion scalar part
+            if ( (1-abs(w)) <= 1e-15)
+                torque = logTorq;
                 return;
             end
 
-            w = Q1(1);
-            v = Q1(2:4);
+            v = Q1(2:4); % quaternion vector part
             norm_v = norm(v);
-            k = v / norm_v;
-            s_th2 = norm_v;
-            c_th2 = w;
-            th2 = atan2(s_th2, c_th2);
-            Pk = k*k';
-            I_Pk = eye(3,3) - Pk;
-            temp = (th2*c_th2-s_th2)/s_th2^2;
-
-%             JqQ_dot = zeros(3,4);
-%             JqQ_dot(:,1) = ((-th2/s_th2 - 2*c_th2*temp/s_th2)*Pk + (temp/th2)*(eye(3,3)-Pk))*qdot;
-%             JqQ_dot(:,2:4) = -temp*dot(k,qdot)*eye(3,3);
-            
-            JqQ_dot = zeros(3,4);
-            JqQ_dot(:,1) = -(c_th2*Pk + (s_th2/th2)*I_Pk) * qdot;
-            JqQ_dot(:,2:4) = dot(k,qdot)*( -temp*I_Pk - s_th2*Pk ) + (c_th2/th2 - 1/s_th2)*( k*(qdot'*I_Pk) + (I_Pk*qdot)*k' );
-            
-        end
-        
-        
-        %% Returns the time derivative of the Jacobian from the derivative of Q to the derivative of log.
-        %  @param[in] Q1: The orientation w.r.t. the initial orientation.
-        %  @return: Jacobian time derivative.
-        function JQq_dot = jacobDot_Q_qLog(Q1, rotVel)
-
-            qdot = gmp_.rotVel_to_qLogDot(rotVel, Q1);
-
-            if ( (1-abs(Q1(1))) <= 1e-15)
-                JQq_dot = [-qdot'/4; zeros(3,3)];
-                return;
-            end
-
-            w = Q1(1);
-            v = Q1(2:4);
-            norm_v = norm(v);
-            k = v / norm_v;
-            s_th2 = norm_v;
-            c_th2 = w;
-            th2 = atan2(s_th2, c_th2);
-            Pk = k*k';
-            I_Pk = eye(3,3) - Pk;
-            temp = ((th2*c_th2-s_th2)/th2^2);
-
-            JQq_dot = zeros(4,3);
-            JQq_dot(1,:) = -0.25 * qdot' * (c_th2*Pk + (s_th2/th2)*I_Pk);
-            JQq_dot(2:4,:) = 0.25*dot(k,qdot)*( temp*I_Pk - s_th2*Pk ) + 0.25*temp*( k*(qdot'*I_Pk) + (I_Pk*qdot)*k' );
+            k = v / norm_v; % axis of rotation
+            s_th = norm_v; % sin(theta/2)
+            c_th = w;      % cos(theta/2)
+            th = atan2(s_th, c_th); % theta/2
+            Pk_logTorq = k*dot(k,logTorq); % project logTorq on k
+            torque = Pk_logTorq + (logTorq - Pk_logTorq)*th*c_th/s_th + th*cross(k,logTorq);
             
         end
         
@@ -393,10 +321,11 @@ classdef gmp_
     %% ======================================
     methods (Access = public, Static)
         
-        %% Write the GMP model to a file.
-        % @param[in] gmp: Pointer to a @GMP or @GMPo object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        %% write
+        %  Write the GMP model to a file.
+        %  @param[in] gmp: Pointer to a @GMP or @GMPo object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
         function write(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
@@ -409,10 +338,11 @@ classdef gmp_
             
         end
         
-        %% Reads the GMP model from a file.
-        % @param[in] gmp: Pointer to a @GMP or @GMPo object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        %% read
+        %  Reads the GMP model from a file.
+        %  @param[in] gmp: Pointer to a @GMP or @GMPo object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
         function read(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
@@ -429,10 +359,11 @@ classdef gmp_
     
     methods (Access = private, Static)
         
-        %% Write the GMP model to a file.
-        % @param[in] gmp: Pointer to a @GMP object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        %% writeGMP
+        %  Write the GMP model to a file.
+        %  @param[in] gmp: Pointer to a @GMP object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
         function writeGMP(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
@@ -456,10 +387,11 @@ classdef gmp_
             
         end
         
-        %% Reads the GMP model from a file.
-        % @param[in] gmp: Pointer to a @GMP object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        %% readGMP
+        %  Reads the GMP model from a file.
+        %  @param[in] gmp: Pointer to a @GMP object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
         function readGMP(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
@@ -496,10 +428,11 @@ classdef gmp_
             
         end
         
-        %% Write the GMP model to a file.
-        % @param[in] gmp: Pointer to a @GMPo object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
+        %% writeGMPo
+        %  Write the GMP model to a file.
+        %  @param[in] gmp: Pointer to a @GMPo object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for writing the names of all GMP params (optional, default="").
         function writeGMPo(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
@@ -515,10 +448,11 @@ classdef gmp_
             
         end
         
-        %% Reads the GMP model from a file.
-        % @param[in] gmp: Pointer to a @GMPo object.
-        % @param[in] fid: Filename string or object of type @FileIO associated with the file.
-        % @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
+        %% readGMPo
+        %  Reads the GMP model from a file.
+        %  @param[in] gmp: Pointer to a @GMPo object.
+        %  @param[in] fid: Filename string or object of type @FileIO associated with the file.
+        %  @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
         function readGMPo(gmp, fid, prefix)
             
             if (nargin < 3), prefix=''; end
