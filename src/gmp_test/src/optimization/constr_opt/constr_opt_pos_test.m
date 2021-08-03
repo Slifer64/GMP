@@ -232,7 +232,8 @@ function [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, y
     % gmp_opt.optimize(100);
     tic
     gmp_opt.optimize2(0:0.01:1);
-    toc
+    elaps_t = toc;
+    fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
     fprintf([gmp_opt.getExitMsg() '\n']);
     
     [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);

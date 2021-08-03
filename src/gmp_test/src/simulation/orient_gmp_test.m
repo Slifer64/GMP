@@ -1,5 +1,3 @@
-% function orient_gmp_test()
-
 clc;
 close all;
 clear;
@@ -42,9 +40,7 @@ Ts = Timed(2)-Timed(1);
 
 simulateGMPo = @simulateGMPo_in_Cart_space; % simulateGMPo_in_'log/quat/Cart'_space
 
-read_from_file = true;
-
-if (read_from_file)
+if (read_gmp_from_file)
     
     gmp_o = GMPo();
     gmp_.read(gmp_o, gmp_filename, '');
@@ -59,7 +55,7 @@ else
     toc
 
     if ( strcmpi(scale_type, 'prop') )
-       traj_sc = TrajScale_Prop(n_dof);
+       traj_sc = TrajScale_Prop(3);
     elseif ( strcmpi(scale_type, 'rot_min') )
         traj_sc = TrajScale_Rot_min();
     elseif ( strcmpi(scale_type, 'rot_wb') )
@@ -73,7 +69,7 @@ else
     
 end
 
-% gmp_.write(gmp_o, 'gmp_o.bin', 'o_');
+if (write_gmp_to_file), gmp_.write(gmp_o, 'gmp_o.bin', ''); end
 
 %% DMP simulation
 disp('GMP simulation...');
