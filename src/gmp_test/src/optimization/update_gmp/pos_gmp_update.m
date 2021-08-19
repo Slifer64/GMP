@@ -5,6 +5,9 @@ clear;
 addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
+addpath('../../../../matlab/lib/io_lib/');
+import_io_lib();
+
 %% Load GMP
 gmp = GMP();
 gmp_.read(gmp, 'data/gmp_pos.bin','up_');
@@ -12,6 +15,8 @@ gmp_.read(gmp, 'data/gmp_pos.bin','up_');
 n_dof = gmp.numOfDoFs();
 
 if (n_dof ~= 3), error('The number of DoFs must be equal to 3!\n'); end
+
+train_err = gmp.autoRetrain(15, 1.5)
 
 %% =============  GMP update  =============
 kt = 0.5;
@@ -60,9 +65,19 @@ Z5 = [p5_dot, p5_ddot];
 gmp0 = gmp.deepCopy();
 
 gmp_up = GMP_Update(gmp);
-% gmp_up.initSigmaWfromMsr(0:0.01:1);
+gmp_up.initSigmaWfromMsr(0:0.01:1);
 gmp_up.enableSigmawUpdate(true);
 gmp_up.setMsrNoiseVar(1e-4);
+
+O_vec = zeros(3,1);
+
+% make sure boundary conditions are satisfied
+gmp_up.updatePos(0, p0);
+gmp_up.updatePos(1, pg);
+gmp_up.updateVel(0, x_dot, O_vec);
+gmp_up.updateVel(1, x_dot, O_vec);
+gmp_up.updateAccel(0, x_dot, x_ddot, O_vec);
+gmp_up.updateAccel(1, x_dot, x_ddot, O_vec);
 
 gmp_up.updatePos(x1, p1);
 gmp_up.updateVel(x2, x_dot, p2_dot);
@@ -106,17 +121,23 @@ points(4) = getPoint(t4, x4, x_dot, x_ddot, p4, [], p4_ddot);
 points(5) = getPoint(t5, x5, x_dot, x_ddot, [], p5_dot, p5_ddot);
 
 fig = figure;
+fig.Position(3:4) = [980 756];
 k = [0 3 6];
 ax = cell(3,3);
+title_ = {'$x$', '$y$', '$z$'};
 for i=1:3
     k = k + 1;
     ax{i,1} = subplot(3,3,k(1));
     hold on;
     plot(Time, P_new_data(i,:), 'LineWidth',2.0 , 'Color','blue');
     plot(Time, P_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
-    ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
-    legend({'modified','original'}, 'interpreter','latex', 'fontsize',15);
-
+    ax{i,1}.FontSize = 14;
+    title(title_{i}, 'interpreter','latex', 'fontsize',19);
+    if (i==1), ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',19); end
+    if (i==1)
+        legend({'modified','original'}, 'interpreter','latex', 'fontsize',18, ...
+        'Position',[0.4008 0.9623 0.2528 0.0440], 'Orientation','horizontal');
+    end
     axis tight;
     hold off;
 
@@ -124,8 +145,8 @@ for i=1:3
     hold on;
     plot(Time, dP_new_data(i,:), 'LineWidth',2.0, 'Color','blue');
     plot(Time, dP_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
-    ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',15);
-
+    ax{i,2}.FontSize = 14;
+    if (i==1), ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',19); end
     axis tight;
     hold off;
 
@@ -133,7 +154,9 @@ for i=1:3
     hold on;
     plot(Time, ddP_new_data(i,:), 'LineWidth',2.0, 'Color','blue');
     plot(Time, ddP_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
-    ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',15);
+    if (i==1), ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',19); end
+    ax{i,3}.FontSize = 14;
+    xlabel('time [$s$]', 'interpreter','latex', 'fontsize',18);
     axis tight;
     hold off;
 end

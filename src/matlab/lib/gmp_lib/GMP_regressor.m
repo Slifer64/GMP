@@ -10,11 +10,20 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
             if (nargin < 2), kernel_std_scaling = 1.0; end
 
+            this.setKernels(N_kernels, kernel_std_scaling);
+            
+        end
+        
+        %% Set the kernels centers and widths.
+        %  @param[in] N_kernels: The number of kernels.
+        %  @param[in] kernel_std_scaling: Scaling of the kernel's std.
+        function setKernels(this, N_kernels, kernel_std_scaling)
+            
             this.c = ((1:N_kernels)-1)'/(N_kernels-1);
             this.h = 1./(kernel_std_scaling*(this.c(2:end)-this.c(1:end-1))).^2;
             this.h = [this.h; this.h(end)];
             
-        end  
+        end
 
         %% ============================================================
         
