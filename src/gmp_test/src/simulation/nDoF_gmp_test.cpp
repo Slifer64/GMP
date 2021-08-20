@@ -83,6 +83,9 @@ int main(int argc, char **argv)
 
   if (write_gmp_to_file) gmp_::write(gmp.get(), gmp_filename, "");
 
+
+  // gmp->autoRetrain(50, 2, 200, "LWR");
+
   // =============  GMP simulation  =============
   PRINT_INFO_MSG("GMP simulation...\n");
 

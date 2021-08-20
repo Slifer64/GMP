@@ -57,7 +57,11 @@ classdef TrajScale_Rot_wb < TrajScale
                 % Ik = eye(3,3) - k*k';
                 nd2 = nd - dot(k,nd)*k; % Ik*nd
                 n2 = n - dot(k,n)*k; % Ik*n
-                theta = acos( dot(n2,nd2) / (norm(n2)*norm(nd2)) );
+                cos_n = dot(n2,nd2) / (norm(n2)*norm(nd2));
+                if ( abs(abs(cos_n)-1) < 1e-15), theta = pi;
+                else, theta = acos( cos_n );
+                end
+
                 R = axang2rotm([k' theta]);
                 if (norm(n - R*nd) > 1e-8), R = axang2rotm([k' -theta]); end
 

@@ -12,9 +12,7 @@ long double GMP_regressor::zero_tol = 1e-200;
 
   GMP_regressor::GMP_regressor(unsigned N_kernels, double kernel_std_scaling)
   {
-    this->c = arma::linspace<arma::vec>(0,N_kernels-1, N_kernels)/(N_kernels-1);
-    double hi = 1 / std::pow(kernel_std_scaling*(this->c(1)-this->c(0)),2);
-    this->h = arma::vec().ones(N_kernels) * hi;
+    this->setKernels(N_kernels, kernel_std_scaling);
   }
 
   // ============================================================
@@ -104,6 +102,13 @@ long double GMP_regressor::zero_tol = 1e-200;
      arma::vec a_ddot = (x-this->c)*d3x + 3*dx*ddx;
      return -2*this->h%( psi_ddot%a + 2*psi_dot%a_dot + psi%a_ddot );
    }
+
+  void GMP_regressor::setKernels(unsigned N_kernels, double kernel_std_scaling)
+  {
+    this->c = arma::linspace<arma::vec>(0,N_kernels-1, N_kernels)/(N_kernels-1);
+    double hi = 1 / std::pow(kernel_std_scaling*(this->c(1)-this->c(0)),2);
+    this->h = arma::vec().ones(N_kernels) * hi; 
+  }
 
 } // namespace gmp_
 

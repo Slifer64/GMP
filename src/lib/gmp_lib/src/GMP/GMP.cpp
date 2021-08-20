@@ -43,7 +43,7 @@ namespace gmp_
    */
   unsigned GMP::numOfKernels() const
   {
-    return this->W.n_cols;
+    return this->c.size();
   }
 
   /** Sets the initial position.
@@ -138,6 +138,17 @@ namespace gmp_
 
     if (Sw) *Sw = arma::inv(H*H.t());
 
+  }
+
+  void GMP::autoRetrain(unsigned N_kernels, double kern_std_scale, unsigned n_points, const std::string &train_method, arma::vec *train_err, arma::mat *Sw)
+  {     
+      arma::rowvec x = arma::linspace<arma::rowvec>(0,1, n_points);
+      arma::mat yd_data(this->numOfDoFs(), x.size());
+      for (int j=0;j<x.size();j++) yd_data.col(j) = this->W*this->regressVec(x(j));
+      
+      this->setKernels(N_kernels, kern_std_scale);
+      this->train(train_method, x, yd_data, train_err, Sw);
+  
   }
 
   void GMP::update(const gmp_::Phase &s, const arma::vec &y, const arma::vec &z, arma::vec y_c, arma::vec z_c)

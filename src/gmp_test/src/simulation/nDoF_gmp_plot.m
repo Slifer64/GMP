@@ -2,7 +2,7 @@ clc;
 close all;
 clear;
 
-addpath('../../matlab/lib/io_lib/');
+addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 % ------------------------------------------
@@ -63,8 +63,10 @@ hold on;
 plot3(P_data(1,:), P_data(2,:), P_data(3,:), 'LineWidth',2, 'LineStyle','-', 'Color','magenta');
 plot3(Pd2_data(1,:), Pd2_data(2,:), Pd2_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color','blue');
 plot3(Pd_data(1,:), Pd_data(2,:), Pd_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color',[0 0.7 0]);
-legend({'sim','$k_s$*demo','demo'}, 'interpreter','latex', 'fontsize',15);
+legend({'sim','$k_s$*demo','demo'}, 'interpreter','latex', 'fontsize',15, 'Position',[0.1887 0.7924 0.2204 0.1711]);
 xlabel('$x$', 'interpreter','latex', 'fontsize',15);
 ylabel('$y$', 'interpreter','latex', 'fontsize',15);
 zlabel('$z$', 'interpreter','latex', 'fontsize',15);
+view(-7.8, 30.92);
+axis tight;
 hold off;

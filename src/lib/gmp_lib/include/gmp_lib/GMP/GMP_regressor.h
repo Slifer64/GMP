@@ -74,6 +74,12 @@ protected:
 
    arma::vec kernelFun3Dot(double x, double dx, double ddx, double d3x) const;
 
+   /** Set the kernels centers and widths.
+  * @param[in] N_kernels: The number of kernels.
+  * @param[in] kernel_std_scaling: Scaling of the kernel's std.
+  */
+  void setKernels(unsigned N_kernels, double kernel_std_scaling);
+
 
 public:
 

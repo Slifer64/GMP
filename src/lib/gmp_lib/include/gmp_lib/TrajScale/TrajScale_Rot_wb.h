@@ -59,7 +59,10 @@ protected:
 
       arma::vec nd2 = nd - arma::dot(k,nd)*k;
       arma::vec n2 = n - arma::dot(k,n)*k;
-      double theta = std::acos( arma::dot(n2,nd2) / (arma::norm(n2)*arma::norm(nd2)) );
+      double cos_n = arma::dot(n2,nd2) / (arma::norm(n2)*arma::norm(nd2));
+      double theta;
+      if ( std::fabs(std::fabs(cos_n)-1) < 1e-15 ) theta = arma::datum::pi;
+      else theta = std::acos( cos_n );
 
       R = gmp_::axang2rotm( arma::join_vert(k, arma::vec({theta})) );
 
