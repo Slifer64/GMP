@@ -9,7 +9,7 @@ addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
-fid = FileIO('pos_data.bin', FileIO.in);
+fid = FileIO('data/constr_opt_pos_test_train_data.bin', FileIO.in);
 Timed = fid.read('Timed');
 Pd_data = fid.read('Pd_data');
 dPd_data = fid.read('dPd_data');
@@ -17,6 +17,7 @@ ddPd_data = fid.read('ddPd_data');
 fid.close();
 
 Ts = Timed(2)-Timed(1);
+
 
 %% initialize and train GMP
 train_method = 'LS';
@@ -29,248 +30,450 @@ offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
 offline_train_mse
 toc
 
-% gmp.setScaleMethod(TrajScale.ROT_MIN_SCALE);
-
 taud = Timed(end);
 yd0 = gmp.getYd(0); %Pd_data(1);
 ygd = gmp.getYd(1); %Pd_data(end);
 
-kt = 3; % temporal scaling
-ks = diag([1.3 1.4 1.5]); % spatial scaling
+kt = 1.5; % temporal scaling
+ks = diag([1 1 1]); % spatial scaling
 tau = taud/kt;
-y0 = yd0 + 0.15;
-yg = ks*(ygd - yd0) + y0;
-gmp.setY0(y0);
-gmp.setGoal(yg);
+y0 = yd0 + 0;
+% yg = ks*(ygd - yd0) + y0;
+% yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
+yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
 
 
-%% calculate scaled demo trajectory
-T_sc = gmp.getScaling();
-Time2 = Timed / kt;
-P_data2 = T_sc*(Pd_data - Pd_data(:,1)) + y0;
-dP_data2 = kt*T_sc*dPd_data;
-ddP_data2 = (kt^2)*T_sc*ddPd_data;
+%% ======== Limits ==========
+%            lower limit     upper limit
+pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
+vel_lim = [-0.3 0.3];  % lower and upper limit, same for all DoFs
+accel_lim = [-0.4 0.4];
 
 
-%% set up constraints
-n_data = length(Time2);
-P_max = max([P_data2(:,1) P_data2(:,end)]')' + 0.1;
-P_min = min([P_data2(:,1) P_data2(:,end)]')' - 0.1;
-ind = 1:round(n_data/100):n_data;
+% --------- Proportional scaling -----------
+gmp.setScaleMethod(TrajScale_Prop(3));
+[Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
+data{1} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
-x_lim = Time2(ind)/Time2(end);
-Pos_up_lim = P_data2(:,ind) + 0.3;
-Pos_low_lim = P_data2(:,ind) - 0.3;
-for i=1:3
-    Pos_up_lim(i, Pos_up_lim(i,:)>P_max(i)) = P_max(i);
-    Pos_low_lim(i, Pos_low_lim(i,:)<P_min(i)) = P_min(i);
-    
-    ind2 = Pos_low_lim(i,:)> Pos_up_lim(i,:)-0.3;
-    Pos_low_lim(i, ind2) = Pos_up_lim(i,ind2) - 0.3;
-end
+% --------- Optimized DMP -> POS -----------
+[Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false);
+data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0.85 0.33 0.1], 'legend','opt-pos', 'plot3D',true, 'plot2D',true);
 
-x_pos_lim = x_lim;
-pos_lb = Pos_low_lim;
-pos_ub = Pos_up_lim;
-
-xeq_pos = [0 1]; % [];
-pos_eq = [y0 yg];%[]; %
-
-x_vel_lim = 0:0.01:1;
-n_vel_constr = length(x_vel_lim);
-vel_lb = -1*ones(n_dof,n_vel_constr);
-vel_ub = 1*ones(n_dof,n_vel_constr);
-
-xeq_vel = [0 1];%[]; %
-vel_eq = zeros(3,2);%[]; %
-
-x_accel_lim = 0:0.01:1;
-n_accel_constr = length(x_accel_lim);
-accel_lb = -2*ones(n_dof,n_accel_constr);
-accel_ub = 2*ones(n_dof,n_accel_constr);
-
-xeq_accel = [0 1];%[]; % 
-accel_eq = zeros(3,2);%[]; % 
-
-% %% Write constraints to file
-% if (false) % set to 'true' to write constraints to file
-%     fid = FileIO ('constraints.bin', bitor(FileIO.out, FileIO.trunc) );
-%     % -----------------------------
-%     fid.write('t_pos_lim', tau*x_pos_lim);
-%     fid.write('pos_lb', pos_lb);
-%     fid.write('pos_ub', pos_ub);
-%     fid.write('teq_pos', tau*xeq_pos);
-%     fid.write('pos_eq', pos_eq);
-%     fid.write('t_vel_lim', tau*x_vel_lim);
-%     fid.write('vel_lb', vel_lb);
-%     fid.write('vel_ub', vel_ub);
-%     fid.write('teq_vel', tau*xeq_vel);
-%     fid.write('vel_eq', vel_eq);
-%     fid.write('t_accel_lim', tau*x_accel_lim);
-%     fid.write('accel_lb', accel_lb);
-%     fid.write('accel_ub', accel_ub);
-%     fid.write('teq_accel', tau*xeq_accel);
-%     fid.write('accel_eq', accel_eq);
-%     % -----------------------------
-%     fid.close();
-% end
-
-%% Solve constr-optimization problem on-line
-gmp_opt = GMP_Opt(gmp);
-gmp_opt.setOptions(true, true, false, 0.1, 1, 0.1);
-
-Time = [];
-P_data = [];
-dP_data = [];
-ddP_data = [];
-
-Elaps_Time = [];
-
-p = y0;
-p_dot = 0;
-p_ddot = 0;
-
-t = 0;
-dt = 0.01;
-
-dx = 0.01;
-x_win = 16 / sqrt(2*gmp.h(1)); % 4*sigma
-x_hor = 0:dx:x_win;
-n_hor = length(x_hor);
-
-pos_lb_i = zeros(n_dof, n_hor);
-pos_ub_i = zeros(n_dof, n_hor);
-
-vel_lb_i = -1 * ones(n_dof, n_hor);
-vel_ub_i = 1 * ones(n_dof, n_hor);
-accel_lb_i = -2 * ones(n_dof, n_hor);
-accel_ub_i = 2 * ones(n_dof, n_hor);
-
-x = 0;
-x_dot = 1 / tau;
-x_ddot = 0;
-
-W0 = gmp.W;
-
-while (true)
-    
-    for k=1:n_dof
-        pos_lb_i(k,:) = interp1(x_pos_lim, pos_lb(k,:), x_hor);
-        pos_ub_i(k,:) = interp1(x_pos_lim, pos_ub(k,:), x_hor);
-    end
-    
-    tic;
-    
-%     % set equality constraint to current trajectory point
-%     xeq_pos_i = x_hor(1);
-%     pos_eq_i = gmp.getYd(x);
-%     xeq_vel_i = x_hor(1);
-%     vel_eq_i = gmp.getYdDot(x_hor(1), x_dot);
-%     xeq_accel_i = x_hor(1);
-%     accel_eq_i = gmp.getYdDDot(x, x_dot, x_ddot);
-    
-    gmp.W = W0;
-    gmp_opt.setMotionDuration(tau);
-    gmp_opt.setPosConstr(x_hor, pos_lb_i, pos_ub_i, [], []);
-    gmp_opt.setVelConstr(x_hor, vel_lb_i, vel_ub_i, [], []);
-    gmp_opt.setAccelConstr(x_hor, accel_lb_i, accel_ub_i, [], []);
-    success = gmp_opt.optimize2(x_hor);
-
-    if (~success), warning('Opt failed...'); end
-    
-    x = t/tau;
-    p = gmp.getYd(x);
-    p_dot = gmp.getYdDot(x, x_dot);
-    p_ddot = gmp.getYdDDot(x, x_dot, 0);
-    
-    Elaps_Time = [Elaps_Time toc];
-    
-    [t Elaps_Time(end)]
-
-    Time = [Time t];
-    P_data = [P_data p];
-    dP_data = [dP_data p_dot];
-    ddP_data = [ddP_data p_ddot];
-
-    t = t + dt;
-    
-    x_hor = x_hor + x_dot*dt;
-
-    if (t >= 2), break; end
-
-end
+% ---------- Online GMP optimization ------------
+[Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+data{3} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','green', 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true);
 
 
-%% plot results
+%% ======== Plot Results ==========
 
 % plot 3D path
-figure;
+fig = figure;
+fig.Position(3:4) = [815 716];
+ax = axes();
 hold on;
-plot3(P_data(1,:), P_data(2,:), P_data(3,:), 'LineWidth', 2, 'LineStyle','-', 'Color','blue');
-plot3(P_data2(1,:), P_data2(2,:), P_data2(3,:), 'LineWidth', 2, 'LineStyle',':', 'Color',[0.85 0.33 0.1]);
-legend({'$gmp$', '$k_s * demo$'}, 'interpreter','latex', 'fontsize',17);
+plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',12);
+plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',12);
+plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',12);
+legend_ = {};
+for k=1:length(data)
+    if (~data{k}.plot3D), continue; end
+    plot3(data{k}.Pos(1,:), data{k}.Pos(2,:), data{k}.Pos(3,:), 'LineWidth', 3, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    legend_ = [legend_ data{k}.legend];
+end
+plot3([ygd(1) yg(1)], [ygd(2) yg(2)], [ygd(3) yg(3)], 'LineWidth', 1, 'LineStyle','--', 'Color',[1 0 1 0.5]);
+legend(['$p_0$','$g$','$g_d$' legend_], 'interpreter','latex', 'fontsize',17, 'Position',[0.8174 0.6641 0.1531 0.3144]);
+axis tight;
+x_lim = ax.XLim + 0.05*[-1 1];
+y_lim = ax.YLim + 0.05*[-1 1];
+z_lim = ax.ZLim + 0.05*[-1 1];
+plot3Dbounds(ax, pos_lim)
+view(view_);
+grid on;
+ax.XLim=x_lim; ax.YLim=y_lim; ax.ZLim=z_lim;
+ax.FontSize = 14;
 hold off;
 
-% --------------------------
+title_ = {'x coordinate', 'y coordinate', 'z coordinate'};
+label_font = 17;
+ax_fontsize = 14;
 
 for i=1:n_dof
-    figure;
-    ax = cell(3,1);
+    fig = figure;
+    fig.Position(3:4) = [842 1110];
 
-    ax{1} = subplot(3,1,1);
+    ax = subplot(3,1,1);
     hold on;
-    plot(Time, P_data(i,:), 'LineWidth',2.0, 'Color', 'blue');
-    plot(Time2, P_data2(i,:), 'LineWidth',2.0, 'Color', 'magenta', 'LineStyle',':');
-    ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
-    title(['temporal scale: $' num2str(kt) '$     ,     spatial scale: $' num2str(det(ks)) '$'], 'interpreter','latex', 'fontsize',18);
-    scatter(nan, nan, 'MarkerEdgeColor',[0 0.7 0], 'Marker','o', 'MarkerEdgeAlpha',0.6, 'LineWidth',4, 'SizeData', 100); % dummy plot for legend
-    scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','^', 'MarkerEdgeAlpha',0.3, 'LineWidth',2, 'SizeData', 100); % dummy plot for legend
-    scatter(nan, nan, 'MarkerEdgeColor',[1 0 0], 'Marker','v', 'MarkerEdgeAlpha',0.3, 'LineWidth',2, 'SizeData', 100); % dummy plot for legend
-    % legend({'GMP','ref','eq-constr','low-bound','upper-bound'}, 'interpreter','latex', 'fontsize',15);
+    % plot position trajectory
+    legend_ = {};
+    for k=1:length(data)
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Pos(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+        legend_ = [legend_ data{k}.legend];
+    end
     axis tight;
+    % plot start and final positions
+    plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',10);
+    plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
+    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
+    % plot bounds
+    plot(ax.XLim, [pos_lim(i,1) pos_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [pos_lim(i,2) pos_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    % labels, title ...
+    ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',label_font);
+%     title(title_{i}, 'interpreter','latex', 'fontsize',18);
+    legend(legend_, 'interpreter','latex', 'fontsize',17, 'Position',[0.2330 0.9345 0.5520 0.0294], 'Orientation', 'horizontal');
+    ax.FontSize = ax_fontsize;
     hold off;
 
-    ax{2} = subplot(3,1,2);
+    ax = subplot(3,1,2);
     hold on;
-    plot(Time, dP_data(i,:), 'LineWidth',2.0, 'Color', 'blue');
-    plot(Time2, dP_data2(i,:), 'LineWidth',2.0, 'Color', 'magenta', 'LineStyle',':');
-    ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',15);
+    for k=1:length(data) 
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    end
     axis tight;
+    % plot bounds
+    plot(ax.XLim, [vel_lim(1) vel_lim(1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [vel_lim(2) vel_lim(2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',label_font);
+    ax.FontSize = ax_fontsize;
     hold off;
 
-    ax{3} = subplot(3,1,3);
+    ax = subplot(3,1,3);
     hold on;
-    plot(Time, ddP_data(i,:), 'LineWidth',2.0, 'Color', 'blue');
-    plot(Time2, ddP_data2(i,:), 'LineWidth',2.0, 'Color', 'magenta', 'LineStyle',':');
-    ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',15);
+    for k=1:length(data)
+        if (~data{k}.plot2D), continue; end
+        plot(data{k}.Time, data{k}.Accel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+    end
     axis tight;
+    % plot bounds
+    plot(ax.XLim, [accel_lim(1) accel_lim(1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    plot(ax.XLim, [accel_lim(2) accel_lim(2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',label_font);
+    xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
+    ax.FontSize = ax_fontsize;
     hold off;
 
-    plotConstr(tau*x_pos_lim, pos_lb, pos_ub, tau*xeq_pos, pos_eq, ax{1}, i);
-    plotConstr(tau*x_vel_lim, vel_lb, vel_ub, tau*xeq_vel, vel_eq, ax{2}, i);
-    plotConstr(tau*x_accel_lim, accel_lb, accel_ub, tau*xeq_accel, accel_eq, ax{3}, i);
 end
 
-%% =======================================================
-%% =======================================================
 
-function plotConstr(t, lb, ub, teq, feq, ax, i_dof)
 
-    hold(ax, 'on');
+% ======================================================
+
+function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim)
     
-    if (~isempty(teq))
-        eq_sc = scatter(teq, feq(i_dof,:), 'MarkerEdgeColor',[0 0.7 0], 'Marker','*', ...
-                'MarkerEdgeAlpha',0.6, 'LineWidth',2, 'SizeData', 100, 'Parent',ax);
+    gmp2 = gmp.deepCopy();
+    
+    gmp2.setScaleMethod(TrajScale_Prop(3));
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    Time = [];
+    P_data = [];
+    dP_data = [];
+    ddP_data = [];
+
+    p = y0;
+    p_dot = zeros(size(p));
+    p_ddot = zeros(size(p));
+    
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    t = 0;
+    dt = 0.002;
+    x = t/tau;
+    x_dot = 1/tau;
+    x_ddot = 0;
+    
+    N = 4;
+    
+    K = 300;
+    D = 80;
+    
+    x_horiz = 0:dt:(N-1)*dt;
+    
+    n = 6; % state dim
+    m = 3; % control input dim
+    
+    In = eye(6,6);
+    
+    Ai = (In + [zeros(3,3) eye(3,3); -K*eye(3,3) -D*eye(3,3)]*dt);
+    Bi = [zeros(3,1); ones(3,1)]*dt;
+
+    Aeq = zeros( n*N, (n+m)*N );
+    beq = zeros( n*N , 1);
+    
+    Aeq(1:n, 1:m) = -Bi;
+    Aeq(1:n, m+1:m+n) = In;
+    k = m+n+1;
+    for i=1:N-1
+        i1 = 1 + i*n;
+        i2 = i1 + (n-1);
+        
+        Aeq(i1:i2, k:k+n) = -Ai;
+        Aeq(i1:i2, k+n+1:k+n+m-1) = -Bi;
+        Aeq(i1:i2, k+2*n+m: k+3*n+m-1) = In;
+        
+        k = k+3*n+m;
     end
     
-    if (~isempty(t))
-        less_sc = scatter(t, lb(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
-                'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
-        %less_sc = plot(t, lb(i_dof,:), 'Color',[1 0 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
 
-        gr_sc = scatter(t, ub(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
-                'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);
-%         gr_sc = plot(t, ub(i_dof,:), 'Color',[0 0.8 0 0.7], 'LineStyle','--', 'LineWidth',2, 'Parent',ax);
+    while (true)
+
+        x = t/tau;
+        x_dot = 1/tau;
+        
+        if (x >= 1)
+            x_dot = 0;
+        end
+        
+        p_ref = gmp2.getYd(x);
+        dp_ref = gmp2.getYdDot(x, x_dot);
+        ddp_ref = gmp2.getYdDDot(x, x_dot, 0);
+        
+        u_ref = K*p_ref + D*dp_ref + ddp_ref;
+        
+        u = 0;
+        
+        
+        
+        p_ddot = -K*p - D*p_dot + u_ref + u;
+
+        Time = [Time t];
+        P_data = [P_data p];
+        dP_data = [dP_data p_dot];
+        ddP_data = [ddP_data p_ddot];
+
+        t = t + dt;
+        p = p + p_dot*dt;
+        p_dot = p_dot + p_ddot*dt;
+
+        if (x >= 1.0), break; end
+
     end
+    
+end
+
+
+function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory2(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
+    
+    gmp2 = gmp.deepCopy();
+    
+    gmp2.setScaleMethod(TrajScale_Prop(3));
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    gmp_opt = GMP_Opt(gmp2);
+    gmp_opt.setOptions(opt_pos, opt_vel, false, 0.1, 1, 0.1);
+    gmp_opt.setMotionDuration(tau);
+
+    % gmp_opt.optimize(100);
+%     tic
+%     gmp_opt.optimize2(0:0.01:1);
+%     elaps_t = toc;
+%     fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
+%     fprintf([gmp_opt.getExitMsg() '\n']);
+    
+    Time = [];
+    P_data = [];
+    dP_data = [];
+    ddP_data = [];
+
+    p = y0;
+    p_dot = zeros(size(p));
+    p_ddot = zeros(size(p));
+    
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    t = 0;
+    dt = 0.002;
+    x = t/tau;
+    x_dot = 1/tau;
+    x_ddot = 0;
+    
+    pos_lim = 10 * pos_lim;
+    vel_lim = 10 * vel_lim;
+    accel_lim = 10 * accel_lim;
+    
+    n_horiz = 4;
+    x_horiz = 0:dt:(n_horiz-1)*dt;
+    pos_lb = repmat( pos_lim(:,1), 1,n_horiz);
+    pos_ub = repmat( pos_lim(:,2), 1,n_horiz);
+    vel_lb = repmat( vel_lim(:,1)*ones(3,1), 1,n_horiz);
+    vel_ub = repmat( vel_lim(:,2)*ones(3,1), 1,n_horiz);
+    accel_lb = repmat( accel_lim(:,1)*ones(3,1), 1,n_horiz);
+    accel_ub = repmat( accel_lim(:,2)*ones(3,1), 1,n_horiz);
+    
+    x_prev = 0;
+    p_prev = gmp2.getYd(x);
+    dp_prev = gmp2.getYdDot(x, x_dot);
+    ddp_prev = gmp2.getYdDDot(x, x_dot, x_ddot);
+
+    while (true)
+
+        x = t/tau;
+        x_dot = 1/tau;
+        
+        t/tau
+        
+        if (x >= 1)
+            x_dot = 0;
+        end
+           
+        % constraints
+        gmp_opt.clearConstr();
+        gmp_opt.setPosConstr(x_horiz, pos_lb, pos_ub, x_prev, p_prev);
+%         gmp_opt.setVelConstr(x_horiz, vel_lb, vel_ub, x_prev, dp_prev);
+%         gmp_opt.setAccelConstr(x_horiz, accel_lb, accel_ub, x_prev, ddp_prev);
+%         gmp_opt.setPosConstr(x_horiz, pos_lb, pos_ub, [], []);
+%         gmp_opt.setVelConstr(x_horiz, vel_lb, vel_ub, [], []);
+%         gmp_opt.setAccelConstr(x_horiz, accel_lb, accel_ub, [], []);
+        
+        % optimize
+        success = gmp_opt.optimize3(x_horiz, gmp);
+        if (~success), warning([gmp_opt.getExitMsg() '\n']); end
+        
+        p_ref = gmp2.getYd(x);
+        p_ref_dot = gmp2.getYdDot(x, x_dot);
+        p_ref_ddot = gmp2.getYdDDot(x, x_dot, 0);
+        
+        p = p_ref;
+        p_dot = p_ref_dot;
+        p_ddot = p_ref_ddot;
+
+        Time = [Time t];
+        P_data = [P_data p];
+        dP_data = [dP_data p_dot];
+        ddP_data = [ddP_data p_ddot];
+
+        %p_ddot = p_ref_ddot + 30*(p_ref_dot - p_dot) + 100*(p_ref - p);
+
+        t = t + dt;
+%         p = p + p_dot*dt;
+%         p_dot = p_dot + p_ddot*dt;
+        
+        x_horiz = x_horiz + dt/tau;
+        
+        x_prev = x;
+        p_prev = p;
+        dp_prev = p_dot;
+        ddp_prev = p_ddot;
+
+        if (x >= 1.0), break; end
+
+    end
+    
+end
+
+function [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
+    
+    gmp2 = gmp.deepCopy();
+    
+    gmp2.setScaleMethod(TrajScale_Prop(3));
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    gmp_opt = GMP_Opt(gmp2);
+    gmp_opt.setOptions(opt_pos, opt_vel, false, 0.1, 1, 0.1);
+    gmp_opt.setMotionDuration(tau);
+
+    n_points = 100;
+    % position constr
+    gmp_opt.setPosBounds(pos_lim(:,1), pos_lim(:,2), n_points);
+    gmp_opt.setPosConstr([],[],[], [0 1], [y0 yg]);
+    % velocity constr
+    gmp_opt.setVelBounds(vel_lim(1), vel_lim(2), n_points);
+    gmp_opt.setVelConstr([], [], [], [0 1], zeros(3,2));
+    % accel constr
+    gmp_opt.setAccelBounds(accel_lim(1), accel_lim(2), n_points);
+    gmp_opt.setAccelConstr([], [], [], [0 1], zeros(3,2));
+
+    % gmp_opt.optimize(100);
+    tic
+    gmp_opt.optimize2(0:0.01:1);
+    elaps_t = toc;
+    fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
+    fprintf([gmp_opt.getExitMsg() '\n']);
+    
+    [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);
+    
+end
+
+function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
+
+    Time = [];
+    P_data = [];
+    dP_data = [];
+    ddP_data = [];
+
+    p = y0;
+    p_dot = zeros(size(p));
+    p_ddot = zeros(size(p));
+    
+    gmp.setY0(y0);
+    gmp.setGoal(yg);
+
+    t = 0;
+    dt = 0.002;
+
+    while (true)
+
+        x = t/tau;
+        x_dot = 1/tau;
+        
+        if (x >= 1)
+            x_dot = 0;
+        end
+        
+        p_ref = gmp.getYd(x);
+        p_ref_dot = gmp.getYdDot(x, x_dot);
+        p_ref_ddot = gmp.getYdDDot(x, x_dot, 0);
+        
+        P = p_ref;
+        p_dot = p_ref_dot;
+        p_ddot = p_ref_ddot;
+
+        Time = [Time t];
+        P_data = [P_data p];
+        dP_data = [dP_data p_dot];
+        ddP_data = [ddP_data p_ddot];
+
+        %p_ddot = p_ref_ddot + 30*(p_ref_dot - p_dot) + 100*(p_ref - p);
+
+        t = t + dt;
+        p = p + p_dot*dt;
+        p_dot = p_dot + p_ddot*dt;
+
+        if (x >= 1.0), break; end
+
+    end
+
+end
+
+function plot3Dbounds(ax, bounds)
+    
+    x1 = bounds(1,1);
+    x2 = bounds(1,2);
+    y1 = bounds(2,1);
+    y2 = bounds(2,2);
+    z1 = bounds(3,1);
+    z2 = bounds(3,2);
+
+%     patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+%     patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+    
+    patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+    patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+
+    patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z1 z1 z1 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+    patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z2 z2 z2 z2], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+
+%     patch( [x1 x1 x2 x2] , [y1 y1 y1 y1], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+%     patch( [x1 x1 x2 x2] , [y2 y2 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
 end

@@ -210,7 +210,140 @@ classdef GMP_Opt < matlab.mixin.Copyable
             % toc
             
         end
-     
+        
+        function success = optimize3(this, x_data, gmp_in)
+
+            n_ker = this.gmp.numOfKernels();
+            n_dof = this.gmp.numOfDoFs();
+            
+            x_dot = 1/this.tau;
+            x_ddot = 0;
+            
+            success = true;
+            this.exit_msg = '';
+            
+            % calculate cost function: J = 0.5w'Hw + f'w
+            N = length(x_data);
+            
+            H = 1e-8*eye(n_ker, n_ker); % for numerical stability
+            f = zeros(n_ker, n_dof);
+            
+            if (this.opt_pos)
+                y_offset = - this.gmp.getY0() + this.gmp.getScaling()*this.gmp.getY0d();
+                H1 = zeros(n_ker, n_ker);
+                f1 = zeros(n_ker, n_dof);
+                for i=1:N
+                    phi = this.gmp.regressVec(x_data(i));
+                    H1 = H1 + phi*phi';
+                    yd = gmp_in.getYd(x_data(i)) + y_offset;
+                    f1 = f1 - phi*yd';
+                end
+                H = H + this.w_p*H1;
+                f = f + this.w_p*f1;
+            end
+  
+            if (this.opt_vel)
+                H2 = zeros(n_ker, n_ker);
+                f2 = zeros(n_ker, n_dof);
+                for i=1:N
+                    phi = this.gmp.regressVecDot(x_data(i), x_dot);
+                    H2 = H2 + phi*phi';
+                    f2 = f2 - phi*gmp_in.getYdDot(x_data(i), x_dot)';
+                end
+                H = H + this.w_v*H2;
+                f = f + this.w_v*f2;
+            end
+            
+            if (this.opt_accel)
+                H3 = zeros(n_ker, n_ker);
+                f3 = zeros(n_ker, n_dof);
+                for i=1:N
+                    phi = this.gmp.regressVecDDot(x_data(i), x_dot, x_ddot);
+                    H3 = H3 + phi*phi';
+                    f3 = f3 - phi*gmp_in.getYdDDot(x_data(i), x_dot, x_ddot)';
+                end
+                H = H + this.w_a*H3;
+                f = f + this.w_a*f3;
+            end
+            
+            % inequality constraints
+            
+            A = [];
+            b = [];
+
+            if (~isempty(this.A_p))
+                A = [A; -this.A_p; this.A_p];
+                b = [b; -this.pos_lb; this.pos_ub];
+            end
+            
+            if (~isempty(this.A_v))
+                A = [A; -this.A_v; this.A_v];
+                b = [b; -this.vel_lb; this.vel_ub];
+            end
+            
+            if (~isempty(this.A_a))
+                A = [A; -this.A_a; this.A_a];
+                b = [b; -this.accel_lb; this.accel_ub];
+            end
+            
+            % equality constraints
+            
+            Aeq = [];
+            beq = [];
+            
+            if (~isempty(this.Aeq_p))
+                Aeq = [Aeq; this.Aeq_p];
+                beq = [beq; this.pos_eq];
+            end
+            
+            if (~isempty(this.Aeq_v))
+                Aeq = [Aeq; this.Aeq_v];
+                beq = [beq; this.vel_eq];
+            end
+            
+            if (~isempty(this.Aeq_a))
+                Aeq = [Aeq; this.Aeq_a];
+                beq = [beq; this.accel_eq];
+            end
+
+            % H = sparse(H);
+            % A = sparse(A);
+            
+            opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off');
+            
+            % solve optimization problem
+            % tic
+            W = zeros(n_dof, n_ker);
+            for i=1:n_dof
+                
+                bi = [];
+                beq_i = [];
+                if (~isempty(b)), bi = b(:,i); end
+                if (~isempty(beq)), beq_i = beq(:,i); end
+                
+                [W(i,:), ~, ex_flag] = quadprog(H,f(:,i), A,bi, Aeq,beq_i, [],[], this.gmp.W(i,:), opt);
+
+                if (ex_flag == 1 || ex_flag == 2)
+                    %this.gmp.W(i,:) = w'; %w'/ks(i);
+                else
+                    success = false;
+                    % break; ?
+                end
+                
+                if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
+                this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' this.ex_flag_map(ex_flag)];
+
+            end
+            
+            if (success)
+                this.gmp.W = this.gmp.getInvScaling()*W;
+            end
+            
+            % toc
+            
+        end
+        
+        
         function setMotionDuration(this, tau)
            
             this.tau = tau;
