@@ -1,5 +1,5 @@
 clc;
-close all;
+% close all;
 clear;
 
 addpath('../../../../matlab/lib/gmp_lib/');
@@ -39,8 +39,8 @@ ks = diag([1 1 1]); % spatial scaling
 tau = taud/kt;
 y0 = yd0 + 0;
 % yg = ks*(ygd - yd0) + y0;
-% yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
-yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
+yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
+% yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
 
 
 %% ======== Limits ==========
@@ -49,23 +49,28 @@ pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 vel_lim = [-0.3*ones(3,1) 0.3*ones(3,1)];  % lower and upper limit, same for all DoFs
 accel_lim = [-0.4*ones(3,1) 0.4*ones(3,1)];
 
+data = {};
 
 % --------- Proportional scaling -----------
 gmp.setScaleMethod(TrajScale_Prop(3));
 [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
-data{1} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-    'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
+data = [data, { struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true) }];
 
-% % --------- Optimized DMP -> POS -----------
-% [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, true, false);
-% data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[0.85 0.33 0.1], 'legend','opt-pos', 'plot3D',true, 'plot2D',true);
+% --------- Offline GMP-weights:VEL optimization -----------
+[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true);
+data = [data, { struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0.85 0.33 0.1], 'legend','opt-w:vel', 'plot3D',true, 'plot2D',true) }];
 
-% ---------- Online GMP optimization ------------
-[Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
-data{2} = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-    'color','green', 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true);
+% % ---------- Online GMP optimization ------------
+% [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+% data = [data, { struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+%     'color','cyan', 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true) }];
 
+% ---------- Offline GMP-trajectory optimization ------------
+[Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+data = [data, { struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color','green', 'legend','opt-y', 'plot3D',true, 'plot2D',true) }];
 
 %% ======== Plot Results ==========
 
@@ -163,6 +168,197 @@ end
 
 % ======================================================
 
+function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim)
+    
+    gmp2 = gmp.deepCopy();
+    
+    %% --------  Init sim  --------
+    gmp2.setScaleMethod(TrajScale_Prop(3));
+    gmp2.setY0(y0);
+    gmp2.setGoal(yg);
+
+    Time = [];
+    P_data = [];
+    dP_data = [];
+    ddP_data = [];
+
+    p = y0;
+    p_dot = zeros(size(p));
+    p_ddot = zeros(size(p));
+
+    t = 0;
+    dt = 0.01;
+    x = t/tau;
+    x_dot = 1/tau;
+    x_ddot = 0;
+    
+    %% --------  Init MPC  --------
+    N = ceil(tau/dt);
+
+    K = 300;
+    D = 80;
+    
+    n = 6; % state dim
+    m = 3; % control input dim
+    
+    In = eye(n,n);
+    
+    % H = eye((n+m)*N, (n+m)*N);
+    Qi = blkdiag( 0*eye(3,3) , 1*eye(3,3) );
+    QN = 1*eye(n,n);
+    Ri = 0*eye(m,m);
+
+    H = blkdiag( kron(speye(N-1), Qi), QN, kron(speye(N), Ri) );
+    
+    Ai = (In + [zeros(3,3) eye(3,3); -K*eye(3,3) -D*eye(3,3)]*dt);
+    Bi = [zeros(3,3); eye(3,3)]*dt;
+    
+    Ax = kron(speye(N), speye(n)) + kron(sparse(diag(ones(N-1, 1), -1)), -Ai);
+    Bu = kron(speye(N), -Bi);
+    Aeq = [Ax, Bu];
+    
+    D_a = sparse( [zeros(3,3), eye(3,3)/dt] );
+    temp = diag(ones(N-1, 1), 1);
+    Aineq_accel =  [kron(-speye(N-1,N) + sparse(temp(1:end-1,:)), D_a) , zeros((N-1)*3,m*N)];
+    accel_lb = repmat(accel_lim(:,1), N-1, 1);
+    accel_ub = repmat(accel_lim(:,2), N-1, 1);
+
+    u_min = -inf;
+    u_max = inf;
+    z_min = [pos_lim(:,1); vel_lim(:,1)];
+    z_max = [pos_lim(:,2); vel_lim(:,2)];
+    
+    X_lb = [repmat(z_min, N,1); repmat(u_min*ones(m,1),N,1)];
+    X_ub = [repmat(z_max, N,1); repmat(u_max*ones(m,1),N,1)];
+    
+    X_lb((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
+    X_ub((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
+    
+    use_ud = 0;
+    
+    use_matlab_solver = 1;
+
+    %% --------  calc Beq  --------
+    xi = x;
+    xi_dot = x_dot;
+    xi_ddot = x_ddot;
+
+    pd_i = gmp2.getYd(xi);
+    dpd_i = gmp2.getYdDot(xi, xi_dot);
+    ddpd_i = gmp2.getYdDDot(xi, xi_dot, xi_ddot);
+    
+    beq = zeros( n*N , 1);
+    qx = zeros(N*n,1);
+    qu = zeros(N*m,1);
+    
+    X_prev = zeros(N*(n+m));
+
+    for i=0:N-1
+
+        ud_i = K*pd_i + D*dpd_i + ddpd_i;
+
+        beq((i*n)+1 : (i+1)*n) = use_ud * Bi*ud_i;
+
+        qu((i*m)+1 : (i+1)*m) = zeros(m,1); % -Ri*ud_i;
+
+        % i := i+1
+        xi = xi + xi_dot*dt;
+        xi_dot = xi_dot + xi_ddot*dt;
+
+        if (xi >= 1)
+            xi = 1;
+            xi_dot = 0;
+            xi_ddot = 0;
+        end
+
+        pd_i = gmp2.getYd(xi);
+        dpd_i = gmp2.getYdDot(xi, xi_dot);
+        ddpd_i = gmp2.getYdDDot(xi, xi_dot, xi_ddot);
+
+%         if (xi >= 1) % && ~xi_one_reached) % we reached the target
+%             %norm([pd_i; dpd_i] - [yg; zeros(3,1)])
+%             lb(j:j+n-1,:) = [pd_i; dpd_i] - 1.8e-2; %[yg; zeros(3,1)];
+%             ub(j:j+n-1,:) = [pd_i; dpd_i] + 1.8e-2;
+% 
+%             X_lb(i*n+1 : (i+1)*n) = [pd_i; dpd_i] - 10e-2;
+%             X_ub(i*n+1 : (i+1)*n) = [pd_i; dpd_i] + 10e-2;
+%         end
+%         j = j + n;
+
+        qx((i*n)+1 : (i+1)*n) = -Qi*[pd_i; dpd_i];
+        
+        X_prev((i*n)+1 : (i+1)*n) = [pd_i; dpd_i];
+        X_prev(n*N+(i*m)+1 : n*N+(i+1)*m) = ud_i;
+
+    end
+    qx((N-1)*n+1 : N*n) = -QN*[pd_i; dpd_i];
+    z0 = [p; p_dot];
+    beq(1:n) = beq(1:n) + Ai*z0;
+
+    q = [qx; qu];
+
+    %% --------  solve optimization problem  --------
+    
+    tic
+    if (~use_matlab_solver)
+
+        % Create an OSQP object
+        prob = osqp;
+
+        % - OSQP constraints
+        Aineq = speye(N*(n+m));
+        A = [Aeq; Aineq];
+        lb = [beq; X_lb];
+        ub = [beq; X_ub];
+
+        % Setup workspace
+        prob.setup(H, q, A, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-6, 'eps_rel',1e-6);
+
+        res = prob.solve();
+
+        if ( res.info.status_val ~= 1)
+            res.info
+            if (abs(res.info.status_val) == 2), warning(res.info.status);
+            else, error(res.info.status);
+            end
+        end
+
+        Z = reshape( res.x(1:N*n), n, N );
+        U = reshape( res.x(N*n+1:end), m, N );
+        
+    end
+
+    if (use_matlab_solver)
+        
+        A = [Aineq_accel; -Aineq_accel];
+        b = [accel_ub; -accel_lb];
+        solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
+        [X, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, X_lb,X_ub, X_prev, solver_opt);
+
+        if (ex_flag == 1 || ex_flag == 2)
+            % success
+        else
+            warning(opt_output.message);
+        end
+        
+        Z = reshape( X(1:N*n), n, N );
+        U = reshape( X(N*n+1:end), m, N);
+    end
+    
+    fprintf('===> Optimization finished! Elaps time: %f ms\n',toc()*1000);
+        
+   
+    %% --------  Log data  --------
+    Time = (0:(N-1))*dt;
+    P_data = Z(1:3,:);
+    dP_data = Z(4:6,:);
+    ddP_data = zeros(size(dP_data));
+    for i=1:3
+        ddP_data(i,:) = diff( [dP_data(i,:) dP_data(i,end)] ) / dt;
+    end
+
+end
+
 function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim)
     
     gmp2 = gmp.deepCopy();
@@ -188,7 +384,7 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
     x_ddot = 0;
     
     %% --------  Init MPC  --------
-    N = 8;
+    N = 30;
     
     K = 300;
     D = 80;
@@ -199,11 +395,12 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
     In = eye(n,n);
     
     % H = eye((n+m)*N, (n+m)*N);
-    Qi = blkdiag( 2*eye(3,3) , 1*eye(3,3) );
-    Ri = 0*0.01*eye(m,m);
+    Qi = blkdiag( 1*eye(3,3) , 1*eye(3,3) );
+    QN = 100*eye(n,n);
+    Ri = 0*eye(m,m);
 
     %H = kron(eye(N,N), blkdiag(Qi,Ri) ); % speye?
-    H = blkdiag( kron(speye(N), Qi), kron(speye(N), Ri) );
+    H = blkdiag( kron(speye(N-1), Qi), QN, kron(speye(N), Ri) );
     
     Ai = (In + [zeros(3,3) eye(3,3); -K*eye(3,3) -D*eye(3,3)]*dt);
     Bi = [zeros(3,3); eye(3,3)]*dt;
@@ -222,8 +419,8 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
     
     Aineq = speye(N*(n+m));
     
-%     solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
-%     X_prev = zeros(N*(n+m),1);
+    solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
+    X_prev = zeros(N*(n+m),1);
     
     % Create an OSQP object
     prob = osqp;
@@ -237,15 +434,17 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
     ub = [beq; X_ub];
 
     % Setup workspace
-    prob.setup(H, q, A, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-5, 'eps_rel',1e-5);
+    prob.setup(H, q, A, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-6, 'eps_rel',1e-6);
     
     use_ud = 0;
+    
+    use_matlab_solver = 0;
 
     %% ===========  Simulation loop  ===========
     while (true)
         
         %% --------  Stopping criteria  --------
-        if (x >= 1.0), break; end
+        if (x > 1.0), break; end
         
         t/tau
         
@@ -263,12 +462,15 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
         xi_ddot = x_ddot;
         
         beq = zeros( n*N , 1);
-        z0 = [p; p_dot];
             
         pd_i = gmp2.getYd(xi);
         dpd_i = gmp2.getYdDot(xi, xi_dot);
         ddpd_i = gmp2.getYdDDot(xi, xi_dot, xi_ddot);
             
+        j = n*N + 1;
+        
+        xi_one_reached = false;
+        
         for i=0:N-1
 
             ud_i = K*pd_i + D*dpd_i + ddpd_i;
@@ -277,37 +479,63 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
             
             qu((i*m)+1 : (i+1)*m) = zeros(m,1); % -Ri*ud_i;
             
+            % i := i+1
             xi = xi + xi_dot*dt;
             xi_dot = xi_dot + xi_ddot*dt;
+            
+            if (xi >= 1)
+                xi = 1;
+                xi_dot = 0;
+                xi_ddot = 0;
+            end
             
             pd_i = gmp2.getYd(xi);
             dpd_i = gmp2.getYdDot(xi, xi_dot);
             ddpd_i = gmp2.getYdDDot(xi, xi_dot, xi_ddot);
             
+            if (xi >= 1) % && ~xi_one_reached) % we reached the target
+                %norm([pd_i; dpd_i] - [yg; zeros(3,1)])
+%                 lb(j:j+n-1,:) = [pd_i; dpd_i] - 2e-2; %[yg; zeros(3,1)];
+%                 ub(j:j+n-1,:) = [pd_i; dpd_i] + 2e-2;
+%                 
+%                 X_lb(i*n+1 : (i+1)*n) = [pd_i; dpd_i] - 16e-2;
+%                 X_ub(i*n+1 : (i+1)*n) = [pd_i; dpd_i] + 16e-2;
+                
+                xi_one_reached = true;
+            end
+            j = j + n;
+            
             qx((i*n)+1 : (i+1)*n) = -Qi*[pd_i; dpd_i];
 
         end
-        beq(1:n) = beq(1:n) + Ai*z0; % + Bi*ud_0;
+        qx((N-1)*n+1 : N*n) = -QN*[pd_i; dpd_i];
+        z0 = [p; p_dot];
+        beq(1:n) = beq(1:n) + Ai*z0;
         
         q = [qx; qu];
-        
+
         lb(1:n*N) = beq;
         ub(1:n*N) = beq;
         
         %% --------  calc auxiliary control u  --------
         
         u = 0;
-
-        prob.update('q', q, 'l', lb, 'u', ub);
         
-        res = prob.solve();
+        if (~use_matlab_solver)
 
-        if ( res.info.status_val ~= 1)
-            res.info
-            error(res.info.status);
+            prob.update('q', q, 'l', lb, 'u', ub);
+
+            res = prob.solve();
+
+            if ( res.info.status_val ~= 1)
+                res.info
+                if (abs(res.info.status_val) == 2), warning(res.info.status);
+                else, error(res.info.status);
+                end
+            end
+
+            u = res.x(N*n+1:N*n+m);
         end
-
-        u = res.x(N*n+1:N*n+m);
         
 %         if (~ isempty( find( Aineq * res.x > X_ub +1e-3 ) ) )
 %             ind = find( Aineq * res.x < X_ub );
@@ -324,18 +552,19 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
 %             warning('X_lb Constraints violation!'); 
 %         end
         
-        
-%         [X, ~, ex_flag, opt_output] = quadprog(H,q, [],[], Aeq,beq, X_lb,X_ub, X_prev, solver_opt);
-% 
-%         if (ex_flag == 1 || ex_flag == 2)
-%             % success
-%         else
-%             warning(opt_output.message);
-%         end
-%         
-%         u = X(N*n+1:N*n+m);
-%         
-%         X_prev = X;
+        if (use_matlab_solver)
+            [X, ~, ex_flag, opt_output] = quadprog(H,q, [],[], Aeq,beq, X_lb,X_ub, X_prev, solver_opt);
+
+            if (ex_flag == 1 || ex_flag == 2)
+                % success
+            else
+                warning(opt_output.message);
+            end
+
+            u = X(N*n+1:N*n+m);
+
+            X_prev = [X(n+m+1:end); X(end-m-n+1:end)];
+        end
 
         %% --------  calc u_ref  --------
         p_ref = gmp2.getYd(x);
@@ -369,6 +598,9 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau,
 
     end
     
+    p_err = abs(p - yg)'
+    dp_err = abs(p_dot - zeros(3,1))'
+        
 end
 
 
@@ -483,7 +715,7 @@ function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory2(gmp, tau
     
 end
 
-function [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
+function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
     
     gmp2 = gmp.deepCopy();
     
