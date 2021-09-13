@@ -9,9 +9,9 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     
     t = 0;
     dt = 0.01;
-    x = t/tau;
-    x_dot = 1/tau;
-    x_ddot = 0;
+    s = t/tau;
+    s_dot = 1/tau;
+    s_ddot = 0;
     
     %% --------  Init MPC  --------
     
@@ -75,12 +75,12 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     % control input bounds
     u_min = -inf;
     u_max = inf;
-    z_min = [pos_lim(:,1); vel_lim(:,1)];
-    z_max = [pos_lim(:,2); vel_lim(:,2)];
+    x_min = [pos_lim(:,1); vel_lim(:,1)];
+    x_max = [pos_lim(:,2); vel_lim(:,2)];
     
     % extend bounds for the entire horizon N
-    Z_lb = [repmat(z_min, N,1); repmat(u_min*ones(m,1),N,1)];
-    Z_ub = [repmat(z_max, N,1); repmat(u_max*ones(m,1),N,1)];
+    Z_lb = [repmat(x_min, N,1); repmat(u_min*ones(m,1),N,1)];
+    Z_ub = [repmat(x_max, N,1); repmat(u_max*ones(m,1),N,1)];
     
     % Add final state constraint as: x_final <= x(N) <= x_final
     Z_lb((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
@@ -94,9 +94,9 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
 
     %% --------  calc Beq  --------
     % DMP phase variable
-    si = x;
-    si_dot = x_dot;
-    si_ddot = x_ddot;
+    si = s;
+    si_dot = s_dot;
+    si_ddot = s_ddot;
 
     yd_i = gmp.getYd(si);
     dyd_i = gmp.getYdDot(si, si_dot);
@@ -114,7 +114,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     % used as an initial guess for the solver
     % It's actually the states x(i) and control inputs u(i) that ensure
     % x(i)=xd(i) in the absesnce of the bounds constraints
-    Z_prev = zeros(N*(n+m));
+    Z_init = zeros(N*(n+m));
 
     for i=0:N-1
 
@@ -122,9 +122,10 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         % constraints
         ud_i = K*yd_i + D*dyd_i + ddyd_i;
 
-        beq((i*n)+1 : (i+1)*n) = use_ud * Bi*ud_i;
-
-        qu((i*m)+1 : (i+1)*m) = use_ud *(-Ri*ud_i);
+        if (use_ud)
+            beq((i*n)+1 : (i+1)*n) = Bi*ud_i;
+            qu((i*m)+1 : (i+1)*m) = -Ri*ud_i; 
+        end
 
         % i := i+1, move one step forward, by integrating s(i) to get s(i+1) 
         % and in turn, get x(i+1).
@@ -149,8 +150,8 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         
         qx((i*n)+1 : (i+1)*n) = -Qi*xd_i_plus_1;
         
-        Z_prev((i*n)+1 : (i+1)*n) = xd_i_plus_1;
-        Z_prev(n*N+(i*m)+1 : n*N+(i+1)*m) = ud_i;
+        Z_init((i*n)+1 : (i+1)*n) = xd_i_plus_1;
+        Z_init(n*N+(i*m)+1 : n*N+(i+1)*m) = ud_i;
 
     end
     % repeat the final assignment using the final value QN
@@ -179,17 +180,19 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         
         % Transform equality constraints in inequalities:
         % Aeq*Z = beq : beq <= Aeq*Z <= beq
-        A = [Aeq; Aineq];
-        lb = [beq; Z_lb];
-        ub = [beq; Z_ub];
+        A = [Aeq; Aineq; Aineq_accel];
+        lb = [beq; Z_lb; accel_lb];
+        ub = [beq; Z_ub; accel_ub];
 
         % Setup workspace
-        prob.setup(H, q, A, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-6, 'eps_rel',1e-6);
+        prob.setup(H, q, A, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-6, 'eps_rel',1e-6, 'max_iter',30000);
+        %, ..., 'scaled_termination',false, 'polish',true, 'polish_refine_iter',3);
 
         res = prob.solve();
-
+        
+        res.info
+        
         if ( res.info.status_val ~= 1)
-            res.info
             if (abs(res.info.status_val) == 2), warning(res.info.status);
             else, error(res.info.status);
             end
@@ -207,7 +210,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         b = [accel_ub; -accel_lb];
         
         solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
-        [Z, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, Z_lb,Z_ub, Z_prev, solver_opt);
+        [Z, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, Z_lb,Z_ub, Z_init, solver_opt);
 
         if (ex_flag == 1 || ex_flag == 2)
             % success

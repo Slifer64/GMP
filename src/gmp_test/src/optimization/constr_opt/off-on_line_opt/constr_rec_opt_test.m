@@ -67,17 +67,20 @@ data{length(data)+1} = ...
 % ---------- Offline GMP-trajectory optimization ------------
 opt_pos = false;
 opt_vel = true;
-use_matlab_solver = true;
+use_matlab_solver = 1;
 [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
         'color','green', 'legend','opt-y', 'plot3D',true, 'plot2D',true);
     
-% % ---------- Online GMP optimization ------------
-% [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-%     'color','cyan', 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true);
+% ---------- Online GMP-trajectory optimization ------------
+opt_pos = false;
+opt_vel = true;
+use_matlab_solver = 1;
+[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+    'color',[1, 0.41, 0.16], 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true);
 
 
     
@@ -166,6 +169,7 @@ for i=1:n_dof
     % plot bounds
     plot(ax.XLim, [accel_lim(i,1) accel_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [accel_lim(i,2) accel_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
+    ax.YLim = [ max(ax.YLim(1), 1.6*accel_lim(i,1)) min(ax.YLim(2), 1.6*accel_lim(i,2)) ];
     ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',label_font);
     xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
     ax.FontSize = ax_fontsize;
