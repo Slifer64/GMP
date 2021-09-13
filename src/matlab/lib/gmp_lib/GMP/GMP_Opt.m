@@ -181,15 +181,14 @@ classdef GMP_Opt < matlab.mixin.Copyable
             
             % solve optimization problem
             % tic
-            W = zeros(n_dof, n_ker);
-            for i=1:n_dof
-                
-                bi = [];
-                beq_i = [];
-                if (~isempty(b)), bi = b(:,i); end
-                if (~isempty(beq)), beq_i = beq(:,i); end
-                
-                [W(i,:), ~, ex_flag] = quadprog(H,f(:,i), A,bi, Aeq,beq_i, [],[], this.gmp.W(i,:), opt);
+            
+            solve_coupled = 0;
+            
+            if (solve_coupled)
+            
+                W0 = this.gmp.W';
+                [W, ~, ex_flag] = quadprog(sparse(kron(eye(n_dof),H)),f(:), sparse(kron(eye(n_dof),A)),b(:), sparse(kron(eye(n_dof),Aeq)),beq(:), [],[], W0(:), opt);
+                %[W, ~, ex_flag] = quadprog((kron(eye(n_dof),H)),f(:), (kron(eye(n_dof),A)),b(:), (kron(eye(n_dof),Aeq)),beq(:), [],[], W0(:), opt);
 
                 if (ex_flag == 1 || ex_flag == 2)
                     %this.gmp.W(i,:) = w'; %w'/ks(i);
@@ -197,10 +196,36 @@ classdef GMP_Opt < matlab.mixin.Copyable
                     success = false;
                     % break; ?
                 end
-                
-                if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
-                this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' this.ex_flag_map(ex_flag)];
 
+                this.exit_msg = this.ex_flag_map(ex_flag);
+
+                W = reshape(W, n_ker,n_dof)';
+            
+            else
+                
+                W = zeros(n_dof, n_ker);
+                for i=1:n_dof
+
+                    bi = [];
+                    beq_i = [];
+                    if (~isempty(b)), bi = b(:,i); end
+                    if (~isempty(beq)), beq_i = beq(:,i); end
+
+                    %[W(i,:), ~, ex_flag] = quadprog(H,f(:,i), A,bi, Aeq,beq_i, [],[], this.gmp.W(i,:), opt);
+                    [W(i,:), ~, ex_flag] = quadprog(sparse(H),f(:,i), sparse(A),bi, sparse(Aeq),beq_i, [],[], this.gmp.W(i,:), opt);
+
+                    if (ex_flag == 1 || ex_flag == 2)
+                        %this.gmp.W(i,:) = w'; %w'/ks(i);
+                    else
+                        success = false;
+                        % break; ?
+                    end
+
+                    if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
+                    this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' this.ex_flag_map(ex_flag)];
+
+                end
+                
             end
             
             if (success)

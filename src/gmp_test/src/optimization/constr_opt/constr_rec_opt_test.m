@@ -21,7 +21,7 @@ Ts = Timed(2)-Timed(1);
 
 %% initialize and train GMP
 train_method = 'LS';
-N_kernels = 30;
+N_kernels = 40;
 kernels_std_scaling = 1.5;
 n_dof = size(Pd_data,1);
 gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
