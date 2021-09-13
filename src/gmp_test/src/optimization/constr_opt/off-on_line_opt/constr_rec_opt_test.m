@@ -18,6 +18,11 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
+ind = [3];
+Pd_data = Pd_data(ind,:);
+dPd_data = dPd_data(ind,:);
+ddPd_data = ddPd_data(ind,:);
+
 
 %% initialize and train GMP
 train_method = 'LS';
@@ -39,30 +44,37 @@ ks = diag([1 1 1]); % spatial scaling
 tau = taud/kt;
 y0 = yd0 + 0;
 % yg = ks*(ygd - yd0) + y0;
-% yg = ygd + [0.1; -0.1; 0.2]; view_ = [171.5301, -2.3630];
-yg = ygd + [0.7; -0.7; 0.05];  view_ = [171.9421, -3.0690];
+
+%% case 1
+% y_offset = [0.1; -0.1; 0.2];
+% yg = ygd + y_offset(ind); view_ = [171.5301, -2.3630];
+
+%% case 2
+y_offset = [0.7; -0.7; 0.05];
+yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 
 
 %% ======== Limits ==========
 %            lower limit     upper limit
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
-vel_lim = [-0.3*ones(3,1) 0.3*ones(3,1)];  % lower and upper limit, same for all DoFs
-accel_lim = [-0.4*ones(3,1) 0.4*ones(3,1)];
+pos_lim = pos_lim(ind,:);
+vel_lim = [-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
+accel_lim = [-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 
 % --------- Proportional scaling -----------
-gmp.setScaleMethod(TrajScale_Prop(3));
+gmp.setScaleMethod(TrajScale_Prop(n_dof));
 [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
         'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
-% --------- Offline GMP-weights:VEL optimization -----------
-[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-        'color',[0.85 0.33 0.1], 'legend','opt-w:vel', 'plot3D',true, 'plot2D',true);
+% % --------- Offline GMP-weights:VEL optimization -----------
+% [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%         'color',[0.85 0.33 0.1], 'legend','opt-w:vel', 'plot3D',true, 'plot2D',true);
 
 % ---------- Offline GMP-trajectory optimization ------------
 opt_pos = false;
@@ -76,7 +88,7 @@ data{length(data)+1} = ...
 % ---------- Online GMP-trajectory optimization ------------
 opt_pos = false;
 opt_vel = true;
-use_matlab_solver = 0;
+use_matlab_solver = 1;
 [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
@@ -87,31 +99,33 @@ data{length(data)+1} = ...
 %% ======== Plot Results ==========
 
 % plot 3D path
-fig = figure;
-fig.Position(3:4) = [815 716];
-ax = axes();
-hold on;
-plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',12);
-plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',12);
-plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',12);
-legend_ = {};
-for k=1:length(data)
-    if (~data{k}.plot3D), continue; end
-    plot3(data{k}.Pos(1,:), data{k}.Pos(2,:), data{k}.Pos(3,:), 'LineWidth', 3, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
-    legend_ = [legend_ data{k}.legend];
+if (n_dof == 3)
+    fig = figure;
+    fig.Position(3:4) = [815 716];
+    ax = axes();
+    hold on;
+    plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',12);
+    plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',12);
+    plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',12);
+    legend_ = {};
+    for k=1:length(data)
+        if (~data{k}.plot3D), continue; end
+        plot3(data{k}.Pos(1,:), data{k}.Pos(2,:), data{k}.Pos(3,:), 'LineWidth', 3, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
+        legend_ = [legend_ data{k}.legend];
+    end
+    plot3([ygd(1) yg(1)], [ygd(2) yg(2)], [ygd(3) yg(3)], 'LineWidth', 1, 'LineStyle','--', 'Color',[1 0 1 0.5]);
+    legend(['$p_0$','$g$','$g_d$' legend_], 'interpreter','latex', 'fontsize',17, 'Position',[0.8174 0.6641 0.1531 0.3144]);
+    axis tight;
+    x_lim = ax.XLim + 0.05*[-1 1];
+    y_lim = ax.YLim + 0.05*[-1 1];
+    z_lim = ax.ZLim + 0.05*[-1 1];
+    plot3Dbounds(ax, pos_lim)
+    view(view_);
+    grid on;
+    ax.XLim=x_lim; ax.YLim=y_lim; ax.ZLim=z_lim;
+    ax.FontSize = 14;
+    hold off;
 end
-plot3([ygd(1) yg(1)], [ygd(2) yg(2)], [ygd(3) yg(3)], 'LineWidth', 1, 'LineStyle','--', 'Color',[1 0 1 0.5]);
-legend(['$p_0$','$g$','$g_d$' legend_], 'interpreter','latex', 'fontsize',17, 'Position',[0.8174 0.6641 0.1531 0.3144]);
-axis tight;
-x_lim = ax.XLim + 0.05*[-1 1];
-y_lim = ax.YLim + 0.05*[-1 1];
-z_lim = ax.ZLim + 0.05*[-1 1];
-plot3Dbounds(ax, pos_lim)
-view(view_);
-grid on;
-ax.XLim=x_lim; ax.YLim=y_lim; ax.ZLim=z_lim;
-ax.FontSize = 14;
-hold off;
 
 title_ = {'x coordinate', 'y coordinate', 'z coordinate'};
 label_font = 17;

@@ -2,8 +2,10 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     gmp = gmp0.deepCopy();
     
+    n_dof = length(y0);
+    
     %% --------  Init sim  --------
-    gmp.setScaleMethod(TrajScale_Prop(3));
+    gmp.setScaleMethod(TrajScale_Prop(n_dof));
     gmp.setY0(y0);
     gmp.setGoal(yg);
     
@@ -22,16 +24,18 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     s_dot = 1/tau;
     s_ddot = 0;
     
+    x_final = [yg; zeros(n_dof,1)];
+    
     %% --------  Init MPC  --------
-    N = 50;
+    N = 200;%10; %200;
 
     % stiffness and damping of the system
     % y_dddot = -K*y - D*y_dot + u
     K = 300;
     D = 80;
     
-    n = 6; % state dim : x = [y y_dot]
-    m = 3; % control input dim : u
+    n = 2*n_dof; % state dim : x = [y y_dot]
+    m = n_dof; % control input dim : u
     
     In = eye(n,n);
     
@@ -39,7 +43,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     % Z = [x(1), x(2), ... x(N), u(0), u(1), ... u(N-1)]
     
     % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
-    Qi = blkdiag( opt_pos*eye(3,3) , opt_vel*10*eye(3,3) );
+    Qi = blkdiag( opt_pos*eye(n_dof,n_dof) , opt_vel*10*eye(n_dof,n_dof) );
     QN = Qi; %1*eye(n,n);
     % Control input minimization gain: u(i)'*Ri*u(i)
     Ri = 0*eye(m,m);
@@ -52,8 +56,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     % x(2)   - A1*x(1) - B1*u(1) = 0
     % ...
     % x(i+1) - Ai*x(i) - Bi*u(i) = 0
-    Ai = (In + [zeros(3,3) eye(3,3); -K*eye(3,3) -D*eye(3,3)]*dt);
-    Bi = [zeros(3,3); eye(3,3)]*dt;
+    Ai = (In + [zeros(n_dof,n_dof) eye(n_dof,n_dof); -K*eye(n_dof,n_dof) -D*eye(n_dof,n_dof)]*dt);
+    Bi = [zeros(n_dof,n_dof); eye(n_dof,n_dof)]*dt;
     
     % State transition equality constraints for entire horizon: 
     % Ax*Z(1:n*N) + Bu*Z(n*N+1:end) = [A0*z0, 0, 0, ..., 0]
@@ -63,26 +67,29 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     Aeq = [Ax, Bu];
     
     % acceleration constraints using numerical diff: x_ddot(i) = (x_dot(i+1) - x_dot(i))/dt
-    D_a = sparse( [zeros(3,3), eye(3,3)/dt] );
+    D_a = sparse( [zeros(n_dof,n_dof), eye(n_dof,n_dof)] );
     temp = diag(ones(N-1, 1), 1);
-    Aineq_accel =  [kron(-speye(N-1,N) + sparse(temp(1:end-1,:)), D_a) , zeros((N-1)*3,m*N)];
+    Aineq_accel =  [zeros(n_dof), eye(n_dof) zeros(n_dof, N*(m+n)-n);
+        kron(-speye(N-1,N) + sparse(temp(1:end-1,:)), D_a) , zeros((N-1)*n_dof,m*N)];
     % accel bounds
-    accel_lb = repmat(accel_lim(:,1), N-1, 1);
-    accel_ub = repmat(accel_lim(:,2), N-1, 1);
+    % constraint for initial acceleration: a_lb*dt <= y_dot(1) - y_dot(0) <= a_ub*dt
+    y0_dot = y_dot;
+    accel_lb = [accel_lim(:,1)*dt + y0_dot; repmat(accel_lim(:,1)*dt, N-1, 1)];
+    accel_ub = [accel_lim(:,2)*dt + y0_dot; repmat(accel_lim(:,2)*dt, N-1, 1)];
 
     % control input bounds
-    u_min = -inf;
-    u_max = inf;
+    u_min = -inf(m,1);
+    u_max = inf(m,1);
     x_min = [pos_lim(:,1); vel_lim(:,1)];
     x_max = [pos_lim(:,2); vel_lim(:,2)];
     
     % extend bounds for the entire horizon N
-    Z_lb = [repmat(x_min, N,1); repmat(u_min*ones(m,1),N,1)];
-    Z_ub = [repmat(x_max, N,1); repmat(u_max*ones(m,1),N,1)];
+    Z_lb = [repmat(x_min, N,1); repmat(u_min,N,1)];
+    Z_ub = [repmat(x_max, N,1); repmat(u_max,N,1)];
     
 %     % Add final state constraint as: x_final <= x(N) <= x_final
-%     Z_lb((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
-%     Z_ub((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
+%     Z_lb((N-1)*n+1 : n*N) = [yg; zeros(n_dof,1)];
+%     Z_ub((N-1)*n+1 : n*N) = [yg; zeros(n_dof,1)];
 
     %% --------  Init solver  --------
     if (~use_matlab_solver)
@@ -187,6 +194,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         qx = zeros(N*n,1);
         % qu(i*n+1 : (i+1)*n) = -Ri*ud(i)
         qu = zeros(N*m,1);
+        
+        Z_lb(1:n*N) = repmat(x_min, N,1);
+        Z_ub(1:n*N) = repmat(x_max, N,1);
+        
+        fc_flag = 0;
 
         for i=0:N-1
 
@@ -211,11 +223,22 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
                 si = 1;
                 si_dot = 0;
                 si_ddot = 0;
-            end
+                %if (i==N-1)
+                if (~fc_flag)
+                    Z_lb(i*n+1:(i+1)*n) = x_final;
+                    Z_ub(i*n+1:(i+1)*n) = x_final;
+                    fc_flag = 1;
+                end
+                
+                yd_i = yg;
+                dyd_i = zeros(n_dof,1);
+                ddyd_i = zeros(n_dof,1);
 
-            yd_i = gmp.getYd(si);
-            dyd_i = gmp.getYdDot(si, si_dot);
-            ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
+            else
+                yd_i = gmp.getYd(si);
+                dyd_i = gmp.getYdDot(si, si_dot);
+                ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
+            end
 
             xd_i_plus_1 = [yd_i; dyd_i];
 
@@ -227,6 +250,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         % Substitute the initial value constraint 
         x0 = [y; y_dot];
         beq(1:n) = beq(1:n) + Ai*x0;
+        
+        % update initial acceleration constraint
+        y0_dot = y_dot;
+        accel_lb(1:n_dof) = accel_lim(:,1)*dt + y0_dot;
+        accel_ub(1:n_dof) = accel_lim(:,2)*dt + y0_dot;
 
         % Accumulate
         q = [qx; qu];
@@ -276,6 +304,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
             else
                 warning(opt_output.message);
                 text_prog.printInNewLine();
+                if (ex_flag < 0), break; end
             end
             
             u = Z(N*n+1:N*n+m);
@@ -294,7 +323,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         x = [y; y_dot];
         x_next = Ai*x + Bi*u;
         
-        y_ddot = ( x_next(4:6) - x(4:6) ) / dt;
+        y_ddot = ( x_next(n_dof+1:n) - x(n_dof+1:n) ) / dt;
         
         %% --------  Log data  --------
         Time = [Time t];
@@ -308,10 +337,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         s_dot = s_dot + s_ddot*dt;
 %         y = y + y_dot*dt;
 %         y_dot = y_dot + y_ddot*dt;
-        y = x_next(1:3);
-        y_dot = x_next(4:6);
+        y = x_next(1:n_dof);
+        y_dot = x_next(n_dof+1:n);
     
     end
+    
+    text_prog.update(100);
+    fprintf('\n');
     
 
 end

@@ -2,8 +2,10 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     
     gmp = gmp0.deepCopy();
     
+    n_dof = length(y0);
+    
     %% --------  Init sim  --------
-    gmp.setScaleMethod(TrajScale_Prop(3));
+    gmp.setScaleMethod(TrajScale_Prop(n_dof));
     gmp.setY0(y0);
     gmp.setGoal(yg);
     
@@ -12,6 +14,8 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     s = t/tau;
     s_dot = 1/tau;
     s_ddot = 0;
+    
+    y0_dot = zeros(n_dof,1);
     
     %% --------  Init MPC  --------
     
@@ -32,8 +36,8 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     K = 300;
     D = 80;
     
-    n = 6; % state dim : x = [y y_dot]
-    m = 3; % control input dim : u
+    n = 2*n_dof; % state dim : x = [y y_dot]
+    m = n_dof; % control input dim : u
     
     In = eye(n,n);
     
@@ -41,7 +45,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     % Z = [x(1), x(2), ... x(N), u(0), u(1), ... u(N-1)]
     
     % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
-    Qi = blkdiag( opt_pos*eye(3,3) , opt_vel*10*eye(3,3) );
+    Qi = blkdiag( opt_pos*eye(n_dof,n_dof) , opt_vel*10*eye(n_dof,n_dof) );
     QN = 1*eye(n,n);
     % Control input minimization gain: u(i)'*Ri*u(i)
     Ri = 0*eye(m,m);
@@ -54,8 +58,8 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     % x(2)   - A1*x(1) - B1*u(1) = 0
     % ...
     % x(i+1) - Ai*x(i) - Bi*u(i) = 0
-    Ai = (In + [zeros(3,3) eye(3,3); -K*eye(3,3) -D*eye(3,3)]*dt);
-    Bi = [zeros(3,3); eye(3,3)]*dt;
+    Ai = (In + [zeros(n_dof,n_dof) eye(n_dof,n_dof); -K*eye(n_dof,n_dof) -D*eye(n_dof,n_dof)]*dt);
+    Bi = [zeros(n_dof,n_dof); eye(n_dof,n_dof)]*dt;
     
     % State transition equality constraints for entire horizon: 
     % Ax*Z(1:n*N) + Bu*Z(n*N+1:end) = [A0*z0, 0, 0, ..., 0]
@@ -65,26 +69,29 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     Aeq = [Ax, Bu];
     
     % acceleration constraints using numerical diff: x_ddot(i) = (x_dot(i+1) - x_dot(i))/dt
-    D_a = sparse( [zeros(3,3), eye(3,3)/dt] );
+    D_a = sparse( [zeros(n_dof,n_dof), eye(n_dof,n_dof)] );
     temp = diag(ones(N-1, 1), 1);
-    Aineq_accel =  [kron(-speye(N-1,N) + sparse(temp(1:end-1,:)), D_a) , zeros((N-1)*3,m*N)];
+    Aineq_accel =  [zeros(n_dof), eye(n_dof) zeros(n_dof, N*(m+n)-n);
+        kron(-speye(N-1,N) + sparse(temp(1:end-1,:)), D_a) , zeros((N-1)*n_dof,m*N)];
     % accel bounds
-    accel_lb = repmat(accel_lim(:,1), N-1, 1);
-    accel_ub = repmat(accel_lim(:,2), N-1, 1);
+    % constraint for initial acceleration: a_lb*dt <= y_dot(1) - y_dot(0) <= a_ub*dt
+    accel_lb = [accel_lim(:,1)*dt + y0_dot; repmat(accel_lim(:,1)*dt, N-1, 1)];
+    accel_ub = [accel_lim(:,2)*dt + y0_dot; repmat(accel_lim(:,2)*dt, N-1, 1)];
 
     % control input bounds
-    u_min = -inf;
-    u_max = inf;
+    u_min = -inf(m,1);
+    u_max = inf(m,1);
     x_min = [pos_lim(:,1); vel_lim(:,1)];
     x_max = [pos_lim(:,2); vel_lim(:,2)];
     
+    
     % extend bounds for the entire horizon N
-    Z_lb = [repmat(x_min, N,1); repmat(u_min*ones(m,1),N,1)];
-    Z_ub = [repmat(x_max, N,1); repmat(u_max*ones(m,1),N,1)];
+    Z_lb = [repmat(x_min, N,1); repmat(u_min,N,1)];
+    Z_ub = [repmat(x_max, N,1); repmat(u_max,N,1)];
     
     % Add final state constraint as: x_final <= x(N) <= x_final
-    Z_lb((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
-    Z_ub((N-1)*n+1 : n*N) = [yg; zeros(3,1)];
+    Z_lb((N-1)*n+1 : n*N) = [yg; zeros(n_dof,1)];
+    Z_ub((N-1)*n+1 : n*N) = [yg; zeros(n_dof,1)];
     
     % use this if you want to have: (u(i) - ud(i))'*Ri*(u(i) - ud(i))
     use_ud = 0;
@@ -158,7 +165,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     qx((N-1)*n+1 : N*n) = -QN*[yd_i; dyd_i];
     
     % Substitute the initial value constraint 
-    x0 = [y0; zeros(3,1)];
+    x0 = [y0; y0_dot];
     beq(1:n) = beq(1:n) + Ai*x0;
     
     % Accumulate
@@ -228,10 +235,10 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
    
     %% --------  Log data  --------
     Time = (0:N)*dt;
-    P_data = X(1:3,:);
-    dP_data = X(4:6,:);
+    P_data = X(1:n_dof,:);
+    dP_data = X(n_dof+1:n,:);
     ddP_data = zeros(size(dP_data));
-    for i=1:3
+    for i=1:n_dof
         ddP_data(i,:) = diff( [dP_data(i,:) dP_data(i,end)] ) / dt;
     end
     
@@ -243,10 +250,10 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
 %         xi = Ai*xi + Bi*U(:,i);
 %         X(:,i+1) = xi;
 %     end
-%     P_data = X(1:3,:);
-%     dP_data = X(4:6,:);
+%     P_data = X(1:n_dof,:);
+%     dP_data = X(n_dof+1:n,:);
 %     ddP_data = zeros(size(dP_data));
-%     for i=1:3
+%     for i=1:n_dof
 %         ddP_data(i,:) = diff( [dP_data(i,:) dP_data(i,end)] ) / dt;
 %     end
     
@@ -255,7 +262,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
 %     figure;
 %     plot(Time(1:end-1), u_norm, 'LineWidth',2, 'Color','magenta');
     
-%     gmp2 = GMP(3, 100, 1.5);
+%     gmp2 = GMP(n_dof, 100, 1.5);
 %     gmp2.train('LS', Time/Time(end), P_data);
 %     [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);
     

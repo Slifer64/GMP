@@ -2,7 +2,9 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, 
     
     gmp2 = gmp.deepCopy();
     
-    gmp2.setScaleMethod(TrajScale_Prop(3));
+    n_dof = length(y0);
+    
+    gmp2.setScaleMethod(TrajScale_Prop(n_dof));
     gmp2.setY0(y0);
     gmp2.setGoal(yg);
 
@@ -16,10 +18,10 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, 
     gmp_opt.setPosConstr([],[],[], [0 1], [y0 yg]);
     % velocity constr
     gmp_opt.setVelBounds(vel_lim(:,1), vel_lim(:,2), n_points);
-    gmp_opt.setVelConstr([], [], [], [0 1], zeros(3,2));
+    gmp_opt.setVelConstr([], [], [], [0 1], zeros(n_dof,2));
     % accel constr
     gmp_opt.setAccelBounds(accel_lim(:,1), accel_lim(:,2), n_points);
-    gmp_opt.setAccelConstr([], [], [], [0 1], zeros(3,2));
+    gmp_opt.setAccelConstr([], [], [], [0 1], zeros(n_dof,2));
     
     n_points
 

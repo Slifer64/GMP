@@ -28,7 +28,7 @@ function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
         p_ref_dot = gmp.getYdDot(x, x_dot);
         p_ref_ddot = gmp.getYdDDot(x, x_dot, 0);
         
-        P = p_ref;
+        p = p_ref;
         p_dot = p_ref_dot;
         p_ddot = p_ref_ddot;
 
