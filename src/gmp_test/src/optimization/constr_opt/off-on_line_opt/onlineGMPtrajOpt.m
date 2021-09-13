@@ -151,6 +151,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         
         
     end
+    
+    text_prog = ProgressText(40);
+    text_prog.init();
 
     %% --------  Simulation loop  --------
     while (true)
@@ -158,7 +161,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         %% --------  Stopping criteria  --------
         if (s > 1.0), break; end
         
-        t/tau
+        %t/tau
+        text_prog.update(100*t/tau);
 %         fprintf('progress: %.1f\n',t/tau);
         
         if (s >= 1)
@@ -252,6 +256,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
                 if (abs(res.info.status_val) == 2), warning(res.info.status);
                 else, error(res.info.status);
                 end
+                text_prog.printInNewLine();
             end
             
             u = res.x(N*n+1:N*n+m);
@@ -270,6 +275,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
                 % success
             else
                 warning(opt_output.message);
+                text_prog.printInNewLine();
             end
             
             u = Z(N*n+1:N*n+m);
