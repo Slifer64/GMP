@@ -29,7 +29,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, 
     tic
     gmp_opt.optimize2(0:0.01:1);
     elaps_t = toc;
-    fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
+    fprintf('===> offline-GMP-weights optimization finished! Elaps time: %f ms\n',elaps_t*1000);
     fprintf([gmp_opt.getExitMsg() '\n']);
     
     [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);

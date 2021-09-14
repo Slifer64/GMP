@@ -229,7 +229,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         U = reshape( Z(N*n+1:end), m, N);
     end
     
-    fprintf('===> Optimization finished! Elaps time: %f ms\n',toc()*1000);
+    fprintf('===> offline-GMP-traj optimization finished! Elaps time: %f ms\n',toc()*1000);
         
     X = [x0 X];
    

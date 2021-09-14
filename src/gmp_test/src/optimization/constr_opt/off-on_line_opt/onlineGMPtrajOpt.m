@@ -27,7 +27,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     x_final = [yg; zeros(n_dof,1)];
     
     %% --------  Init MPC  --------
-    N = 200;%10; %200;
+    N = 10;%10; %200;
 
     % stiffness and damping of the system
     % y_dddot = -K*y - D*y_dot + u
@@ -161,6 +161,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     text_prog = ProgressText(40);
     text_prog.init();
+    
+    tic
 
     %% --------  Simulation loop  --------
     while (true)
@@ -195,6 +197,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         % qu(i*n+1 : (i+1)*n) = -Ri*ud(i)
         qu = zeros(N*m,1);
         
+        % restore bounds in case they were changed in previous iter for si>=1
         Z_lb(1:n*N) = repmat(x_min, N,1);
         Z_ub(1:n*N) = repmat(x_max, N,1);
         
@@ -259,9 +262,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         % Accumulate
         q = [qx; qu];
 
-        %% ===========  solve optimization problem  ===========
-
-        tic
+        %% ===========  solve optimization problem  ==========
 
         %% --------- OSQP solver ----------
         if (~use_matlab_solver)
@@ -344,6 +345,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     text_prog.update(100);
     fprintf('\n');
-    
+    fprintf('===> online-GMP-traj optimization finished! Elaps time: %f ms\n',toc()*1000);
 
 end

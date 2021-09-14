@@ -70,29 +70,35 @@ data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
         'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
-% % --------- Offline GMP-weights:VEL optimization -----------
-% [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, false, true);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%         'color',[0.85 0.33 0.1], 'legend','opt-w:vel', 'plot3D',true, 'plot2D',true);
+opt_pos = 1;
+opt_vel = 0;
+use_matlab_solver = 1;
+opt_type = 'pos';
+if (opt_vel), opt_type = 'vel'; end
+
+% --------- Offline GMP-weights:VEL optimization -----------
+[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+        'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
+
+% ---------- Online GMP-weights optimization ------------
+[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % ---------- Offline GMP-trajectory optimization ------------
-opt_pos = false;
-opt_vel = true;
-use_matlab_solver = 1;
 [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-        'color','green', 'legend','opt-y', 'plot3D',true, 'plot2D',true);
-    
-% ---------- Online GMP-trajectory optimization ------------
-opt_pos = false;
-opt_vel = true;
-use_matlab_solver = 1;
-[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-    'color',[1, 0.41, 0.16], 'legend','onlineOpt-pos', 'plot3D',true, 'plot2D',true);
+        'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
+     
+% % ---------- Online GMP-trajectory optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 
     
@@ -104,7 +110,7 @@ if (n_dof == 3)
     fig.Position(3:4) = [815 716];
     ax = axes();
     hold on;
-    plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',12);
+    plot3(y0(1), y0(2), y0(3), 'LineWidth', 4, 'LineStyle','none', 'Color',[0.47,0.67,0.19],'Marker','o', 'MarkerSize',12);
     plot3(yg(1), yg(2), yg(3), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',12);
     plot3(ygd(1), ygd(2), ygd(3), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',12);
     legend_ = {};
@@ -146,7 +152,7 @@ for i=1:n_dof
     end
     axis tight;
     % plot start and final positions
-    plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',10);
+    plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color',[0.47,0.67,0.19],'Marker','o', 'MarkerSize',10);
     plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
     plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
     % plot bounds
