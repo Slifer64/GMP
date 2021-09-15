@@ -24,12 +24,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     s_dot = 1/tau;
     s_ddot = 0;
     
-    x_final = [yg; zeros(n_dof,1); zeros(n_dof,1)];
-    n_dof3 = length(x_final); % for pos, vel, accel
+    
+    n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 8;%10; %200;
-    
+    N = 10;%10; %200;
     
     N_kernels = gmp.numOfKernels();
     
@@ -40,7 +39,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
     Qi = blkdiag( opt_pos*eye(n_dof,n_dof) , opt_vel*10*eye(n_dof,n_dof) );
-    QN = Qi; %blkdiag( 10*eye(n_dof,n_dof) , 0*eye(n_dof,n_dof) );
+    QN = blkdiag( 100*eye(n_dof,n_dof) , 1*eye(n_dof,n_dof) );
 
     z_min = [pos_lim(:,1); vel_lim(:,1); accel_lim(:,1)];
     z_max = [pos_lim(:,2); vel_lim(:,2); accel_lim(:,2)];
@@ -77,6 +76,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     phi_f = gmp.regressVec(1);
     phi_f_dot = gmp.regressVecDot(1, 0);
     phi_f_ddot = gmp.regressVecDDot(1, 0, 0);
+    Phi_f = sparse([kron(eye(n_dof),phi_f'); kron(eye(n_dof),phi_f_dot'); kron(eye(n_dof),phi_f_ddot')]);
+    x_final = [yg; zeros(n_dof,1); zeros(n_dof,1)];
 
     %% --------  Simulation loop  --------
     while (true)
@@ -89,7 +90,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %         fprintf('progress: %.1f\n',t/tau);
         
         if (s >= 1)
+            s = 1;
             s_dot = 0;
+            s_ddot = 0;
         end
 
         %% -------  calc problem matrices  --------
@@ -106,7 +109,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         si = s;
         si_dot = s_dot;
         si_ddot = s_ddot;
-        dt_ = 1.5*dt; %0.8*dt;
+        dt_ = 1*dt; %0.8*dt;
         
         for i=1:N
             
@@ -138,7 +141,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             % si_ddot = ... (if it changes too)
         end
         
-        H = (H+H')/2; % to account for numerical errors
+        H = 1e-8*eye(n) + (H+H')/2; % to account for numerical errors
         
         
         Z_min = repmat(z_min, N,1);
@@ -151,11 +154,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         beq = [y0_];%; y0_dot];%; y0_ddot];
         
         if (si >= 1)
-            
-            Phi_f = [kron(eye(n_dof),phi_f')];%; kron(eye(n_dof),phi_f_dot'); kron(eye(n_dof),phi_f_ddot')];
             Aeq = [Aeq; Phi_f];
-            beq = [beq; x_final(1:n_dof)];
-            
+            beq = [beq; x_final]; %(1:n_dof)];
         end
         
         %% ===========  solve optimization problem  ==========
@@ -213,7 +213,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         y = W*gmp.regressVec(s);
         y_dot = W*gmp.regressVecDot(s, s_dot);
         y_ddot = W*gmp.regressVecDDot(s, s_dot, s_ddot);
-        
+
         y0_ = y;
         y0_dot = y_dot;
         y0_ddot = y_ddot;
@@ -233,6 +233,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         s_dot = s_dot + s_ddot*dt;
     
     end
+
+    Time = [Time tau];
+    P_data = [P_data W*gmp.regressVec(1)];
+    dP_data = [dP_data W*gmp.regressVecDot(1, 0)];
+    ddP_data = [ddP_data W*gmp.regressVecDDot(1, 0, 0)];
     
     text_prog.update(100);
     fprintf('\n');
