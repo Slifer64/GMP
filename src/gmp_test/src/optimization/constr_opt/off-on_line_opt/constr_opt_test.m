@@ -70,8 +70,8 @@ data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
         'color','blue', 'legend','prop', 'plot3D',true, 'plot2D',true);
 
-opt_pos = 0;
-opt_vel = 1;
+opt_pos = 1;
+opt_vel = 0;
 use_matlab_solver = 1;
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end

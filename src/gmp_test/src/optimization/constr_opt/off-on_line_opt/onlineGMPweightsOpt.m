@@ -2,12 +2,21 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     gmp = gmp0.deepCopy();
     
+    
+    
     n_dof = length(y0);
     
     %% --------  Init sim  --------
     gmp.setScaleMethod(TrajScale_Prop(n_dof));
     gmp.setY0(y0);
     gmp.setGoal(yg);
+    
+    N_kernels = 30; %gmp0.numOfKernels();
+    s_data = 0:0.01:1;
+    Yd_data = zeros(n_dof, length(s_data));
+    for j=1:length(s_data), Yd_data(:,j)=gmp.getYd(s_data(j)); end
+    gmp = GMP(n_dof, N_kernels, 1.5);
+    gmp.train('LS', s_data, Yd_data);
     
     Time = [];
     P_data = [];
@@ -28,7 +37,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 10;%10; %200;
+    N = 8;%10; %200;
     
     N_kernels = gmp.numOfKernels();
     
