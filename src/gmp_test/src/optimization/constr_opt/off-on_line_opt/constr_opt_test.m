@@ -76,17 +76,17 @@ use_matlab_solver = 1;
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 
-% --------- Offline GMP-weights:VEL optimization -----------
-[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-        'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
-
-% ---------- Online GMP-weights optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+% % --------- Offline GMP-weights:VEL optimization -----------
+% [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+%         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
+% 
+% % ---------- Online GMP-weights optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
@@ -100,6 +100,11 @@ data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
 %     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
+% ---------- Online GMP-trajectory optimization ------------
+[Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0 0.7 0], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
 
     
 %% ======== Plot Results ==========
@@ -189,7 +194,7 @@ for i=1:n_dof
     % plot bounds
     plot(ax.XLim, [accel_lim(i,1) accel_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [accel_lim(i,2) accel_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
-    ax.YLim = [ max(ax.YLim(1), 1.6*accel_lim(i,1)) min(ax.YLim(2), 1.6*accel_lim(i,2)) ];
+    ax.YLim = [ max(ax.YLim(1), 2*accel_lim(i,1)) min(ax.YLim(2), 2*accel_lim(i,2)) ];
     ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',label_font);
     xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
     ax.FontSize = ax_fontsize;

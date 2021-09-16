@@ -1,14 +1,14 @@
-function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
+function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
     
-    gmp2 = gmp.deepCopy();
+    gmp = gmp0.deepCopy();
     
     n_dof = length(y0);
     
-    gmp2.setScaleMethod(TrajScale_Prop(n_dof));
-    gmp2.setY0(y0);
-    gmp2.setGoal(yg);
+    gmp.setScaleMethod(TrajScale_Prop(n_dof));
+    gmp.setY0(y0);
+    gmp.setGoal(yg);
 
-    gmp_opt = GMP_Opt(gmp2);
+    gmp_opt = GMP_Opt(gmp);
     gmp_opt.setOptions(opt_pos, opt_vel, false, 0.1, 1, 0.1);
     gmp_opt.setMotionDuration(tau);
 
@@ -32,6 +32,6 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, 
     fprintf('===> offline-GMP-weights optimization finished! Elaps time: %f ms\n',elaps_t*1000);
     fprintf([gmp_opt.getExitMsg() '\n']);
     
-    [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);
+    [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg);
     
 end
