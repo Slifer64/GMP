@@ -27,7 +27,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     x_final = [yg; zeros(n_dof,1)];
     
     %% --------  Init MPC  --------
-    N = 10;%10; %200;
+    N = 5;%10; %200;
 
     % stiffness and damping of the system
     % y_dddot = -K*y - D*y_dot + u

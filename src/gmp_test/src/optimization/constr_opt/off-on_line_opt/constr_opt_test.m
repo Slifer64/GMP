@@ -82,11 +82,11 @@ if (opt_vel), opt_type = 'vel'; end
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
 % 
-% % ---------- Online GMP-weights optimization ------------
-% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+% ---------- Online GMP-weights optimization ------------
+[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, 1000*accel_lim, opt_pos, opt_vel, use_matlab_solver);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
@@ -94,17 +94,17 @@ if (opt_vel), opt_type = 'vel'; end
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
 %      
-% % ---------- Online GMP-trajectory optimization ------------
-% [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
-
 % ---------- Online GMP-trajectory optimization ------------
+[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, 1000*accel_lim, opt_pos, opt_vel, use_matlab_solver);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+% 
+% ---------- GMP with repulsive forces ------------
 [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[0 0.7 0], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
+    'color',[0.93 0.69 0.13], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
 
     
 %% ======== Plot Results ==========
@@ -194,7 +194,7 @@ for i=1:n_dof
     % plot bounds
     plot(ax.XLim, [accel_lim(i,1) accel_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [accel_lim(i,2) accel_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
-    ax.YLim = [ max(ax.YLim(1), 2*accel_lim(i,1)) min(ax.YLim(2), 2*accel_lim(i,2)) ];
+    %ax.YLim = [ max(ax.YLim(1), 8*accel_lim(i,1)) min(ax.YLim(2), 8*accel_lim(i,2)) ];
     ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',label_font);
     xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
     ax.FontSize = ax_fontsize;
@@ -202,120 +202,7 @@ for i=1:n_dof
 
 end
 
-
-
 % ======================================================
-
-function [Time, P_data, dP_data, ddP_data] = getOnlineOptGMPTrajectory2(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
-    
-    gmp2 = gmp.deepCopy();
-    
-    gmp2.setScaleMethod(TrajScale_Prop(3));
-    gmp2.setY0(y0);
-    gmp2.setGoal(yg);
-
-    gmp_opt = GMP_Opt(gmp2);
-    gmp_opt.setOptions(opt_pos, opt_vel, false, 0.1, 1, 0.1);
-    gmp_opt.setMotionDuration(tau);
-
-    % gmp_opt.optimize(100);
-%     tic
-%     gmp_opt.optimize2(0:0.01:1);
-%     elaps_t = toc;
-%     fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
-%     fprintf([gmp_opt.getExitMsg() '\n']);
-    
-    Time = [];
-    P_data = [];
-    dP_data = [];
-    ddP_data = [];
-
-    p = y0;
-    p_dot = zeros(size(p));
-    p_ddot = zeros(size(p));
-    
-    gmp2.setY0(y0);
-    gmp2.setGoal(yg);
-
-    t = 0;
-    dt = 0.002;
-    x = t/tau;
-    x_dot = 1/tau;
-    x_ddot = 0;
-    
-    pos_lim = 10 * pos_lim;
-    vel_lim = 10 * vel_lim;
-    accel_lim = 10 * accel_lim;
-    
-    n_horiz = 4;
-    x_horiz = 0:dt:(n_horiz-1)*dt;
-    pos_lb = repmat( pos_lim(:,1), 1,n_horiz);
-    pos_ub = repmat( pos_lim(:,2), 1,n_horiz);
-    vel_lb = repmat( vel_lim(:,1)*ones(3,1), 1,n_horiz);
-    vel_ub = repmat( vel_lim(:,2)*ones(3,1), 1,n_horiz);
-    accel_lb = repmat( accel_lim(:,1)*ones(3,1), 1,n_horiz);
-    accel_ub = repmat( accel_lim(:,2)*ones(3,1), 1,n_horiz);
-    
-    x_prev = 0;
-    p_prev = gmp2.getYd(x);
-    dp_prev = gmp2.getYdDot(x, x_dot);
-    ddp_prev = gmp2.getYdDDot(x, x_dot, x_ddot);
-
-    while (true)
-
-        x = t/tau;
-        x_dot = 1/tau;
-        
-        t/tau
-        
-        if (x >= 1)
-            x_dot = 0;
-        end
-           
-        % constraints
-        gmp_opt.clearConstr();
-        gmp_opt.setPosConstr(x_horiz, pos_lb, pos_ub, x_prev, p_prev);
-%         gmp_opt.setVelConstr(x_horiz, vel_lb, vel_ub, x_prev, dp_prev);
-%         gmp_opt.setAccelConstr(x_horiz, accel_lb, accel_ub, x_prev, ddp_prev);
-%         gmp_opt.setPosConstr(x_horiz, pos_lb, pos_ub, [], []);
-%         gmp_opt.setVelConstr(x_horiz, vel_lb, vel_ub, [], []);
-%         gmp_opt.setAccelConstr(x_horiz, accel_lb, accel_ub, [], []);
-        
-        % optimize
-        success = gmp_opt.optimize3(x_horiz, gmp);
-        if (~success), warning([gmp_opt.getExitMsg() '\n']); end
-        
-        p_ref = gmp2.getYd(x);
-        p_ref_dot = gmp2.getYdDot(x, x_dot);
-        p_ref_ddot = gmp2.getYdDDot(x, x_dot, 0);
-        
-        p = p_ref;
-        p_dot = p_ref_dot;
-        p_ddot = p_ref_ddot;
-
-        Time = [Time t];
-        P_data = [P_data p];
-        dP_data = [dP_data p_dot];
-        ddP_data = [ddP_data p_ddot];
-
-        %p_ddot = p_ref_ddot + 30*(p_ref_dot - p_dot) + 100*(p_ref - p);
-
-        t = t + dt;
-%         p = p + p_dot*dt;
-%         p_dot = p_dot + p_ddot*dt;
-        
-        x_horiz = x_horiz + dt/tau;
-        
-        x_prev = x;
-        p_prev = p;
-        dp_prev = p_dot;
-        ddp_prev = p_ddot;
-
-        if (x >= 1.0), break; end
-
-    end
-    
-end
 
 function plot3Dbounds(ax, bounds)
     

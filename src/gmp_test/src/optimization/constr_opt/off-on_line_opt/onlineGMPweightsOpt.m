@@ -2,8 +2,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     gmp = gmp0.deepCopy();
     
-    
-    
     n_dof = length(y0);
     
     %% --------  Init sim  --------
@@ -26,18 +24,20 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     y = y0;
     y_dot = zeros(size(y));
     y_ddot = zeros(size(y));
+    
+    K = 300;
+    D = 80;
 
     t = 0;
     dt = 0.005;
     s = t/tau;
     s_dot = 1/tau;
     s_ddot = 0;
-    
-    
+
     n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 8;%10; %200;
+    N = 10;%10; %200;
     
     N_kernels = gmp.numOfKernels();
     
@@ -150,7 +150,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             % si_ddot = ... (if it changes too)
         end
         
-        H = 1e-8*eye(n) + (H+H')/2; % to account for numerical errors
+        H = 1e-6*eye(n) + (H+H')/2; % to account for numerical errors
         
         
         Z_min = repmat(z_min, N,1);
@@ -158,9 +158,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         
         Aineq = sparse(Aineq(1:N*n_dof3,:));
         
-        Psi0 = [kron(eye(n_dof),phi0')];%; kron(eye(n_dof),phi0_dot')];%; kron(eye(n_dof),phi0_ddot')];
+        Psi0 = [kron(eye(n_dof),phi0'); kron(eye(n_dof),phi0_dot'); kron(eye(n_dof),phi0_ddot')];
         Aeq = sparse(Psi0);
-        beq = [y0_];%; y0_dot];%; y0_ddot];
+        beq = [y0_; y0_dot; y0_ddot];
         
         if (si >= 1)
             Aeq = [Aeq; Phi_f];
@@ -219,10 +219,16 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         
         %% --------  Simulate dynamics  --------
         
-        y = W*gmp.regressVec(s);
-        y_dot = W*gmp.regressVecDot(s, s_dot);
-        y_ddot = W*gmp.regressVecDDot(s, s_dot, s_ddot);
+        yd = W*gmp.regressVec(s);
+        yd_dot = W*gmp.regressVecDot(s, s_dot);
+        yd_ddot = W*gmp.regressVecDDot(s, s_dot, s_ddot);
 
+        y_ddot = -K*(y-yd) -D*(y_dot-yd_dot) + yd_ddot;
+        
+%         y = yd;
+%         y_dot = yd_dot;
+%         y_ddot = yd_ddot;
+        
         y0_ = y;
         y0_dot = y_dot;
         y0_ddot = y_ddot;
@@ -240,13 +246,15 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         t = t + dt;
         s = s + s_dot*dt;
         s_dot = s_dot + s_ddot*dt;
+        y = y + y_dot*dt;
+        y_dot = y_dot + y_ddot*dt;
     
     end
 
-    Time = [Time tau];
-    P_data = [P_data W*gmp.regressVec(1)];
-    dP_data = [dP_data W*gmp.regressVecDot(1, 0)];
-    ddP_data = [ddP_data W*gmp.regressVecDDot(1, 0, 0)];
+%     Time = [Time tau];
+%     P_data = [P_data W*gmp.regressVec(1)];
+%     dP_data = [dP_data W*gmp.regressVecDot(1, 0)];
+%     ddP_data = [ddP_data W*gmp.regressVecDDot(1, 0, 0)];
     
     text_prog.update(100);
     fprintf('\n');
