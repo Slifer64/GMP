@@ -150,7 +150,7 @@ function s = plotSphere(ax, r, c)
     Y = r*Y + c(2);
     Z = r*Z + c(3);
     
-    s = surf(X,Y,Z, 'Parent',ax);
+    s = surf(X,Y,Z, 'Parent',ax, 'EdgeColor','none', 'FaceColor',[0.85 0.33 0.1], 'FaceAlpha',0.5);
 
 end
 
