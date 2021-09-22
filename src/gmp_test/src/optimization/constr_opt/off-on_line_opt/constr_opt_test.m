@@ -76,12 +76,12 @@ use_matlab_solver = 1;
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 
-% % --------- Offline GMP-weights:VEL optimization -----------
+% % --------- Offline GMP-weights optimization -----------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
-
+% 
 % % ---------- Online GMP-weights optimization ------------
 % [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 % data{length(data)+1} = ...
@@ -94,34 +94,34 @@ if (opt_vel), opt_type = 'vel'; end
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
 %      
-% ---------- Online GMP-trajectory optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
-
-% % ---------- GMP with repulsive forces ------------
-% [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+% % ---------- Online GMP-trajectory optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[0.93 0.69 0.13], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
+%     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
-dt = Time(2)-Time(1);
-dP1_data = [diff(P_data) 0] / dt;
-ddP1_data = [diff(dP1_data) 0] / dt;
-ddP2_data = [diff(dP_data) 0] / dt;
+% ---------- GMP with repulsive forces ------------
+[Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[0.93 0.69 0.13], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
 
-figure;
-ax1 = subplot(3,1,1); hold on;
-plot(Time, P_data, 'LineWidth',2, 'LineStyle','-');
-ax2 = subplot(3,1,2); hold on;
-plot(Time, dP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
-plot(Time, dP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
-ax3 = subplot(3,1,3); hold on;
-plot(Time, ddP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
-plot(Time, ddP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
-plot(Time, ddP2_data, 'LineWidth',2, 'LineStyle',':', 'Color','green');
-linkaxes([ax1 ax2 ax3],'x');    
+% dt = Time(2)-Time(1);
+% dP1_data = [diff(P_data) 0] / dt;
+% ddP1_data = [diff(dP1_data) 0] / dt;
+% ddP2_data = [diff(dP_data) 0] / dt;
+% 
+% figure;
+% ax1 = subplot(3,1,1); hold on;
+% plot(Time, P_data, 'LineWidth',2, 'LineStyle','-');
+% ax2 = subplot(3,1,2); hold on;
+% plot(Time, dP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
+% plot(Time, dP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+% ax3 = subplot(3,1,3); hold on;
+% plot(Time, ddP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
+% plot(Time, ddP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+% plot(Time, ddP2_data, 'LineWidth',2, 'LineStyle',':', 'Color','green');
+% linkaxes([ax1 ax2 ax3],'x');    
 
 %% ======== Plot Results ==========
 

@@ -37,8 +37,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 10;%10; %200;
-    dt_ = 0.015; %dt;
+    N = 10;%10; %200;    
+%     dt_ = dt * (1:N).^0.9;
+    dt_ = 0.02*ones(1,N); %dt;
     
     N_kernels = gmp.numOfKernels();
     
@@ -145,8 +146,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             
             Aineq((i-1)*n_dof3+1 : i*n_dof3, :) = [kron(eye(n_dof),phi'); kron(eye(n_dof),phi_dot'); kron(eye(n_dof),phi_ddot')];
             
-            si = si + si_dot*dt_;
-            si_dot = si_dot + si_ddot*dt_;
+            si = si + si_dot*dt_(i);
+            si_dot = si_dot + si_ddot*dt_(i);
             % si_ddot = ... (if it changes too)
         end
         
