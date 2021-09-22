@@ -10,7 +10,9 @@ ax = axes('NextPlot','add');
 
 % [X,Y,Z] = meshSphere(2, [2 1 1]);
 
-[X,Y,Z] = meshCylinder(0.5, 2, [0 0 0], [1 0 0 pi/4]);
+% [X,Y,Z] = meshCylinder(0.5, 2, [0 0 0], [1 0 0 pi/4]);
+
+[X,Y,Z] = meshBox(4, 1, 2, [0 0 0]);
 
 % [X,Y,Z] = meshCircle(1, [1 1 1], [1 0 0 pi/4]);
 
@@ -96,7 +98,7 @@ function [X,Y,Z] = meshCylinder(radius, height, center, axis_angle)
     if (nargin < 3), center = [0 0 0]; end
     if (nargin < 4), axis_angle = [0 0 1 0]; end
     
-    [theta, h] = meshgrid(0:2*pi/20:2*pi, 0:height/20:height);
+    [theta, h] = meshgrid(0:2*pi/20:2*pi, [0 height]);
     X = radius*cos(theta);
     Y = radius*sin(theta);
     Z = h;
@@ -109,6 +111,14 @@ function [X,Y,Z] = meshCylinder(radius, height, center, axis_angle)
     Y = reshape(temp(2,:), m, n) + center(2);
     Z = reshape(temp(3,:), m, n) + center(3);
 
+end
+
+function [X,Y,Z] = meshBox(x_len, y_len, z_len, center)
+    
+    X = (x_len/2)*repmat([-1 -1 1  1 -1],2,1);
+    Y = (y_len/2)*repmat([-1  1 1 -1 -1],2,1);
+    Z = (z_len/2)*[-ones(1,5); ones(1,5)];
+    
 end
 
 function s = translateSurface(s, translation)

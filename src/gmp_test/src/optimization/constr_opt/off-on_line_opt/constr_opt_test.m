@@ -59,7 +59,7 @@ yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 pos_lim = pos_lim(ind,:);
 vel_lim = [-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
-accel_lim = [-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
+accel_lim = 5*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 
@@ -81,12 +81,12 @@ if (opt_vel), opt_type = 'vel'; end
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
-% 
-% ---------- Online GMP-weights optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, 1000*accel_lim, opt_pos, opt_vel, use_matlab_solver);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+
+% % ---------- Online GMP-weights optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
@@ -95,18 +95,34 @@ data{length(data)+1} = ...
 %         'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
 %      
 % ---------- Online GMP-trajectory optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, 1000*accel_lim, opt_pos, opt_vel, use_matlab_solver);
+[Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
-% 
-% ---------- GMP with repulsive forces ------------
-[Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[0.93 0.69 0.13], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
 
-    
+% % ---------- GMP with repulsive forces ------------
+% [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[0.93 0.69 0.13], 'legend',['gmp-repforce'], 'plot3D',true, 'plot2D',true);
+
+dt = Time(2)-Time(1);
+dP1_data = [diff(P_data) 0] / dt;
+ddP1_data = [diff(dP1_data) 0] / dt;
+ddP2_data = [diff(dP_data) 0] / dt;
+
+figure;
+ax1 = subplot(3,1,1); hold on;
+plot(Time, P_data, 'LineWidth',2, 'LineStyle','-');
+ax2 = subplot(3,1,2); hold on;
+plot(Time, dP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
+plot(Time, dP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+ax3 = subplot(3,1,3); hold on;
+plot(Time, ddP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
+plot(Time, ddP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+plot(Time, ddP2_data, 'LineWidth',2, 'LineStyle',':', 'Color','green');
+linkaxes([ax1 ax2 ax3],'x');    
+
 %% ======== Plot Results ==========
 
 % plot 3D path
@@ -147,6 +163,7 @@ for i=1:n_dof
     fig.Position(3:4) = [842 1110];
 
     ax = subplot(3,1,1);
+    ax_vec = [ax];
     hold on;
     % plot position trajectory
     legend_ = {};
@@ -171,6 +188,7 @@ for i=1:n_dof
     hold off;
 
     ax = subplot(3,1,2);
+    ax_vec = [ax_vec ax];
     hold on;
     for k=1:length(data) 
         if (~data{k}.plot2D), continue; end
@@ -185,6 +203,7 @@ for i=1:n_dof
     hold off;
 
     ax = subplot(3,1,3);
+    ax_vec = [ax_vec ax];
     hold on;
     for k=1:length(data)
         if (~data{k}.plot2D), continue; end
@@ -199,6 +218,8 @@ for i=1:n_dof
     xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
     ax.FontSize = ax_fontsize;
     hold off;
+    
+    linkaxes(ax_vec,'x');
 
 end
 

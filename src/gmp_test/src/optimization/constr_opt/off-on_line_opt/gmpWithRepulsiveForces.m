@@ -22,6 +22,10 @@ function [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp0, tau, y
     gmp.setGoal(yg);
 
     t = 0;
+    x = 0;
+    x_dot = 0;
+    xd_dot = 1/tau;
+    x_ddot = 0;
     dt = 0.0002;
     
     y_min = pos_lim(:,1);
@@ -40,54 +44,55 @@ function [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp0, tau, y
     
     %% ---------------------------------------------------------
     
-    online_plot = false;
-    
-    if (online_plot)
-        fig = figure;
-        fig.Position(3:4) = [735 845];
-        ax_ = cell(3,1);
-        pl_ = cell(3,1);
-
-        plot_step = 10;
-        plot_s_i = 0;
-
-        ax_limits = [y_min, ydot_min, yddot_min; y_max, ydot_max, yddot_max];
-
-        [Time0, P0_data, dP0_data, ddP0_data] = getGMPTrajectory(gmp, tau, y0, yg);
-        data = {P0_data, dP0_data, ddP0_data};
-
-        y_limits = [y_min, ydot_min, yddot_min; y_max, ydot_max, yddot_max];
-
-        for j=1:3
-
-            ax_{j} = subplot(3,1,j);       
-            axes(ax_{j});
-
-            hold on;
-            plot([0 tau], ax_limits(1,j)*ones(1,2), 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
-            plot([0 tau], ax_limits(2,j)*ones(1,2), 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
-
-            plot(Time0, data{j}, 'LineWidth',2, 'LineStyle',':', 'Color','blue');
-
-            pl_{j} = plot(nan, nan, 'LineWidth',2, 'LineStyle','-', 'Color',[0.85 0.33 0.1]);
-
-            xlim([0 tau]);
-
-        end
-    
-    end
+%     online_plot = false;
+%     
+%     if (online_plot)
+%         fig = figure;
+%         fig.Position(3:4) = [735 845];
+%         ax_ = cell(3,1);
+%         pl_ = cell(3,1);
+% 
+%         plot_step = 10;
+%         plot_s_i = 0;
+% 
+%         ax_limits = [y_min, ydot_min, yddot_min; y_max, ydot_max, yddot_max];
+% 
+%         [Time0, P0_data, dP0_data, ddP0_data] = getGMPTrajectory(gmp, tau, y0, yg);
+%         data = {P0_data, dP0_data, ddP0_data};
+% 
+%         y_limits = [y_min, ydot_min, yddot_min; y_max, ydot_max, yddot_max];
+% 
+%         for j=1:3
+% 
+%             ax_{j} = subplot(3,1,j);       
+%             axes(ax_{j});
+% 
+%             hold on;
+%             plot([0 tau], ax_limits(1,j)*ones(1,2), 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+%             plot([0 tau], ax_limits(2,j)*ones(1,2), 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
+% 
+%             plot(Time0, data{j}, 'LineWidth',2, 'LineStyle',':', 'Color','blue');
+% 
+%             pl_{j} = plot(nan, nan, 'LineWidth',2, 'LineStyle','-', 'Color',[0.85 0.33 0.1]);
+% 
+%             xlim([0 tau]);
+% 
+%         end
+%     
+%     end
     
     tic
+    
+    e_data = [];
     
     %% ---------------------------------------------
     while (true)
 
-        x = t/tau;
-        x_dot = 1/tau;
-        x_ddot = 0;
+        x_ddot = -60*(x_dot - xd_dot);
         
         if (x >= 1)
             x_dot = 0;
+            x_ddot = 0;
         end
         
         yd = gmp.getYd(x);
@@ -97,8 +102,10 @@ function [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp0, tau, y
 %         fv = -kv ./ ( (1 - ydot./ydot_max) .* (ydot./ydot_min - 1) );
 %         fp = kp ./ ( (1 - y./y_max) .* (y./y_min - 1) );
         
-        kp = 0.1; % 0.00001;
-        kv = 1; %0.0001;
+        kp = 0.05; % 0.00001;
+        kv = 0.5; %0.0001;
+        
+        dt_ = dt/10;
     
         fv = rep_force(ydot,ydot_max,kv) + rep_force(ydot,ydot_min,kv);
         fp = rep_force(y,y_max,kp) + rep_force(y,y_min,kp);
@@ -111,34 +118,46 @@ function [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp0, tau, y
         dP_data = [dP_data ydot];
         
         yddot = (ydot - ydot_prev) / dt;
-%         if ( ~isempty(find(yddot < yddot_min)) || ~isempty(find(yddot > yddot_max)) )
-%             warning('Acceleration limits violated!');
-%             break;
-%         end
+        e = [yddot-yddot_min; yddot_max-yddot];
+        if ( ~isempty(find(e < 0)) )
+            %warning('Acceleration limits violated!');
+            %break;
+            e = max(abs(e(e<0)));  
+            xd_dot = (1/tau) * (1/(1+0.1*e));
+        else
+            xd_dot = 1/tau;
+            e = 0;
+        end
+        e_data = [e_data e];
         
         ydot_prev = ydot;
 
         t = t + dt;
+        x = x + x_dot*dt;
+        x_dot = x_dot + x_ddot*dt;
         y = y + ydot*dt;
         z = z + z_dot*dt;
         
-        if (online_plot)
-            dat = [y ydot yddot];
-            for j=1:3
-                pl_{j}.XData = [pl_{j}.XData t];
-                pl_{j}.YData = [pl_{j}.YData dat(j)];
-            end
-            plot_s_i = plot_s_i + 1;
-            if (plot_s_i == plot_step)
-                plot_s_i = 0;
-                drawnow
-                pause
-            end
-        end
+%         if (online_plot)
+%             dat = [y ydot yddot];
+%             for j=1:3
+%                 pl_{j}.XData = [pl_{j}.XData t];
+%                 pl_{j}.YData = [pl_{j}.YData dat(j)];
+%             end
+%             plot_s_i = plot_s_i + 1;
+%             if (plot_s_i == plot_step)
+%                 plot_s_i = 0;
+%                 drawnow
+%                 pause
+%             end
+%         end
 
         if (x >= 1.0), break; end
 
     end
+    
+%     figure
+%     plot(Time, e_data);
     
     fprintf('===> GMP with rep-forces finished! Elaps time: %f ms\n',toc()*1000);
     
@@ -150,7 +169,7 @@ end
 function f = rep_force(y, y_lim, gain)
 
     
-    d0 = 0.01;
+    d0 = 0.05;
     x = y-y_lim;
     x_norm = abs(y-y_lim);
     

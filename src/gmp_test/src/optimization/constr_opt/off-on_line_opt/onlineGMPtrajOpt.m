@@ -27,7 +27,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     x_final = [yg; zeros(n_dof,1)];
     
     %% --------  Init MPC  --------
-    N = 5;%10; %200;
+    N = 10;%10; %200;
+    dt_ = dt;%0.015;%dt; %0.010;
+    use_ud = 0;
 
     % stiffness and damping of the system
     % y_dddot = -K*y - D*y_dot + u
@@ -49,6 +51,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     Ri = 0*eye(m,m);
     
     H = blkdiag( kron(speye(N-1), Qi), QN, kron(speye(N), Ri) );
+    %H = 1e-12*speye(size(H)) + H;
     
     % Discrete state transition matrices:
     % x(i+1) = Ai*x(i) + Bi*u(i)
@@ -56,13 +59,18 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     % x(2)   - A1*x(1) - B1*u(1) = 0
     % ...
     % x(i+1) - Ai*x(i) - Bi*u(i) = 0
-    Ai = (In + [zeros(n_dof,n_dof) eye(n_dof,n_dof); -K*eye(n_dof,n_dof) -D*eye(n_dof,n_dof)]*dt);
-    Bi = [zeros(n_dof,n_dof); eye(n_dof,n_dof)]*dt;
+    
+    % keep the simulation time-step 'dt' for the first prediction
+    A0 = (In + [zeros(n_dof,n_dof) eye(n_dof,n_dof); -K*eye(n_dof,n_dof) -D*eye(n_dof,n_dof)]*dt);
+    B0 = [zeros(n_dof,n_dof); eye(n_dof,n_dof)]*dt;
+    % use a different time-step 'dt_' for the next predictions
+    Ai = (In + [zeros(n_dof,n_dof) eye(n_dof,n_dof); -K*eye(n_dof,n_dof) -D*eye(n_dof,n_dof)]*dt_);
+    Bi = [zeros(n_dof,n_dof); eye(n_dof,n_dof)]*dt_;
     
     % State transition equality constraints for entire horizon: 
-    % Ax*Z(1:n*N) + Bu*Z(n*N+1:end) = [A0*z0, 0, 0, ..., 0]
+    % Ax*Z(1:n*N) + Bu*Z(n*N+1:end) = [A0*x0, 0, 0, ..., 0]
     Ax = kron(speye(N), speye(n)) + kron(sparse(diag(ones(N-1, 1), -1)), -Ai);
-    Bu = kron(speye(N), -Bi);
+    Bu = blkdiag(-B0, kron(speye(N-1), -Bi) );
     % equality constraints matrix
     Aeq = [Ax, Bu];
     
@@ -74,8 +82,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     % accel bounds
     % constraint for initial acceleration: a_lb*dt <= y_dot(1) - y_dot(0) <= a_ub*dt
     y0_dot = y_dot;
-    accel_lb = [accel_lim(:,1)*dt + y0_dot; repmat(accel_lim(:,1)*dt, N-1, 1)];
-    accel_ub = [accel_lim(:,2)*dt + y0_dot; repmat(accel_lim(:,2)*dt, N-1, 1)];
+    accel_lb = [accel_lim(:,1)*dt + y0_dot; repmat(accel_lim(:,1)*dt_, N-1, 1)];
+    accel_ub = [accel_lim(:,2)*dt + y0_dot; repmat(accel_lim(:,2)*dt_, N-1, 1)];
 
     % control input bounds
     u_min = -inf(m,1);
@@ -124,20 +132,14 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         dyd_i = gmp.getYdDot(si, si_dot);
         ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
             
-        for i=0:N-1
+        si = si + si_dot*dt;
+        si_dot = si_dot + si_ddot*dt;
+            
+        for i=1:N
 
             % ideal control input so that x(i) = xd(i) in the absence of bound
             % constraints
-            ud_i = K*yd_i + D*dyd_i + ddyd_i;
-
-            % i := i+1, move one step forward, by integrating s(i) to get s(i+1) 
-            % and in turn, get x(i+1).
-            % This is because x(i) goes from 1:N, and the loop count goes 0:N-1
-            % Although below we use subscript 'i' for the variables s,y,x its 
-            % actually 'i+1' for the current loop 
-            si = si + si_dot*dt;
-            si_dot = si_dot + si_ddot*dt;
-            % si_ddot = ... (if it changes too)
+            ud_i_minus_1 = K*yd_i + D*dyd_i + ddyd_i;
 
             if (si >= 1)
                 si = 1;
@@ -149,10 +151,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
             dyd_i = gmp.getYdDot(si, si_dot);
             ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
 
-            xd_i_plus_1 = [yd_i; dyd_i];
+            xd_i = [yd_i; dyd_i];
 
-            Z_init((i*n)+1 : (i+1)*n) = xd_i_plus_1;
-            Z_init(n*N+(i*m)+1 : n*N+(i+1)*m) = ud_i;
+            Z_init((i-1)*n+1 : i*n) = xd_i;
+            Z_init(n*N+(i-1)*m+1 : n*N+i*m) = ud_i_minus_1;
+            
+            si = si + si_dot*dt_;
+            si_dot = si_dot + si_ddot*dt_;
 
         end
         
@@ -163,6 +168,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     text_prog.init();
     
     tic
+    
+    u_data = [];
 
     %% --------  Simulation loop  --------
     while (true)
@@ -187,6 +194,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         yd_i = gmp.getYd(si);
         dyd_i = gmp.getYdDot(si, si_dot);
         ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
+        
+        ud = K*yd_i + D*dyd_i + ddyd_i;
 
         % Aeq*Z
         beq = zeros( n*N , 1);
@@ -202,25 +211,12 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         Z_ub(1:n*N) = repmat(x_max, N,1);
         
         fc_flag = 0;
+        
+        % move one step forward to get the next desired state
+        si = si + si_dot*dt;
+        si_dot = si_dot + si_ddot*dt;
 
-        for i=0:N-1
-
-            % ideal control input so that x(i) = xd(i) in the absence of bound
-            % constraints
-            ud_i = K*yd_i + D*dyd_i + ddyd_i;
-
-            % beq((i*n)+1 : (i+1)*n) = Bi*ud_i;
-
-            % qu((i*m)+1 : (i+1)*m) = -Ri*ud_i;
-
-            % i := i+1, move one step forward, by integrating s(i) to get s(i+1) 
-            % and in turn, get x(i+1).
-            % This is because x(i) goes from 1:N, and the loop count goes 0:N-1
-            % Although below we use subscript 'i' for the variables s,y,x its 
-            % actually 'i+1' for the current loop 
-            si = si + si_dot*dt;
-            si_dot = si_dot + si_ddot*dt;
-            % si_ddot = ... (if it changes too)
+        for i=1:N
 
             if (si >= 1)
                 si = 1;
@@ -228,8 +224,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
                 si_ddot = 0;
                 %if (i==N-1)
                 if (~fc_flag)
-                    Z_lb(i*n+1:(i+1)*n) = x_final;
-                    Z_ub(i*n+1:(i+1)*n) = x_final;
+                    Z_lb((i-1)*n+1:i*n) = x_final;
+                    Z_ub((i-1)*n+1:i*n) = x_final;
                     fc_flag = 1;
                 end
                 
@@ -243,23 +239,33 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
                 ddyd_i = gmp.getYdDDot(si, si_dot, si_ddot);
             end
 
-            xd_i_plus_1 = [yd_i; dyd_i];
-
-            qx((i*n)+1 : (i+1)*n) = -Qi*xd_i_plus_1;
+            xd_i = [yd_i; dyd_i];
+            qx( (i-1)*n + 1 : i*n ) = -Qi*xd_i;
+            
+            % qu((i-1)*m+1 : i*m) = -Ri*ud_i_minus_1;
+            
+            if (i<N)
+                ud_i = K*yd_i + D*dyd_i + ddyd_i;
+                beq(i*n+1 : (i+1)*n) = use_ud*Bi*ud_i;
+            end
+            
+            % move one step forward
+            si = si + si_dot*dt_;
+            si_dot = si_dot + si_ddot*dt_;
         end
         % repeat the final assignment using the final value QN
         qx((N-1)*n+1 : N*n) = -QN*[yd_i; dyd_i];
 
         % Substitute the initial value constraint 
         x0 = [y; y_dot];
-        beq(1:n) = beq(1:n) + Ai*x0;
+        beq(1:n) = A0*x0 + use_ud*B0*ud;
         
         % update initial acceleration constraint
-        y0_dot = y_dot;
+        y0_dot = x0(n_dof+1:end);
         accel_lb(1:n_dof) = accel_lim(:,1)*dt + y0_dot;
         accel_ub(1:n_dof) = accel_lim(:,2)*dt + y0_dot;
 
-        % Accumulate
+        % accumulate
         q = [qx; qu];
 
         %% ===========  solve optimization problem  ==========
@@ -295,8 +301,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         %% --------- matlab solver ----------
         if (use_matlab_solver)
 
-            A = [Aineq_accel; -Aineq_accel];
-            b = [accel_ub; -accel_lb];
+            A = [Aineq_accel];%; -Aineq_accel];
+            b = [accel_ub];%; -accel_lb];
+            
+            full(A)
+            pause
 
             [Z, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, Z_lb,Z_ub, Z_init, solver_opt);
 
@@ -313,7 +322,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
             % use the previous solution as initial guess for next iter
             %Z_init = Z;
             
-            % discard z(1), u(0) and replicate z(N) and u(N-1)
+            % discard x(1), u(0) and replicate x(N) and u(N-1)
             Z_init = [Z(n+1:n*N); Z((N-1)*n+1:n*N); Z(n*N+m+1:end); Z(end-m+1:end)]; 
 
         end
@@ -322,7 +331,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         %y_ddot = -K*y - D*y_dot + u;
         
         x = [y; y_dot];
-        x_next = Ai*x + Bi*u;
+        x_next = A0*x + B0*(u + use_ud*ud);
+        
+        u_data = [u_data norm(u)];
         
         y_ddot = ( x_next(n_dof+1:n) - x(n_dof+1:n) ) / dt;
         
@@ -343,8 +354,15 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     end
     
+%     ddP_data = zeros(n_dof,length(Time));
+%     for i=1:n_dof, ddP_data(i,:) = [diff(dP_data(i,:)) 0]/dt; end
+    
     text_prog.update(100);
     fprintf('\n');
     fprintf('===> online-GMP-traj optimization finished! Elaps time: %f ms\n',toc()*1000);
+    
+    
+    figure;
+    plot(Time, u_data, 'LineWidth',2, 'Color','red')
 
 end

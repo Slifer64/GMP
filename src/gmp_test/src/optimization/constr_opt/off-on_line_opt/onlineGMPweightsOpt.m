@@ -38,6 +38,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     %% --------  Init MPC  --------
     N = 10;%10; %200;
+    dt_ = 0.015; %dt;
     
     N_kernels = gmp.numOfKernels();
     
@@ -118,7 +119,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         si = s;
         si_dot = s_dot;
         si_ddot = s_ddot;
-        dt_ = 1*dt; %0.8*dt;
         
         for i=1:N
             
@@ -223,11 +223,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         yd_dot = W*gmp.regressVecDot(s, s_dot);
         yd_ddot = W*gmp.regressVecDDot(s, s_dot, s_ddot);
 
-        y_ddot = -K*(y-yd) -D*(y_dot-yd_dot) + yd_ddot;
+%         y_ddot = -K*(y-yd) -D*(y_dot-yd_dot) + yd_ddot;
         
-%         y = yd;
-%         y_dot = yd_dot;
-%         y_ddot = yd_ddot;
+        y = yd;
+        y_dot = yd_dot;
+        y_ddot = yd_ddot;
         
         y0_ = y;
         y0_dot = y_dot;
