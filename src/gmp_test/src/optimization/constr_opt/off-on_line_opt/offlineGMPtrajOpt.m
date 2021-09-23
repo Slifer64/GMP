@@ -170,7 +170,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
 
     %% ===========  solve optimization problem  ===========
     
-    tic
+    t_start = tic
     
     %% --------- OSQP solver ----------
     if (qp_solver_type == 1)
@@ -226,7 +226,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
         U = reshape( Z(N*n+1:end), m, N);
     end
     
-    fprintf('===> offline-GMP-traj optimization finished! Elaps time: %f ms\n',toc()*1000);
+    fprintf('===> offline-GMP-traj optimization finished! Elaps time: %f ms\n',toc(t_start)*1000);
         
     X = [x0 X];
    

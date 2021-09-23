@@ -1,7 +1,7 @@
 function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type)
       
     gmp = gmp0.deepCopy();
-    
+   
     n_dof = length(y0);
     
     %% --------  Init sim  --------
@@ -45,27 +45,27 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     N_kernels = gmp.numOfKernels();
     
-    pos_slack = 1;
-    vel_slack = 1;
-    accel_slack = 1;
+    pos_slack = 0;
+    vel_slack = 0;
+    accel_slack = 0;
     n_slack = pos_slack + vel_slack + accel_slack;
     
     Aineq_slack = [];
     Q_slack = [];
     if (pos_slack)
         Q_slack = blkdiag(Q_slack, 1000000); 
-        Aineq_slack = [Aineq_slack [-1; 0; 0]];
+        Aineq_slack = [Aineq_slack [-ones(n_dof,1); zeros(2*n_dof,1)] ];
     end
     if (vel_slack)
         Q_slack = blkdiag(Q_slack, 100);
-        Aineq_slack = [Aineq_slack [0; -1; 0]];
+        Aineq_slack = [Aineq_slack [zeros(n_dof,1); -ones(n_dof,1); zeros(n_dof,1)] ];
     end
     if (accel_slack)
         Q_slack = blkdiag(Q_slack, 20);
-        Aineq_slack = [Aineq_slack [0; 0; -1]];
+        Aineq_slack = [Aineq_slack [zeros(2*n_dof,1); -ones(n_dof,1)] ];
     end
     Q_slack = sparse(Q_slack);
-    Aineq_slack = sparse( repmat(Aineq_slack, n_dof, 1) );
+    Aineq_slack = sparse(Aineq_slack);
     
     n = n_dof * N_kernels + n_slack;
     
@@ -87,13 +87,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 
     %% --------  Init solver  --------
     if (qp_solver_type == 0)
-        solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
+        solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'LinearSolver','sparse', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
     end
     
     text_prog = ProgressText(40);
     text_prog.init();
     
-    tic
+    t_start = tic;
 
     y0_ = y0;
     y0_dot = zeros(n_dof,1);
@@ -212,7 +212,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             
             % Create an OSQP object
             osqp_solver = osqp;
-            osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false); %, 'eps_abs',1e-6, 'eps_rel',1e-7, 'max_iter',30000);
+            osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-4, 'eps_rel',1e-4);%, 'max_iter',20000);
            
             res = osqp_solver.solve();
 
@@ -246,6 +246,27 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             Z0 = Z;
 
         end
+        
+        if (qp_solver_type == 2)
+
+            A = [Aineq; -Aineq];
+            b = [Z_max; -Z_min]; 
+            lb = -inf(n,1);
+            ub = inf(n,1);
+            
+            % option.maxiter = 1000;
+            [Z,~,ex_flag,opt_output] = QP(full(H),q, full(A),b, full(Aeq),beq, lb,ub); %,option)
+            
+            if (ex_flag == 1)
+                % success
+            else
+                warning(opt_output.status);
+                text_prog.printInNewLine();
+                if (ex_flag < 0), break; end
+            end
+            
+        end
+        
         
         w = Z(1:end-n_slack);
         slack_var = Z(end-n_slack+1:end);
@@ -309,6 +330,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     text_prog.update(100);
     fprintf('\n');
-    fprintf('===> online-GMP-weights optimization finished! Elaps time: %f ms\n',toc()*1000);
+    fprintf('===> online-GMP-weights optimization finished! Elaps time: %f ms\n',toc(t_start)*1000);
 
 end

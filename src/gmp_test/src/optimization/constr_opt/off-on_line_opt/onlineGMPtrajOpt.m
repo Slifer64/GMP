@@ -167,7 +167,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     text_prog = ProgressText(40);
     text_prog.init();
     
-    tic
+    t_start = tic;
     
     u_data = [];
 
@@ -356,7 +356,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     text_prog.update(100);
     fprintf('\n');
-    fprintf('===> online-GMP-traj optimization finished! Elaps time: %f ms\n',toc()*1000);
+    fprintf('===> online-GMP-traj optimization finished! Elaps time: %f ms\n',toc(t_start)*1000);
     
     
     figure;
