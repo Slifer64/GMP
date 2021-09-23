@@ -2,6 +2,8 @@ clc;
 % close all;
 clear;
 
+addpath('QP_Goldfarb Idnani/');
+
 addpath('../../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
@@ -72,7 +74,7 @@ data{length(data)+1} = ...
 
 opt_pos = 1;
 opt_vel = 0;
-use_matlab_solver = 0;
+qp_solver_type = 0; % matlab-quadprog:0 , osqp:1
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 
@@ -83,19 +85,19 @@ if (opt_vel), opt_type = 'vel'; end
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
 % 
 % ---------- Online GMP-weights optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
-% [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver);
+% [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
 %      
 % % ---------- Online GMP-trajectory optimization ------------
-% [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, 10*accel_lim, opt_pos, opt_vel, use_matlab_solver);
+% [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, 1*accel_lim, opt_pos, opt_vel, qp_solver_type);
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
 %     'color',[0 0.7 0], 'legend',['opt-traj:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);

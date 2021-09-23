@@ -1,4 +1,4 @@
-function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver)
+function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type)
     
     gmp = gmp0.deepCopy();
     
@@ -95,9 +95,6 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     
     % use this if you want to have: (u(i) - ud(i))'*Ri*(u(i) - ud(i))
     use_ud = 0;
-    
-    % if zero, then the OSQP solver is used
-    % use_matlab_solver = 1;
 
     %% --------  calc Beq  --------
     % DMP phase variable
@@ -176,7 +173,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     tic
     
     %% --------- OSQP solver ----------
-    if (~use_matlab_solver)
+    if (qp_solver_type == 1)
 
         % Create an OSQP object
         prob = osqp;
@@ -211,7 +208,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp0, tau, y0, yg
     end
 
     %% --------- matlab solver ----------
-    if (use_matlab_solver)
+    if (qp_solver_type == 0)
 
         A = [Aineq_accel; -Aineq_accel];
         b = [accel_ub; -accel_lb];

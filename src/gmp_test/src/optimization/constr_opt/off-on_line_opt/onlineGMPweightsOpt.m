@@ -1,4 +1,4 @@
-function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver)
+function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type)
       
     gmp = gmp0.deepCopy();
     
@@ -39,13 +39,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 15;%10; %200;    
+    N = 10; %15;    
 %     dt_ = dt * (1:N).^0.9;
     dt_ = 0.02*ones(1,N); %dt;
     
     N_kernels = gmp.numOfKernels();
     
-    pos_slack = 0;
+    pos_slack = 1;
     vel_slack = 1;
     accel_slack = 1;
     n_slack = pos_slack + vel_slack + accel_slack;
@@ -53,7 +53,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     Aineq_slack = [];
     Q_slack = [];
     if (pos_slack)
-        Q_slack = blkdiag(Q_slack, 10000); 
+        Q_slack = blkdiag(Q_slack, 1000000); 
         Aineq_slack = [Aineq_slack [-1; 0; 0]];
     end
     if (vel_slack)
@@ -86,9 +86,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     gmp.setTruncatedKernels(true,1e-8);
 
     %% --------  Init solver  --------
-    if (~use_matlab_solver)
-    
-    else
+    if (qp_solver_type == 0)
         solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
     end
     
@@ -182,8 +180,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %         size(Aineq,1)*size(Aineq,2)
 %         nnz(Aineq)
 %         
-%         Aineq
-%         H
+% %         Aineq
+% %         H
 %         
 %         pause
         
@@ -206,7 +204,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         %% ===========  solve optimization problem  ==========
 
         %% --------- OSQP solver ----------
-        if (~use_matlab_solver)
+        if (qp_solver_type == 1)
             
             A_osqp = [Aineq; Aeq];
             lb = [Z_min; beq];
@@ -230,7 +228,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         end
 
         %% --------- matlab solver ----------
-        if (use_matlab_solver)
+        if (qp_solver_type == 0)
 
             A = [Aineq; -Aineq];
             b = [Z_max; -Z_min];

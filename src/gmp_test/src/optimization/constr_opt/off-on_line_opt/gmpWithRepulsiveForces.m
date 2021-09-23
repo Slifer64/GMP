@@ -29,8 +29,8 @@ function [Time, P_data, dP_data, ddP_data] = gmpWithRepulsiveForces(gmp0, tau, y
     %% ---------------------------------------------
         
 %     [Time, P_data, dP_data, ddP_data] = simEuler(gmp, tau, y0, y_min, y_max, ydot_min, ydot_max);
-%     [Time, P_data, dP_data, ddP_data] = simEulerWithOdeStep(gmp, tau, y0, y_min, y_max, ydot_min, ydot_max);
-    [Time, P_data, dP_data, ddP_data] = simOde(gmp, tau, y0, y_min, y_max, ydot_min, ydot_max);
+    [Time, P_data, dP_data, ddP_data] = simEulerWithOdeStep(gmp, tau, y0, y_min, y_max, ydot_min, ydot_max);
+%     [Time, P_data, dP_data, ddP_data] = simOde(gmp, tau, y0, y_min, y_max, ydot_min, ydot_max);
     
 
     fprintf('===> GMP with rep-forces finished! Elaps time: %f ms\n',toc()*1000);

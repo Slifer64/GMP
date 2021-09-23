@@ -1,4 +1,4 @@
-function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver)
+function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type)
     
     gmp = gmp0.deepCopy();
     
@@ -28,7 +28,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
     
     %% --------  Init MPC  --------
     N = 10;%10; %200;
-    dt_ = dt;%0.015;%dt; %0.010;
+    dt_ = dt;%dt;%0.015;%dt; %0.010;
     use_ud = 0;
 
     % stiffness and damping of the system
@@ -100,7 +100,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
 %     Z_ub((N-1)*n+1 : n*N) = [yg; zeros(n_dof,1)];
 
     %% --------  Init solver  --------
-    if (~use_matlab_solver)
+    if (qp_solver_type == 1)
         
         % Create an OSQP object
         prob = osqp;
@@ -271,7 +271,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         %% ===========  solve optimization problem  ==========
 
         %% --------- OSQP solver ----------
-        if (~use_matlab_solver)
+        if (qp_solver_type == 1)
             
             lb = [beq; Z_lb; accel_lb];
             ub = [beq; Z_ub; accel_ub];
@@ -299,7 +299,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
         end
 
         %% --------- matlab solver ----------
-        if (use_matlab_solver)
+        if (qp_solver_type == 0)
 
             A = [Aineq_accel];%; -Aineq_accel];
             b = [accel_ub];%; -accel_lb];
