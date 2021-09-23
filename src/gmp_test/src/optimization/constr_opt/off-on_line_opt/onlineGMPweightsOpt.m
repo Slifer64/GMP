@@ -39,21 +39,21 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     n_dof3 = 3*n_dof; % for pos, vel, accel
     
     %% --------  Init MPC  --------
-    N = 10;%10; %200;    
+    N = 15;%10; %200;    
 %     dt_ = dt * (1:N).^0.9;
     dt_ = 0.02*ones(1,N); %dt;
     
     N_kernels = gmp.numOfKernels();
     
     pos_slack = 0;
-    vel_slack = 0;
+    vel_slack = 1;
     accel_slack = 1;
     n_slack = pos_slack + vel_slack + accel_slack;
     
     Aineq_slack = [];
     Q_slack = [];
     if (pos_slack)
-        Q_slack = blkdiag(Q_slack, 1000); 
+        Q_slack = blkdiag(Q_slack, 10000); 
         Aineq_slack = [Aineq_slack [-1; 0; 0]];
     end
     if (vel_slack)
@@ -61,7 +61,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         Aineq_slack = [Aineq_slack [0; -1; 0]];
     end
     if (accel_slack)
-        Q_slack = blkdiag(Q_slack, 10);
+        Q_slack = blkdiag(Q_slack, 20);
         Aineq_slack = [Aineq_slack [0; 0; -1]];
     end
     Q_slack = sparse(Q_slack);
@@ -193,9 +193,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %         
 %         pause
         
-        Z_min = [repmat(z_min, N,1); zeros(n_slack,1)];
+        Z_min = [repmat(z_min, N,1); -inf(n_slack,1)];
         Z_max = [repmat(z_max, N,1); inf(n_slack,1)];
-
+        
         % This is required when horizon N shrinks towards the end
         Aineq = sparse(Aineq(1:N*n_dof3 + n_slack,:));
         Aineq(end-n_slack+1:end, end-n_slack+1:end) = speye(n_slack);
@@ -312,8 +312,17 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %     ddP_data = [ddP_data W*gmp.regressVecDDot(1, 0, 0)];
 
     if (n_slack)
+        y_lb = {};
+        if (pos_slack), y_lb = [y_lb, {'pos'}]; end
+        if (vel_slack), y_lb = [y_lb, {'vel'}]; end
+        if (accel_slack), y_lb = [y_lb, {'accel'}]; end
         figure;
-        plot(Time, slack_data, 'LineWidth',2, 'Color','red');
+        for i=1:n_slack
+            subplot(n_slack,1,i);
+            plot(Time, slack_data(i,:), 'LineWidth',2, 'Color','red');
+            ylabel(y_lb{i}, 'fontsize',15);
+            if (i==1), title('slack variables', 'fontsize',17); end
+        end
     end
     
     text_prog.update(100);

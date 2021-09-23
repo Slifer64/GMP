@@ -18,7 +18,7 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
-ind = [3];
+ind = [1 2 3];
 Pd_data = Pd_data(ind,:);
 dPd_data = dPd_data(ind,:);
 ddPd_data = ddPd_data(ind,:);
