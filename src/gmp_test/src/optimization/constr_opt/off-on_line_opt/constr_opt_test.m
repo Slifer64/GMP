@@ -18,7 +18,7 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
-ind = [1 2 3];
+ind = [3];
 Pd_data = Pd_data(ind,:);
 dPd_data = dPd_data(ind,:);
 ddPd_data = ddPd_data(ind,:);
@@ -59,7 +59,7 @@ yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 pos_lim = pos_lim(ind,:);
 vel_lim = [-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
-accel_lim = 5*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
+accel_lim = 2*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 

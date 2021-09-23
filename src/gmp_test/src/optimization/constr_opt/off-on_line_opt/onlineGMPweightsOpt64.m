@@ -9,7 +9,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     gmp.setY0(y0);
     gmp.setGoal(yg);
     
-    N_kernels = 30; %gmp0.numOfKernels();
+    N_kernels = 10; %gmp0.numOfKernels();
     s_data = 0:0.01:1;
     Yd_data = zeros(n_dof, length(s_data));
     for j=1:length(s_data), Yd_data(:,j)=gmp.getYd(s_data(j)); end
@@ -20,8 +20,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     P_data = [];
     dP_data = [];
     ddP_data = [];
-    
-    slack_data = [];
 
     y = y0;
     y_dot = zeros(size(y));
@@ -47,22 +45,22 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     pos_slack = 0;
     vel_slack = 0;
-    accel_slack = 1;
+    accel_slack = 0;
     n_slack = pos_slack + vel_slack + accel_slack;
     
     Aineq_slack = [];
     Q_slack = [];
     if (pos_slack)
         Q_slack = blkdiag(Q_slack, 1000); 
-        Aineq_slack = [Aineq_slack [-1; 0; 0]];
+        Aineq_slack = [Aineq_slack [1; 0; 0]];
     end
     if (vel_slack)
         Q_slack = blkdiag(Q_slack, 100);
-        Aineq_slack = [Aineq_slack [0; -1; 0]];
+        Aineq_slack = [Aineq_slack [0; 1; 0]];
     end
     if (accel_slack)
         Q_slack = blkdiag(Q_slack, 10);
-        Aineq_slack = [Aineq_slack [0; 0; -1]];
+        Aineq_slack = [Aineq_slack [0; 0; 1]];
     end
     Q_slack = sparse(Q_slack);
     Aineq_slack = sparse( repmat(Aineq_slack, n_dof, 1) );
@@ -258,13 +256,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             Z0 = Z;
             w = Z(1:end-n_slack);
             slack_var = Z(end-n_slack+1:end);
- 
-%             if (norm(slack_var) > 1e-3)
-%                 %warning('Slack activated!');
-%                 slack_var
-%                 pause
-%                 text_prog.printInNewLine();
-%             end
+            
+            if (norm(slack_var) > 1e-3)
+                warning('Slack activated!');
+                text_prog.printInNewLine();
+            end
             
             W = reshape(w, N_kernels, n_dof)';
 
@@ -294,8 +290,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         P_data = [P_data y];
         dP_data = [dP_data y_dot];
         ddP_data = [ddP_data y_ddot];
-        
-        slack_data = [slack_data slack_var];
     
         %% --------  Numerical integration  --------
         t = t + dt;
@@ -310,11 +304,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %     P_data = [P_data W*gmp.regressVec(1)];
 %     dP_data = [dP_data W*gmp.regressVecDot(1, 0)];
 %     ddP_data = [ddP_data W*gmp.regressVecDDot(1, 0, 0)];
-
-    if (n_slack)
-        figure;
-        plot(Time, slack_data, 'LineWidth',2, 'Color','red');
-    end
     
     text_prog.update(100);
     fprintf('\n');
