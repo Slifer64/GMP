@@ -18,7 +18,7 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
-ind = [1 2 3];
+ind = [3];
 Pd_data = Pd_data(ind,:);
 dPd_data = dPd_data(ind,:);
 ddPd_data = ddPd_data(ind,:);
@@ -72,7 +72,7 @@ data{length(data)+1} = ...
 
 opt_pos = 1;
 opt_vel = 0;
-use_matlab_solver = 1;
+use_matlab_solver = 0;
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 

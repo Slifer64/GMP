@@ -1,5 +1,5 @@
 function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, use_matlab_solver)
-    
+      
     gmp = gmp0.deepCopy();
     
     n_dof = length(y0);
@@ -87,16 +87,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 
     %% --------  Init solver  --------
     if (~use_matlab_solver)
-        
-        % Create an OSQP object
-        prob = osqp;
-        
-        osqp_initialized = false;
-        
+    
     else
-        
         solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);
-
     end
     
     text_prog = ProgressText(40);
@@ -116,6 +109,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     phi_f_ddot = gmp.regressVecDDot(1, 0, 0);
     Phi_f = sparse([kron(eye(n_dof),phi_f'); kron(eye(n_dof),phi_f_dot'); kron(eye(n_dof),phi_f_ddot')]);
     x_final = [yg; zeros(n_dof,1); zeros(n_dof,1)];
+
 
     %% --------  Simulation loop  --------
     while (true)
@@ -214,29 +208,25 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         %% --------- OSQP solver ----------
         if (~use_matlab_solver)
             
-            lb = [beq; Z_min];
-            ub = [beq; Z_max];
-
-            if (~osqp_initialized)
-                % Setup workspace
-                prob.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false); %, 'eps_abs',1e-6, 'eps_rel',1e-6, 'max_iter',30000);
-                osqp_initialized = true;
-            else
-                prob.update('q', q, 'l', lb, 'u', ub);
-            end
+            A_osqp = [Aineq; Aeq];
+            lb = [Z_min; beq];
+            ub = [Z_max; beq];
             
-            res = prob.solve();
+            % Create an OSQP object
+            osqp_solver = osqp;
+            osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false); %, 'eps_abs',1e-6, 'eps_rel',1e-7, 'max_iter',30000);
+           
+            res = osqp_solver.solve();
 
             if ( res.info.status_val ~= 1)
-                res.info
-                if (abs(res.info.status_val) == 2), warning(res.info.status);
-                else, error(res.info.status);
-                end
+                %res.info
+                warning(res.info.status);
                 text_prog.printInNewLine();
+                if (abs(res.info.status_val) ~= 2), break; end
             end
             
-            u = res.x(N*n+1:N*n+m);
-
+            Z = res.x;
+            
         end
 
         %% --------- matlab solver ----------
@@ -256,19 +246,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             end
             
             Z0 = Z;
-            w = Z(1:end-n_slack);
-            slack_var = Z(end-n_slack+1:end);
- 
-%             if (norm(slack_var) > 1e-3)
-%                 %warning('Slack activated!');
-%                 slack_var
-%                 pause
-%                 text_prog.printInNewLine();
-%             end
-            
-            W = reshape(w, N_kernels, n_dof)';
 
         end
+        
+        w = Z(1:end-n_slack);
+        slack_var = Z(end-n_slack+1:end);
+        W = reshape(w, N_kernels, n_dof)';
+
         
         %% --------  Simulate dynamics  --------
         
