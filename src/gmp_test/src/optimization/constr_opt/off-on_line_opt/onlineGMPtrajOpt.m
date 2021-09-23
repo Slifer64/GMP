@@ -303,9 +303,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp0, tau, y0, yg,
 
             A = [Aineq_accel];%; -Aineq_accel];
             b = [accel_ub];%; -accel_lb];
-            
-            full(A)
-            pause
 
             [Z, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, Z_lb,Z_ub, Z_init, solver_opt);
 

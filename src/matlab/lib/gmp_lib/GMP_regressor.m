@@ -9,9 +9,22 @@ classdef GMP_regressor < matlab.mixin.Copyable
         function this = GMP_regressor(N_kernels, kernel_std_scaling)
 
             if (nargin < 2), kernel_std_scaling = 1.0; end
+            
+            this.kernel_fun_ptr = @this.kernelFun;
 
             this.setKernels(N_kernels, kernel_std_scaling);
             
+        end
+        
+        function setTruncatedKernels(this, set, zero_tol)
+           
+            if (nargin < 3), zero_tol = 1e-8; end
+            
+            if (set)
+                this.kernel_fun_ptr = @(x)truncGaussKernel(this, x, zero_tol);
+            else
+                this.kernel_fun_ptr = @this.kernelFun;
+            end
         end
         
         %% Set the kernels centers and widths.
@@ -32,7 +45,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         %  @return (scaled) regressor vector.
         function phi = regressVec(this, x)
             
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             phi = psi / (sum(psi) + this.zero_tol);
 
         end
@@ -43,7 +56,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         %  @return (scaled) regressor vector 1st time derivative.
         function phi_dot = regressVecDot(this, x, x_dot)
             
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = this.kernelFunDot(x, x_dot);
             sum_psi = sum(psi);
             sum_psi_dot = sum(psi_dot);
@@ -60,7 +73,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         %  @return (scaled) regressor vector 2nd time derivative.
         function phi_ddot = regressVecDDot(this, x, x_dot, x_ddot)
             
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = this.kernelFunDot(x, x_dot);
             psi_ddot = this.kernelFunDDot(x, x_dot, x_ddot);
             sum_psi = sum(psi);
@@ -81,7 +94,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         %  @return (scaled) regressor vector 3rd time derivative.
         function phi_3dot = regressVec3Dot(this, x, dx, ddx, d3x)
             
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = this.kernelFunDot(x, dx);
             psi_ddot = this.kernelFunDDot(x, dx, ddx);
             psi_3dot = this.kernelFun3Dot(x, dx, ddx, d3x);
@@ -102,7 +115,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         function plotPsi(this, x)
             
-            Psi = this.kernelFun(x);
+            Psi = this.kernel_fun_ptr(x);
             figure;
             hold on;
             for i=1:length(this.c)
@@ -134,10 +147,17 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
         
+        function psi = truncGaussKernel(this, x, zero_tol)
+
+            psi = this.kernelFun(x);
+            psi(psi<zero_tol) = 0;
+
+        end
+        
         function psi_dot = kernelFunDot(this, x, x_dot)
 
             n = length(x);
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = zeros(length(this.c), n);
             
             for j=1:n
@@ -150,7 +170,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         function psi_ddot = kernelFunDDot(this, x, x_dot, x_ddot)
 
             n = length(x);
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = this.kernelFunDot(x,x_dot);
             psi_ddot = zeros(length(this.c), n);
 
@@ -165,7 +185,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
         function psi_3dot = kernelFun3Dot(this, x, x_dot, x_ddot, x_3dot)
 
             n = length(x);
-            psi = this.kernelFun(x);
+            psi = this.kernel_fun_ptr(x);
             psi_dot = this.kernelFunDot(x,x_dot);
             psi_ddot = this.kernelFunDDot(x,x_dot, x_ddot);
             psi_3dot = zeros(length(this.c), n);
@@ -186,6 +206,12 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         c % N_kernels x 1 vector with the kernels' centers
         h % N_kernels x 1 vector with the kernels' inverse width
+        
+    end
+    
+    properties (Access = protected)
+        
+        kernel_fun_ptr
         
     end
     

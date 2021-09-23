@@ -49,14 +49,16 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     % Z = [x(1), x(2), ... x(N), u(0), u(1), ... u(N-1)]
     
     % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
-    Qi = blkdiag( opt_pos*eye(n_dof,n_dof) , opt_vel*10*eye(n_dof,n_dof) );
-    QN = blkdiag( 100*eye(n_dof,n_dof) , 1*eye(n_dof,n_dof) );
+    Qi = blkdiag( opt_pos*speye(n_dof,n_dof) , opt_vel*10*speye(n_dof,n_dof) );
+    QN = blkdiag( 100*speye(n_dof,n_dof) , 1*speye(n_dof,n_dof) );
 
     z_min = [pos_lim(:,1); vel_lim(:,1); accel_lim(:,1)];
     z_max = [pos_lim(:,2); vel_lim(:,2); accel_lim(:,2)];
     
     w = gmp.W';
     w = w(:); % initial guess for weights
+    
+    gmp.setTruncatedKernels(true,1e-8);
 
     %% --------  Init solver  --------
     if (~use_matlab_solver)
@@ -114,7 +116,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         
         H = sparse(n,n);
         q = zeros(n,1);
-        Aineq = zeros(N*n_dof3, n);
+        Aineq = sparse(N*n_dof3, n);
         
         % DMP phase variable
         si = s;
@@ -135,7 +137,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             phi_dot = gmp.regressVecDot(si, si_dot);
             phi_ddot = gmp.regressVecDDot(si, si_dot, si_ddot);
 
-            Psi = [kron(eye(n_dof),phi'); kron(eye(n_dof),phi_dot')];
+            Psi = [kron(speye(n_dof),phi'); kron(speye(n_dof),phi_dot')];
             
             if (i==N), Qi_ = QN;
             else, Qi_ = Qi;
@@ -144,23 +146,33 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             H = H + Psi'*Qi_*Psi;
             q = q - Psi'*Qi_*[yd_i; dyd_i];
             
-            Aineq((i-1)*n_dof3+1 : i*n_dof3, :) = [kron(eye(n_dof),phi'); kron(eye(n_dof),phi_dot'); kron(eye(n_dof),phi_ddot')];
+            Aineq((i-1)*n_dof3+1 : i*n_dof3, :) = [kron(speye(n_dof),phi'); kron(speye(n_dof),phi_dot'); kron(speye(n_dof),phi_ddot')];
             
             si = si + si_dot*dt_(i);
             si_dot = si_dot + si_ddot*dt_(i);
             % si_ddot = ... (if it changes too)
         end
         
-        H = 1e-6*eye(n) + (H+H')/2; % to account for numerical errors
-        
+        H = 1e-6*speye(n) + (H+H')/2; % to account for numerical errors
+              
+%         size(H,1)*size(H,2)
+%         nnz(H)
+%         
+%         size(Aineq,1)*size(Aineq,2)
+%         nnz(Aineq)
+%         
+%         Aineq
+%         H
+%         
+%         pause
         
         Z_min = repmat(z_min, N,1);
         Z_max = repmat(z_max, N,1);
         
         Aineq = sparse(Aineq(1:N*n_dof3,:));
         
-        Psi0 = [kron(eye(n_dof),phi0'); kron(eye(n_dof),phi0_dot'); kron(eye(n_dof),phi0_ddot')];
-        Aeq = sparse(Psi0);
+        Psi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
+        Aeq = Psi0;
         beq = [y0_; y0_dot; y0_ddot];
         
         if (si >= 1)
@@ -203,7 +215,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 
             A = [Aineq; -Aineq];
             b = [Z_max; -Z_min];
-
+            
             [w, ~, ex_flag, opt_output] = quadprog(H,q, A,b, Aeq,beq, [],[], w, solver_opt);
 
             if (ex_flag == 1 || ex_flag == 2)
