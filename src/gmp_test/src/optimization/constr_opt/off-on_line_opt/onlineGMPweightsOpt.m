@@ -84,8 +84,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     Z0 = [w; zeros(n_slack,1)];
     n_ineq = N*n_dof3 + n_slack;
     n_eq = n_dof3;
-    Z0_dual = zeros(n_ineq + n_eq, 1);
-    is_Z0_dual_initialized = false; 
+    Z0_dual_ineq = zeros(n_ineq, 1);
+    Z0_dual_eq = zeros(n_eq, 1);
     
     gmp.setTruncatedKernels(true,1e-8);
 
@@ -111,8 +111,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     phi_f_ddot = gmp.regressVecDDot(1, 0, 0);
     Phi_f = sparse([kron(eye(n_dof),phi_f'); kron(eye(n_dof),phi_f_dot'); kron(eye(n_dof),phi_f_ddot')]);
     x_final = [yg; zeros(n_dof,1); zeros(n_dof,1)];
-
-
+    
     %% --------  Simulation loop  --------
     while (true)
         
@@ -137,7 +136,10 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         
         H = sparse(n,n);
         q = zeros(n,1);
+        % add slacks to bounds. I.e. one could optionaly define with slacks
+        % bounds the maximum allowable error
         Aineq = sparse(N*n_dof3 + n_slack, n);
+        Aineq(end-n_slack+1:end,end-n_slack+1:end) = speye(n_slack);
         
         % DMP phase variable
         si = s;
@@ -146,10 +148,10 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         
         for i=1:N
             
-            if (si >= 1)
-                N = i-1;
-                break;
-            end
+%             if (si > 1)
+%                 N = i-1;
+%                 break;
+%             end
 
             yd_i = gmp.getYd(si);
             dyd_i = gmp.getYdDot(si, si_dot);
@@ -189,13 +191,22 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %         
 %         pause
         
+        % Here we set the slacks to be unbounded, but in general, we could
+        % specify as bounds the maximum allowable violation from the
+        % kinematic bounds.
         Z_min = [repmat(z_min, N,1); -inf(n_slack,1)];
         Z_max = [repmat(z_max, N,1); inf(n_slack,1)];
         
-        % This is required when horizon N shrinks towards the end
-        Aineq = sparse(Aineq(1:N*n_dof3 + n_slack,:));
-        Aineq(end-n_slack+1:end, end-n_slack+1:end) = speye(n_slack);
-        n_ineq = size(Aineq,1);
+%         % This is required when horizon N shrinks towards the end
+%         % take all constraints up to the new horizon N and append the
+%         % identity for the slack bounds constraints
+%         Aineq = Aineq(1:N*n_dof3,:); 
+%         Aineq = [Aineq; [sparse(n_slack, n_dof*N_kernels) speye(n_slack)] ];
+%         
+%         if (size(Aineq,1) < length(Z0_dual_ineq))
+%            z_slack = Z0_dual_ineq(end-n_slack+1:end);
+%            Z0_dual_ineq = [Z0_dual_ineq(1:size(Aineq,1)-n_slack); z_slack];
+%         end
         
         Psi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
         Aeq = [Psi0, sparse(n_dof3, n_slack)];
@@ -204,7 +215,9 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         if (si >= 1)
             Aeq = [Aeq; [Phi_f, sparse(n_dof3, n_slack)] ];
             beq = [beq; x_final];
-            n_eq = size(Aeq);
+
+           n_eq_plus = size(Aeq,1) - length(Z0_dual_eq);
+            if (n_eq_plus>0), Z0_dual_eq = [Z0_dual_eq; zeros(n_eq_plus, 1)]; end
         end
         
         %% ===========  solve optimization problem  ==========
@@ -215,16 +228,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             A_osqp = [Aineq; Aeq];
             lb = [Z_min; beq];
             ub = [Z_max; beq];
-            
+
+            Z0_dual = [Z0_dual_ineq; Z0_dual_eq];
+    
             % Create an OSQP object
             osqp_solver = osqp;
-            osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-4, 'eps_rel',1e-4);%, 'max_iter',20000);
-            osqp_solver.warm_start('x', Z0);
-%             if (si >= 1)
-%                 osqp_solver.warm_start('x', Z0);
-%             else
-%                 osqp_solver.warm_start('x', Z0, 'y', Z0_dual);
-%             end
+            osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',false, 'verbose',false, 'eps_abs',1e-4, 'eps_rel',1e-5);%, 'max_iter',20000);
+            osqp_solver.warm_start('x', Z0, 'y',Z0_dual);
             
             res = osqp_solver.solve();
 
@@ -232,12 +242,15 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
                 %res.info
                 warning(res.info.status);
                 text_prog.printInNewLine();
-                if (abs(res.info.status_val) ~= 2), break; end
+                if (res.info.status_val == -3 || res.info.status_val == -4 || res.info.status_val == -7 || res.info.status_val == -10), break; end
             end
             
             Z = res.x;
             Z0 = Z;
             Z0_dual = res.y;
+            n_ineq = size(Aineq,1);
+            Z0_dual_ineq = Z0_dual(1:n_ineq);
+            Z0_dual_eq = Z0_dual(n_ineq+1:end);
             
         end
 

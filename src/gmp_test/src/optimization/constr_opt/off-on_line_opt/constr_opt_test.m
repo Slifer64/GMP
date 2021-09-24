@@ -20,7 +20,7 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
-ind = [3];
+ind = [1 2 3];
 Pd_data = Pd_data(ind,:);
 dPd_data = dPd_data(ind,:);
 ddPd_data = ddPd_data(ind,:);
@@ -74,7 +74,7 @@ data{length(data)+1} = ...
 
 opt_pos = 1;
 opt_vel = 0;
-qp_solver_type = 0; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
+qp_solver_type = 1; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 % 
