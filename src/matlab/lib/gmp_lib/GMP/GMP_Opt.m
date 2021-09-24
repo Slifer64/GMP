@@ -3,22 +3,32 @@
 
 classdef GMP_Opt < matlab.mixin.Copyable
     
+    properties (Access=public, Constant)
+        
+        % enum QPSolverT{
+        MATLAB_QUADPROG = 0;
+        OSQP = 1;
+        GOLDFARB_IDNANI = 2;
+        %};
+        
+    end
+    
     methods (Access = public)
         
         %% GMP constructor.
         %  @param[in] gmp: n_DoF dmp.
         function this = GMP_Opt(gmp)
                 
-            this.ex_flag_map = containers.Map('KeyType','double','ValueType','char');
-            this.ex_flag_map(-10) = 'Empty... Call ''constrOpt'' first.';
-            this.ex_flag_map(1) = 'Function converged to the solution x.';
-            this.ex_flag_map(0) = 'Number of iterations exceeded options.MaxIterations.';
-
-            this.ex_flag_map(-2) = 'Problem is infeasible. Or, for interior-point-convex, the step size was smaller than options.StepTolerance, but constraints were not satisfied.';
-            this.ex_flag_map(-3) = 'Problem is unbounded';
-            this.ex_flag_map(2) = 'Step size was smaller than options.StepTolerance, constraints were satisfied.';
-            this.ex_flag_map(-6) = 'Nonconvex problem detected.';
-            this.ex_flag_map(-8) = 'Unable to compute a step direction.';
+%             this.ex_flag_map = containers.Map('KeyType','double','ValueType','char');
+%             this.ex_flag_map(-10) = 'Empty... Call ''constrOpt'' first.';
+%             this.ex_flag_map(1) = 'Function converged to the solution x.';
+%             this.ex_flag_map(0) = 'Number of iterations exceeded options.MaxIterations.';
+% 
+%             this.ex_flag_map(-2) = 'Problem is infeasible. Or, for interior-point-convex, the step size was smaller than options.StepTolerance, but constraints were not satisfied.';
+%             this.ex_flag_map(-3) = 'Problem is unbounded';
+%             this.ex_flag_map(2) = 'Step size was smaller than options.StepTolerance, constraints were satisfied.';
+%             this.ex_flag_map(-6) = 'Nonconvex problem detected.';
+%             this.ex_flag_map(-8) = 'Unable to compute a step direction.';
             
             this.exit_msg = '';
                 
@@ -39,8 +49,22 @@ classdef GMP_Opt < matlab.mixin.Copyable
             this.w_p = pos_obj_w;
             this.w_v = vel_obj_w;
             this.w_a = accel_obj_w;
+            
+            this.setQPsolver(GMP_Opt.MATLAB_QUADPROG);
 
         end       
+        
+        %% Sets the QP-solver to use for solving the optimization problem.
+        %  @param[in] solver_type: enum of type @GMP_Opt::QPSolverT.
+        function setQPsolver(this, solver_type)
+            
+            if (solver_type == GMP_Opt.MATLAB_QUADPROG), this.qp_solver_fun = @GMP_Opt.quadprogSolver;
+            elseif (solver_type == GMP_Opt.OSQP), this.qp_solver_fun = @GMP_Opt.osqpSolver;
+            elseif (solver_type == GMP_Opt.GOLDFARB_IDNANI), this.qp_solver_fun = @GMP_Opt.goldfarbIdnaniSolver;
+            else, error('Unsupported qp solver type');
+            end
+            
+        end
         
         %% Trajectory optimization.
         %  @param[in] num_points: Number of discreet points to use in the objective function.
@@ -114,115 +138,52 @@ classdef GMP_Opt < matlab.mixin.Copyable
                 H = H + this.w_a*H3;
                 f = f + this.w_a*f3;
             end
-            
-
-%             A = [this.A_p; this.A_v; this.A_a];
-%             lb = [this.pos_lb; this.vel_lb; this.accel_lb];
-%             ub = [this.pos_ub; this.vel_ub; this.accel_ub];
-%             Aeq = [this.Aeq_p; this.Aeq_v; this.Aeq_a];
-%             beq = [this.pos_eq; this.vel_eq; this.accel_eq];
-%             
-%             fid = FileIO('osqp_problem.bin', bitor(FileIO.out,FileIO.trunc) );
-%             fid.write('H', H);
-%             fid.write('f', f);
-%             fid.write('A', A);
-%             fid.write('lb', lb);
-%             fid.write('ub', ub);
-%             fid.write('Aeq', Aeq);
-%             fid.write('beq', beq);
-%             fid.write('x0', this.gmp.W');
-%             fid.write('inv_ks', this.gmp.getInvScaling());
-%             stop
-            
+  
             % inequality constraints
-            
-            A = [];
-            b = [];
-
-            if (~isempty(this.A_p))
-                A = [A; -this.A_p; this.A_p];
-                b = [b; -this.pos_lb; this.pos_ub];
-            end
-            
-            if (~isempty(this.A_v))
-                A = [A; -this.A_v; this.A_v];
-                b = [b; -this.vel_lb; this.vel_ub];
-            end
-            
-            if (~isempty(this.A_a))
-                A = [A; -this.A_a; this.A_a];
-                b = [b; -this.accel_lb; this.accel_ub];
-            end
-            
+            Aineq = [this.A_p; this.A_v; this.A_a];
+            lb_ineq = [this.pos_lb; this.vel_lb; this.accel_lb];
+            ub_ineq = [this.pos_ub; this.vel_ub; this.accel_ub];
+         
             % equality constraints
-            
-            Aeq = [];
-            beq = [];
-            
-            if (~isempty(this.Aeq_p))
-                Aeq = [Aeq; this.Aeq_p];
-                beq = [beq; this.pos_eq];
-            end
-            
-            if (~isempty(this.Aeq_v))
-                Aeq = [Aeq; this.Aeq_v];
-                beq = [beq; this.vel_eq];
-            end
-            
-            if (~isempty(this.Aeq_a))
-                Aeq = [Aeq; this.Aeq_a];
-                beq = [beq; this.accel_eq];
-            end
+            Aeq = [this.Aeq_p; this.Aeq_v; this.Aeq_a];
+            beq = [this.pos_eq; this.vel_eq; this.accel_eq];
+ 
 
-            % H = sparse(H);
-            % A = sparse(A);
-            
-            opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off');
-            
             % solve optimization problem
             % tic
             
             solve_coupled = 0;
             
+            %% solve coupled QP (all dofs together)
             if (solve_coupled)
-            
+
                 W0 = this.gmp.W';
-                [W, ~, ex_flag] = quadprog(sparse(kron(eye(n_dof),H)),f(:), sparse(kron(eye(n_dof),A)),b(:), sparse(kron(eye(n_dof),Aeq)),beq(:), [],[], W0(:), opt);
-                %[W, ~, ex_flag] = quadprog((kron(eye(n_dof),H)),f(:), (kron(eye(n_dof),A)),b(:), (kron(eye(n_dof),Aeq)),beq(:), [],[], W0(:), opt);
-
-                if (ex_flag == 1 || ex_flag == 2)
-                    %this.gmp.W(i,:) = w'; %w'/ks(i);
-                else
-                    success = false;
-                    % break; ?
-                end
-
-                this.exit_msg = this.ex_flag_map(ex_flag);
-
+                
+                [W, success, this.exit_msg] = this.qp_solver_fun(kron(eye(n_dof),H),f(:),...
+                                                                        kron(eye(n_dof),Aineq),lb_ineq(:),ub_ineq(:), ...
+                                                                        kron(eye(n_dof),Aeq),beq(:), W0(:));
                 W = reshape(W, n_ker,n_dof)';
             
             else
+            %% solve QP for each DoF separately
                 
                 W = zeros(n_dof, n_ker);
                 for i=1:n_dof
 
-                    bi = [];
                     beq_i = [];
-                    if (~isempty(b)), bi = b(:,i); end
+                    lb_ineq_i = [];
+                    ub_ineq_i = [];
                     if (~isempty(beq)), beq_i = beq(:,i); end
+                    if (~isempty(lb_ineq)), lb_ineq_i = lb_ineq(:,i); end
+                    if (~isempty(ub_ineq)), ub_ineq_i = ub_ineq(:,i); end
 
-                    %[W(i,:), ~, ex_flag] = quadprog(H,f(:,i), A,bi, Aeq,beq_i, [],[], this.gmp.W(i,:), opt);
-                    [W(i,:), ~, ex_flag] = quadprog(sparse(H),f(:,i), sparse(A),bi, sparse(Aeq),beq_i, [],[], this.gmp.W(i,:), opt);
-
-                    if (ex_flag == 1 || ex_flag == 2)
-                        %this.gmp.W(i,:) = w'; %w'/ks(i);
-                    else
-                        success = false;
-                        % break; ?
-                    end
+                    % solve optimization problem
+                    [W(i,:), success_i, exit_status_msg] = this.qp_solver_fun(H,f(:,i), Aineq,lb_ineq_i,ub_ineq_i, Aeq,beq_i, this.gmp.W(i,:));
+                    
+                    if (~success_i), success = false; end
 
                     if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
-                    this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' this.ex_flag_map(ex_flag)];
+                    this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' exit_status_msg];
 
                 end
                 
@@ -235,139 +196,6 @@ classdef GMP_Opt < matlab.mixin.Copyable
             % toc
             
         end
-        
-        function success = optimize3(this, x_data, gmp_in)
-
-            n_ker = this.gmp.numOfKernels();
-            n_dof = this.gmp.numOfDoFs();
-            
-            x_dot = 1/this.tau;
-            x_ddot = 0;
-            
-            success = true;
-            this.exit_msg = '';
-            
-            % calculate cost function: J = 0.5w'Hw + f'w
-            N = length(x_data);
-            
-            H = 1e-8*eye(n_ker, n_ker); % for numerical stability
-            f = zeros(n_ker, n_dof);
-            
-            if (this.opt_pos)
-                y_offset = - this.gmp.getY0() + this.gmp.getScaling()*this.gmp.getY0d();
-                H1 = zeros(n_ker, n_ker);
-                f1 = zeros(n_ker, n_dof);
-                for i=1:N
-                    phi = this.gmp.regressVec(x_data(i));
-                    H1 = H1 + phi*phi';
-                    yd = gmp_in.getYd(x_data(i)) + y_offset;
-                    f1 = f1 - phi*yd';
-                end
-                H = H + this.w_p*H1;
-                f = f + this.w_p*f1;
-            end
-  
-            if (this.opt_vel)
-                H2 = zeros(n_ker, n_ker);
-                f2 = zeros(n_ker, n_dof);
-                for i=1:N
-                    phi = this.gmp.regressVecDot(x_data(i), x_dot);
-                    H2 = H2 + phi*phi';
-                    f2 = f2 - phi*gmp_in.getYdDot(x_data(i), x_dot)';
-                end
-                H = H + this.w_v*H2;
-                f = f + this.w_v*f2;
-            end
-            
-            if (this.opt_accel)
-                H3 = zeros(n_ker, n_ker);
-                f3 = zeros(n_ker, n_dof);
-                for i=1:N
-                    phi = this.gmp.regressVecDDot(x_data(i), x_dot, x_ddot);
-                    H3 = H3 + phi*phi';
-                    f3 = f3 - phi*gmp_in.getYdDDot(x_data(i), x_dot, x_ddot)';
-                end
-                H = H + this.w_a*H3;
-                f = f + this.w_a*f3;
-            end
-            
-            % inequality constraints
-            
-            A = [];
-            b = [];
-
-            if (~isempty(this.A_p))
-                A = [A; -this.A_p; this.A_p];
-                b = [b; -this.pos_lb; this.pos_ub];
-            end
-            
-            if (~isempty(this.A_v))
-                A = [A; -this.A_v; this.A_v];
-                b = [b; -this.vel_lb; this.vel_ub];
-            end
-            
-            if (~isempty(this.A_a))
-                A = [A; -this.A_a; this.A_a];
-                b = [b; -this.accel_lb; this.accel_ub];
-            end
-            
-            % equality constraints
-            
-            Aeq = [];
-            beq = [];
-            
-            if (~isempty(this.Aeq_p))
-                Aeq = [Aeq; this.Aeq_p];
-                beq = [beq; this.pos_eq];
-            end
-            
-            if (~isempty(this.Aeq_v))
-                Aeq = [Aeq; this.Aeq_v];
-                beq = [beq; this.vel_eq];
-            end
-            
-            if (~isempty(this.Aeq_a))
-                Aeq = [Aeq; this.Aeq_a];
-                beq = [beq; this.accel_eq];
-            end
-
-            % H = sparse(H);
-            % A = sparse(A);
-            
-            opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off');
-            
-            % solve optimization problem
-            % tic
-            W = zeros(n_dof, n_ker);
-            for i=1:n_dof
-                
-                bi = [];
-                beq_i = [];
-                if (~isempty(b)), bi = b(:,i); end
-                if (~isempty(beq)), beq_i = beq(:,i); end
-                
-                [W(i,:), ~, ex_flag] = quadprog(H,f(:,i), A,bi, Aeq,beq_i, [],[], this.gmp.W(i,:), opt);
-
-                if (ex_flag == 1 || ex_flag == 2)
-                    %this.gmp.W(i,:) = w'; %w'/ks(i);
-                else
-                    success = false;
-                    % break; ?
-                end
-                
-                if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
-                this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' this.ex_flag_map(ex_flag)];
-
-            end
-            
-            if (success)
-                this.gmp.W = this.gmp.getInvScaling()*W;
-            end
-            
-            % toc
-            
-        end
-        
         
         function setMotionDuration(this, tau)
            
@@ -604,9 +432,72 @@ classdef GMP_Opt < matlab.mixin.Copyable
 
     end
     
+    
+    %% ============= QP solvers ==============
+    methods (Access = private, Static)
+        
+        %% Matlab-quatprog solver
+        function [x, success, exit_status] = quadprogSolver(H, f, Aineq, lb_ineq, ub_ineq, Aeq, beq, x0)
+            
+            A = [Aineq;   -Aineq];
+            b = [ub_ineq; -lb_ineq];
+            
+            opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'StepTolerance',0, 'Display','off');
+            
+            %[x, ~, ex_flag, opt_output] = quadprog(H,f, A,b, Aeq,beq, [],[], x0, opt);
+            [x, ~, ex_flag, opt_output] = quadprog(sparse(H),f, sparse(A),b, sparse(Aeq),beq, [],[], x0, opt);
+            exit_status = GMP_Opt.exit_flag_map(ex_flag); %opt_output.message;
+            success = ex_flag == 1 || ex_flag == 2; 
+                    
+        end
+        
+        %% OSQP solver
+        function [x, success, exit_status] = osqpSolver(H, f, Aineq, lb_ineq, ub_ineq, Aeq, beq, x0)
+            
+            osqp_solver = osqp;
+            osqp_solver.setup(sparse(H), f, sparse([Aineq; Aeq]), [lb_ineq; beq], [ub_ineq; beq], 'warm_start',true, 'verbose',false);%, 'eps_abs',1e-4, 'eps_rel',1e-4);%, 'max_iter',20000);
+            res = osqp_solver.solve();
+            exit_status = res.info.status;
+            ex_flag = res.info.status_val;
+            success = ex_flag == 1;
+            x = res.x;
+                    
+        end
+        
+        %% Goldfarb-Idnani solver
+        function [x, success, exit_status] = goldfarbIdnaniSolver(H, f, Aineq, lb_ineq, ub_ineq, Aeq, beq, x0)
+
+            n = length(f);
+            [x, ~, ex_flag, opt_output] = qpGoldfarbIdnani(H,f, [Aineq; -Aineq],[ub_ineq; -lb_ineq], Aeq,beq, -inf(n,1),inf(n,1));
+            exit_status = opt_output.status{1};
+            success = ex_flag == 1;
+                
+        end
+        
+    end
+    
+    %% =================================================
+    %% ============== Private properties ===============
+    %% =================================================
+    
+    properties (Access = private, Constant)
+        
+        % maps the exit flag value to the msg describing the exit flag
+        exit_flag_map = containers.Map({-10,1,0,-2,-3,2,-6,-8}, ...
+            {'Empty... Call ''constrOpt'' first.',...
+             'Function converged to the solution x.', ...
+             'Number of iterations exceeded options.MaxIterations.', ...
+             'Problem is infeasible. Or, for interior-point-convex, the step size was smaller than options.StepTolerance, but constraints were not satisfied.', ...
+             'Problem is unbounded', ...
+             'Step size was smaller than options.StepTolerance, constraints were satisfied.', ...
+             'Nonconvex problem detected.', ...
+             'Unable to compute a step direction.'});
+    end
+    
     properties (Access = private)
         
-        ex_flag_map % maps the exit flag value to the msg describing the exit flag
+        qp_solver_fun % pointer to the qp solver function
+        
         exit_msg
         
         gmp % n_DoF GMP

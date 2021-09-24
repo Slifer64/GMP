@@ -1,4 +1,4 @@
-function [x,fval,exitflag,output,lambda]=QP(H,f,Ai,bi,Ae,be,lb,ub,option)
+function [x,fval,exitflag,output,lambda]=qpGoldfarbIdnani(H,f,Ai,bi,Ae,be,lb,ub,option)
 % [x,fmin,errflag,output,lambda]=QP(H,f,Ai,bi,Ae,be,bi,lb,ub,option)
 % [x,fmin,errflag,output,lambda]=QP(H,f,Ai,bi,Ae,be,lb,ub)
 % [x,fmin,errflag,output,lambda]=QP(H,f,Ai,bi,Ae,be,lb)

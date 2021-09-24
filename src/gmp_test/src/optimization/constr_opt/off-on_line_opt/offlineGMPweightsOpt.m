@@ -12,7 +12,7 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp0, tau, y0,
     gmp_opt.setOptions(opt_pos, opt_vel, false, 0.1, 1, 0.1);
     gmp_opt.setMotionDuration(tau);
 
-    n_points = 200;
+    n_points = 100;
     % position constr
     gmp_opt.setPosBounds(pos_lim(:,1), pos_lim(:,2), n_points);
     gmp_opt.setPosConstr([],[],[], [0 1], [y0 yg]);
@@ -27,6 +27,9 @@ function [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp0, tau, y0,
 
     % gmp_opt.optimize(100);
     t_start = tic;
+    gmp_opt.setQPsolver(GMP_Opt.MATLAB_QUADPROG);
+%     gmp_opt.setQPsolver(GMP_Opt.OSQP);
+%     gmp_opt.setQPsolver(GMP_Opt.GOLDFARB_IDNANI);
     gmp_opt.optimize2(0:0.01:1);
     elaps_t = toc(t_start);
     fprintf('===> offline-GMP-weights optimization finished! Elaps time: %f ms\n',elaps_t*1000);

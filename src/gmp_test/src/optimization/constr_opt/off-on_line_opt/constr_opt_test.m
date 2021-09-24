@@ -2,7 +2,7 @@ clc;
 % close all;
 clear;
 
-addpath('QP_Goldfarb Idnani/');
+addpath('QP_Goldfarb_Idnani/');
 
 addpath('../../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
@@ -60,8 +60,8 @@ yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 %            lower limit     upper limit
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 pos_lim = pos_lim(ind,:);
-vel_lim = [-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
-accel_lim = 4*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
+vel_lim = 0.8*[-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
+accel_lim = 1*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 
@@ -74,21 +74,21 @@ data{length(data)+1} = ...
 
 opt_pos = 1;
 opt_vel = 0;
-qp_solver_type = 1; % matlab-quadprog:0 , osqp:1
+qp_solver_type = 0; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
-
-% % --------- Offline GMP-weights optimization -----------
-% [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-%         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
 % 
-% ---------- Online GMP-weights optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+% --------- Offline GMP-weights optimization -----------
+[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
 data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+        'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
+% 
+% % ---------- Online GMP-weights optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
@@ -239,11 +239,11 @@ function plot3Dbounds(ax, bounds)
 %     patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 %     patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
     
-    patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
-    patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
-
-    patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z1 z1 z1 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
-    patch( [x1 x1 x2 x2] , [y1 y2 y2 y1], [z2 z2 z2 z2], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
+    X = [x1 x1 x1 x1; x2 x2 x2 x2; x1 x1 x2 x2; x1 x1 x2 x2]';
+    Y = [y1 y1 y2 y2; y1 y1 y2 y2; y1 y2 y2 y1; y1 y2 y2 y1]';
+    Z = [z1 z2 z2 z1; z1 z2 z2 z1; z1 z1 z1 z1; z2 z2 z2 z2]';
+    
+    patch( X , Y, Z, 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
 %     patch( [x1 x1 x2 x2] , [y1 y1 y1 y1], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 %     patch( [x1 x1 x2 x2] , [y2 y2 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');

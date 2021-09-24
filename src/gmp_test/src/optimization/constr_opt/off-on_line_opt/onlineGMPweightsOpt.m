@@ -255,7 +255,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             ub = inf(n,1);
             
             % option.maxiter = 1000;
-            [Z,~,ex_flag,opt_output] = QP(full(H),q, full(A),b, full(Aeq),beq, lb,ub); %,option)
+            [Z,~,ex_flag,opt_output] = qpGoldfarbIdnani(full(H),q, full(A),b, full(Aeq),beq, lb,ub); %,option)
             
             if (ex_flag == 1)
                 % success
