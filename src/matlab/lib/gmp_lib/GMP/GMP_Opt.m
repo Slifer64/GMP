@@ -168,6 +168,11 @@ classdef GMP_Opt < matlab.mixin.Copyable
             %% solve QP for each DoF separately
                 
                 W = zeros(n_dof, n_ker);
+                W0 = this.gmp.W';
+                solve_fun_pt = @this.qp_solver_fun;
+                exit_msg_array = cell(n_dof,1);
+                success_array = zeros(n_dof,1);
+                % parfor i=1:n_dof
                 for i=1:n_dof
 
                     beq_i = [];
@@ -178,15 +183,16 @@ classdef GMP_Opt < matlab.mixin.Copyable
                     if (~isempty(ub_ineq)), ub_ineq_i = ub_ineq(:,i); end
 
                     % solve optimization problem
-                    [W(i,:), success_i, exit_status_msg] = this.qp_solver_fun(H,f(:,i), Aineq,lb_ineq_i,ub_ineq_i, Aeq,beq_i, this.gmp.W(i,:));
+                    [W(i,:), success_i, exit_status_msg] = solve_fun_pt(H,f(:,i), Aineq,lb_ineq_i,ub_ineq_i, Aeq,beq_i, W0(:,i));
                     
-                    if (~success_i), success = false; end
+                    success_array(i) = success_i;
 
-                    if (~isempty(this.exit_msg)), this.exit_msg = [this.exit_msg '\n']; end
-                    this.exit_msg = [this.exit_msg 'DoF-' num2str(i) ': ' exit_status_msg];
+                    exit_msg_array{i} = ['DoF-' num2str(i) ': ' exit_status_msg '\n'];
 
                 end
-                
+                this.exit_msg = [exit_msg_array{:}];
+                this.exit_msg = this.exit_msg(1:end-2); % remove last '\n'
+                success = isempty( find(success_array== 0) );
             end
             
             if (success)

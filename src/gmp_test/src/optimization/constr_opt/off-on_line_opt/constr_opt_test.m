@@ -20,7 +20,7 @@ fid.close();
 
 Ts = Timed(2)-Timed(1);
 
-ind = [1 2 3];
+ind = [3];
 Pd_data = Pd_data(ind,:);
 dPd_data = dPd_data(ind,:);
 ddPd_data = ddPd_data(ind,:);
@@ -60,8 +60,8 @@ yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 %            lower limit     upper limit
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 pos_lim = pos_lim(ind,:);
-vel_lim = 0.8*[-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
-accel_lim = 1*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
+vel_lim = 1*[-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
+accel_lim = 3*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 
@@ -78,17 +78,17 @@ qp_solver_type = 0; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
 % 
-% --------- Offline GMP-weights optimization -----------
-[Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
-data{length(data)+1} = ...
-    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
-        'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
-% 
-% % ---------- Online GMP-weights optimization ------------
-% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+% % --------- Offline GMP-weights optimization -----------
+% [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
 % data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
+%         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
+% 
+% ---------- Online GMP-weights optimization ------------
+[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+data{length(data)+1} = ...
+    struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+    'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
 % % ---------- Offline GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);

@@ -82,6 +82,10 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     w = gmp.W';
     w = w(:); % initial guess for weights
     Z0 = [w; zeros(n_slack,1)];
+    n_ineq = N*n_dof3 + n_slack;
+    n_eq = n_dof3;
+    Z0_dual = zeros(n_ineq + n_eq, 1);
+    is_Z0_dual_initialized = false; 
     
     gmp.setTruncatedKernels(true,1e-8);
 
@@ -191,6 +195,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         % This is required when horizon N shrinks towards the end
         Aineq = sparse(Aineq(1:N*n_dof3 + n_slack,:));
         Aineq(end-n_slack+1:end, end-n_slack+1:end) = speye(n_slack);
+        n_ineq = size(Aineq,1);
         
         Psi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
         Aeq = [Psi0, sparse(n_dof3, n_slack)];
@@ -199,6 +204,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         if (si >= 1)
             Aeq = [Aeq; [Phi_f, sparse(n_dof3, n_slack)] ];
             beq = [beq; x_final];
+            n_eq = size(Aeq);
         end
         
         %% ===========  solve optimization problem  ==========
@@ -213,7 +219,13 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             % Create an OSQP object
             osqp_solver = osqp;
             osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',true, 'verbose',false, 'eps_abs',1e-4, 'eps_rel',1e-4);%, 'max_iter',20000);
-           
+            osqp_solver.warm_start('x', Z0);
+%             if (si >= 1)
+%                 osqp_solver.warm_start('x', Z0);
+%             else
+%                 osqp_solver.warm_start('x', Z0, 'y', Z0_dual);
+%             end
+            
             res = osqp_solver.solve();
 
             if ( res.info.status_val ~= 1)
@@ -224,6 +236,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
             end
             
             Z = res.x;
+            Z0 = Z;
+            Z0_dual = res.y;
             
         end
 
