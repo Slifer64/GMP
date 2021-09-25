@@ -79,9 +79,10 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     z_min = [pos_lim(:,1); vel_lim(:,1); accel_lim(:,1)];
     z_max = [pos_lim(:,2); vel_lim(:,2); accel_lim(:,2)];
     
-    w = gmp.W';
-    w = w(:); % initial guess for weights
-    Z0 = [w; zeros(n_slack,1)];
+    % initial guess for weights
+    % w = gmp.W'; 
+    %Z0 = [w; zeros(n_slack,1)];
+    Z0 = zeros(n,1);
     n_ineq = N*n_dof3 + n_slack;
     n_eq = n_dof3;
     Z0_dual_ineq = zeros(n_ineq, 1);

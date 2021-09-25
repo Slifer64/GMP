@@ -6,9 +6,18 @@ classdef GMP_MPC
         
         function this = GMP_MPC(gmp, N_kernels, kernel_std_scaling)
             
-            if (nargin < 2), N_kernels = gmp.numOfKernels(); end
-            if (nargin < 3), kernel_std_scaling = gmp.numOfKernels(); end
-            
+            if (nargin < 2)
+                this.W = gmp.W;
+            else
+                if (nargin < 3), kernel_std_scaling = 1.0; end
+                temp_gmp = GMP(gmp.numOfDoFs(), N_kernels, kernel_std_scaling);
+                s_data = 0:0.01:1;
+                Yd_data = zeros(n_dof, length(s_data));
+                for j=1:length(s_data), Yd_data(:,j)=gmp.getYd(s_data(j)); end
+                gmp = GMP(n_dof, N_kernels, 1.5);
+                gmp.train('LS', s_data, Yd_data);
+            end
+
             this.gmp_ = gmp;
            
             this.n_dof = length(gmp.numOfDoFs());
