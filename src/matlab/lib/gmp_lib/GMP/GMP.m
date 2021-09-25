@@ -51,56 +51,9 @@ classdef GMP < GMP_regressor
             
         end
 
-        %% Sets the initial position.
-        %  @param[in] y0: initial position.
-        function setY0(this, y0)
-            
-            this.Y0 = y0; 
-            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
-        
-        end
-        
-        function Y0 = getY0(this), Y0 = this.Y0; end
-        
-        function y0d = getY0d(this), y0d = this.Y0d; end
-        
-        
-        %% Set goal position.
-        %  @param[in] g: goal position.
-        function setGoal(this, g)
-            
-            this.Yg = g;
-            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
-        
-        end
-
-        function Yg = getGoal(this), Yg = this.Yg; end
-        
-        function sc = getScaling(this)
-
-            sc = this.traj_sc.getScaling();
-            
-        end
-        
-        function inv_sc = getInvScaling(this)
-            
-            inv_sc = this.traj_sc.getInvScaling();
-            
-        end
-
-        %% Set the trajectory spatial scaling method.
-        %  @param[in] traj_scale_obj: pointer to an object of type @TrajScale.
-        function setScaleMethod(this, traj_scale_obj)
-           
-            if (this.numOfDoFs() ~= traj_scale_obj.numOfDoFs())
-                error('[GMP::setScaleMethod]: Incompatible number of DoFs...');
-            end
-            
-            this.traj_sc = traj_scale_obj;
-            this.traj_sc.setNominalStartFinalPos(this.Y0d, this.Ygd);
-            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
-
-        end
+        %% ==============================
+        %% =========  Training  =========
+        %% ==============================
         
         %% Trains the GMP.
         %  @param[in] train_method: the training method to use, as a string ('LWR', 'LS').
@@ -168,6 +121,139 @@ classdef GMP < GMP_regressor
         
         end
 
+        
+        %% =================================================
+        %% =========  Set/Get initial/final state  =========
+        %% =================================================
+        
+        %% Sets the initial position.
+        %  @param[in] y0: initial position.
+        function setY0(this, y0)
+            
+            this.Y0 = y0; 
+            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
+        
+        end
+        
+        %% Returns the initial position.
+        %  @return the initial position.
+        function Y0 = getY0(this)
+            
+            Y0 = this.Y0;
+            
+        end
+        
+        %% Returns the initial position learned from the training.
+        %  @return the trained initial position.
+        function y0d = getY0d(this)
+            
+            y0d = this.Y0d;
+            
+        end
+        
+        
+        %% Set goal/final position.
+        %  @param[in] g: goal position.
+        function setGoal(this, g)
+            
+            this.Yg = g;
+            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
+        
+        end
+
+        %% Returns the goal/final position.
+        %  @return goal position.
+        function Yg = getGoal(this), Yg = this.Yg; end
+        
+        
+        %% ===========================================
+        %% =========  GMP output trajectory  =========
+        %% ===========================================
+        
+        %% Returns the scaled desired position.
+        %  @param[in] x: phase variable.
+        %  @return: scaled desired position.
+        function yd = getYd(this, x)
+
+            yd = this.getScaling()*(this.W*this.regressVec(x) - this.Y0d) + this.Y0;
+            
+        end
+        
+        
+        %% Returns the scaled desired velocity.
+        %  @param[in] x: phase variable.
+        %  @param[in] x_dot: 1st time derivative of the phase variable.
+        %  @return: scaled desired velocity.
+        function yd_dot = getYdDot(this, x, x_dot)
+            
+            yd_dot = this.getScaling()*this.W*this.regressVecDot(x,x_dot);
+
+        end
+        
+        
+        %% Returns the scaled desired acceleration.
+        %  @param[in] x: phase variable.
+        %  @param[in] x_dot: 1st time derivative of the phase variable.
+        %  @param[in] x_ddot: 2nd time derivative of the phase variable.
+        %  @return: scaled desired acceleration.
+        function yd_ddot = getYdDDot(this, x, x_dot, x_ddot)
+            
+            if (nargin < 4), x_ddot = 0; end
+            yd_ddot = this.getScaling()*this.W*this.regressVecDDot(x,x_dot,x_ddot);
+            
+        end
+
+        %% ===========================================
+        %% ========  Trajectory scaling ==============
+        %% ===========================================
+        
+        function sc = getScaling(this)
+
+            sc = this.traj_sc.getScaling();
+            
+        end
+        
+        function inv_sc = getInvScaling(this)
+            
+            inv_sc = this.traj_sc.getInvScaling();
+            
+        end
+
+        %% Set the trajectory spatial scaling method.
+        %  @param[in] traj_scale_obj: pointer to an object of type @TrajScale.
+        function setScaleMethod(this, traj_scale_obj)
+           
+            if (this.numOfDoFs() ~= traj_scale_obj.numOfDoFs())
+                error('[GMP::setScaleMethod]: Incompatible number of DoFs...');
+            end
+            
+            this.traj_sc = traj_scale_obj;
+            this.traj_sc.setNominalStartFinalPos(this.Y0d, this.Ygd);
+            this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
+
+        end
+        
+        %% =============================
+        %% ========  Misc ==============
+        %% =============================
+        
+        %% Returns a deep copy of this object.
+        %  @return: deep copy of this object.
+        function cp_obj = deepCopy(this)
+            
+            % Make a shallow copy of all properties
+            cp_obj = this.copy();
+            
+            % Make a deep copy of the pointers
+            cp_obj.traj_sc = this.traj_sc.deepCopy();
+
+        end
+        
+        
+        %% ===============================================
+        %% ==========  original DMP functions ============
+        %  Deprecated. Use @getYd, @getYdDot, @getYdDDot instead.
+        
         %% Calculates the time derivatives of the GMP's states.
         %  @param[in] s: Object of type @GMP_phase.
         %  @param[in] y: 'y' state of the GMP.
@@ -258,52 +344,6 @@ classdef GMP < GMP_regressor
 
         end
         
-        %% Returns the scaled desired position.
-        %  @param[in] x: phase variable.
-        %  @return: scaled desired position.
-        function yd = getYd(this, x)
-
-            yd = this.getScaling()*(this.W*this.regressVec(x) - this.Y0d) + this.Y0;
-            
-        end
-        
-        
-        %% Returns the scaled desired velocity.
-        %  @param[in] x: phase variable.
-        %  @param[in] x_dot: 1st time derivative of the phase variable.
-        %  @return: scaled desired velocity.
-        function yd_dot = getYdDot(this, x, x_dot)
-            
-            yd_dot = this.getScaling()*this.W*this.regressVecDot(x,x_dot);
-
-        end
-        
-        
-        %% Returns the scaled desired acceleration.
-        %  @param[in] x: phase variable.
-        %  @param[in] x_dot: 1st time derivative of the phase variable.
-        %  @param[in] x_ddot: 2nd time derivative of the phase variable.
-        %  @return: scaled desired acceleration.
-        function yd_ddot = getYdDDot(this, x, x_dot, x_ddot)
-            
-            if (nargin < 4), x_ddot = 0; end
-            yd_ddot = this.getScaling()*this.W*this.regressVecDDot(x,x_dot,x_ddot);
-            
-        end
-
-
-        %% Returns a deep copy of this object.
-        %  @return: deep copy of this object.
-        function cp_obj = deepCopy(this)
-            
-            % Make a shallow copy of all properties
-            cp_obj = this.copy();
-            
-            % Make a deep copy of the pointers
-            cp_obj.traj_sc = this.traj_sc.deepCopy();
-
-        end
-        
     end
     
     properties (Access = public)
@@ -329,6 +369,8 @@ classdef GMP < GMP_regressor
         Ygd % trained target position
         
         %% output state
+        %  Used with @update, @getY, @getZ.
+        %  Deprecated.
         y_dot % position derivative
         z_dot % scaled velocity derivative
         

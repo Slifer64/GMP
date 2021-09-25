@@ -10,7 +10,7 @@
 classdef GMPo < GMP
     
     methods  (Access = public)
-        %% Constructs a GMP defined in the quat-log space.
+        %% Constructor. Constructs a GMP defined in the quat-log space.
         %  @param[in] N_kernels: 3x1 vector with the number of kernels for each dim of the quat log.
         %  @param[in] kernels_std_scaling: Scaling for std of kernels (optional, default=2).
         %  \note: Each of the arguments 'N_kernels', 'D', 'K' can be scalar or a 3x1 vector.
@@ -31,6 +31,9 @@ classdef GMPo < GMP
 
         end
         
+        %% ==============================
+        %% =========  Training  =========
+        %% ==============================
         
         %% Trains the GMPo.
         %  @param[in] train_method: the training method to use, as a string ('LWR', 'LS').
@@ -77,6 +80,10 @@ classdef GMPo < GMP
             
         end
 
+        %% ===========================================
+        %% =========  GMP output trajectory  =========
+        %% ===========================================
+        
         function Qd = getQd(this, x)
 
             Qd = GMPo.q2quat(this.getYd(x), this.Q0);
@@ -118,6 +125,11 @@ classdef GMPo < GMP
             vd_dot = gmp_.qLogDDot_to_rotAccel(this.getYdDDot(x,x_dot,x_ddot), vd, Q1);
             
         end
+        
+        
+        %% ===============================================
+        %% ==========  original DMP functions ============
+        %  Deprecated. Use @getYd, @getYdDot, @getYdDDot instead.
         
         %% Returns the rotational velocity.
         %  Call @update first!
