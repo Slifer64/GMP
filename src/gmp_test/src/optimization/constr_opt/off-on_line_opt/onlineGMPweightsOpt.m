@@ -69,9 +69,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     n = n_dof * N_kernels + n_slack;
     
-    % state for control horizon
-    % Z = [x(1), x(2), ... x(N), u(0), u(1), ... u(N-1)]
-    
     % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
     Qi = blkdiag( opt_pos*speye(n_dof,n_dof) , opt_vel*10*speye(n_dof,n_dof));
     QN = blkdiag( 100*speye(n_dof,n_dof) , 1*speye(n_dof,n_dof));
@@ -100,12 +97,11 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     
     t_start = tic;
 
-    y0_ = y0;
-    y0_dot = zeros(n_dof,1);
-    y0_ddot = zeros(n_dof,1);
     phi0 = gmp.regressVec(s);
     phi0_dot = gmp.regressVecDot(s, s_dot);
     phi0_ddot = gmp.regressVecDDot(s, s_dot, s_ddot);
+    Phi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
+    x0 = [y0; zeros(n_dof,1); zeros(n_dof,1)];
     
     phi_f = gmp.regressVec(1);
     phi_f_dot = gmp.regressVecDot(1, 0);
@@ -113,15 +109,20 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     Phi_f = sparse([kron(eye(n_dof),phi_f'); kron(eye(n_dof),phi_f_dot'); kron(eye(n_dof),phi_f_ddot')]);
     x_final = [yg; zeros(n_dof,1); zeros(n_dof,1)];
     
+    s_vp = [1];
+    Phi_vp = {Phi_f};
+    x_vp = {x_final};
+    
+    Aeq = [Phi0, sparse(n_dof3, n_slack)];
+    beq = x0;
+    
     %% --------  Simulation loop  --------
     while (true)
         
         %% --------  Stopping criteria  --------
         if (s > 1.0), break; end
         
-        %t/tau
         text_prog.update(100*t/tau);
-%         fprintf('progress: %.1f\n',t/tau);
         
         if (s >= 1)
             s = 1;
@@ -139,8 +140,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         q = zeros(n,1);
         % add slacks to bounds. I.e. one could optionaly define with slacks
         % bounds the maximum allowable error
-        Aineq = sparse(N*n_dof3 + n_slack, n);
-        Aineq(end-n_slack+1:end,end-n_slack+1:end) = speye(n_slack);
+        Aineq = zeros(N*n_dof3 + n_slack, n);
+        Aineq(end-n_slack+1:end,end-n_slack+1:end) = eye(n_slack);
         
         % DMP phase variable
         si = s;
@@ -180,7 +181,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         end
                       
         H = 1e-6*speye(n) + (H+H')/2; % to account for numerical errors
-              
+        Aineq = sparse(Aineq);
+        
 %         size(H,1)*size(H,2)
 %         nnz(H)
 %         
@@ -209,15 +211,19 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
 %            Z0_dual_ineq = [Z0_dual_ineq(1:size(Aineq,1)-n_slack); z_slack];
 %         end
         
-        Psi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
-        Aeq = [Psi0, sparse(n_dof3, n_slack)];
-        beq = [y0_; y0_dot; y0_ddot];
+        Aeq(1:n_dof3,:) = [Phi0, sparse(n_dof3, n_slack)];
+        beq(1:n_dof3) = x0;
         
-        if (si >= 1)
-            Aeq = [Aeq; [Phi_f, sparse(n_dof3, n_slack)] ];
-            beq = [beq; x_final];
-
-           n_eq_plus = size(Aeq,1) - length(Z0_dual_eq);
+        i_vp = find( (s_vp>0) && (s_vp<=si) );
+        if (~isempty(i_vp))
+            for k=1:length(i_vp)
+                i = i_vp(k);
+                Aeq = [Aeq; [Phi_vp{i}, sparse(n_dof3, n_slack)] ];
+                beq = [beq; x_vp{i}];
+            end
+            s_vp(i_vp) = -1;
+   
+            n_eq_plus = size(Aeq,1) - length(Z0_dual_eq);
             if (n_eq_plus>0), Z0_dual_eq = [Z0_dual_eq; zeros(n_eq_plus, 1)]; end
         end
         
@@ -319,6 +325,8 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
         phi0 = gmp.regressVec(s);
         phi0_dot = gmp.regressVecDot(s, s_dot);
         phi0_ddot = gmp.regressVecDDot(s, s_dot, s_ddot);
+        Phi0 = [kron(speye(n_dof),phi0'); kron(speye(n_dof),phi0_dot'); kron(speye(n_dof),phi0_ddot')];
+        x0 = [y; y_dot; y_ddot];
         
         %% --------  Log data  --------
         Time = [Time t];

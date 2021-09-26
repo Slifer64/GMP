@@ -236,7 +236,7 @@ classdef GMP < GMP_regressor
         %% =============================
         %% ========  Misc ==============
         %% =============================
-        
+ 
         %% Returns a deep copy of this object.
         %  @return: deep copy of this object.
         function cp_obj = deepCopy(this)

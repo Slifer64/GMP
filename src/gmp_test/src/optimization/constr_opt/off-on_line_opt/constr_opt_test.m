@@ -84,8 +84,14 @@ if (opt_vel), opt_type = 'vel'; end
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
 % 
-% ---------- Online GMP-weights optimization ------------
-[Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+% % ---------- Online GMP-weights optimization ------------
+% [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
+
+% ---------- GMP-MPC optimization ------------
+[Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);

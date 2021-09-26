@@ -169,8 +169,17 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
 
+        
+        %% Returns the scaling of the kernels std.
+        %  @return: the scaling of the kernels std.
+        function kern_std_scale = getKernelsStdScaling(this)
+           
+            kern_std_scale = this.kernel_std_scaling;
+            
+        end
+        
         %% Plots the kernels for the given input values.
-        %  @param[in] x_data: vector of input values.
+        %  @param[in] x_data: row vector of input values.
         function plotPsi(this, x_data)
             
             Psi = this.kernel_fun_ptr(x_data);
@@ -183,6 +192,8 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
         
+        %% Plots the regressor vector values for the given input values.
+        %  @param[in] x_data: row vector of input values.
         function plotRegressVec(this, x_data)
             
             n_ker = length(this.c);
@@ -294,13 +305,10 @@ classdef GMP_regressor < matlab.mixin.Copyable
     %% ===============  Public properties  =================
     %% =====================================================
     
-    properties (Access = public)
-
+    properties (SetAccess = private, GetAccess = public) %(Access = public)
+        
         c % N_kernels x 1 vector with the kernels' centers
         h % N_kernels x 1 vector with the kernels' inverse width
-        
-        kernel_std_scaling % the scaling of the kernel's std
-        kernel_std % N_kernels x 1 vector with the kernels' std
         
     end
     
@@ -314,6 +322,9 @@ classdef GMP_regressor < matlab.mixin.Copyable
         % range of input x outside which psi = 0 due to finite numerical precision
         x_min
         x_max 
+        
+        kernel_std_scaling % the scaling of the kernel's std
+        kernel_std % N_kernels x 1 vector with the kernels' std
         
     end
     
