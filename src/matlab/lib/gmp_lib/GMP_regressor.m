@@ -31,29 +31,6 @@ classdef GMP_regressor < matlab.mixin.Copyable
             
         end
  
-        %% Set the kernels centers and widths.
-        %  @param[in] N_kernels: The number of kernels.
-        %  @param[in] kernel_std_scaling: Scaling of the kernel's std.
-        function setKernels(this, N_kernels, kernel_std_scaling)
-            
-            if (N_kernels < 2), error('[GMP_regressor::setKernels]: At least 2 kernels are required!'); end
-            
-            this.c = ((1:N_kernels)-1)'/(N_kernels-1);
-            
-            this.kernel_std_scaling = kernel_std_scaling;
-            this.kernel_std = kernel_std_scaling*(this.c(2:end)-this.c(1:end-1));
-
-            % this.h = this.kernel_std * ones(N_kernels,1);
-            this.h = 1./(this.kernel_std).^2;
-            this.h = [this.h; this.h(end)];
-            
-            % find range of x outside which psi = 0 due to finite numerical precision
-            r_min = realmin;
-            this.x_min = this.c(1) - sqrt( -log(r_min) / this.h(1) );
-            this.x_max = this.c(end) + sqrt( -log(r_min) / this.h(end) );
-            
-        end
-        
         %% Enable/disable kernels truncation. 
         %  @param[in] set: enable/disable kernels truncation.
         %  @param[in] zero_tol: threshold below which the activation of a kernel is set to zero (optional, default=1e-8).
@@ -94,7 +71,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
         
-        %% Returns the regressor vector 1st time derivative phi_dot.
+        %% Returns the regressor vector 1st time derivative.
         %  @param[in] x: The phase variable.
         %  @param[in] x_dot: The phase variable 1st time derivative.
         %  @return regressor vector 1st time derivative.
@@ -115,7 +92,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
         
-        %% Returns the regressor vector 2nd time derivative ks*phi_ddot.
+        %% Returns the regressor vector 2nd time derivative.
         %  @param[in] x: The phase variable.
         %  @param[in] x_dot: The phase variable 1st time derivative.
         %  @param[in] x_ddot: The phase variable 2nd time derivative.
@@ -140,7 +117,7 @@ classdef GMP_regressor < matlab.mixin.Copyable
 
         end
         
-        %% Returns the regressor vector 3rd time derivative ks*phi_3dot.
+        %% Returns the regressor vector 3rd time derivative.
         %  @param[in] x: The phase variable.
         %  @param[in] x_dot: The phase variable 1st time derivative.
         %  @param[in] x_ddot: The phase variable 2nd time derivative.
@@ -231,6 +208,29 @@ classdef GMP_regressor < matlab.mixin.Copyable
     %% ===============  Protected functions  =================
     %% =======================================================
     methods (Access = protected)
+
+        %% Set the kernels centers and widths.
+        %  @param[in] N_kernels: The number of kernels.
+        %  @param[in] kernel_std_scaling: Scaling of the kernel's std.
+        function setKernels(this, N_kernels, kernel_std_scaling)
+            
+            if (N_kernels < 2), error('[GMP_regressor::setKernels]: At least 2 kernels are required!'); end
+            
+            this.c = ((1:N_kernels)-1)'/(N_kernels-1);
+            
+            this.kernel_std_scaling = kernel_std_scaling;
+            this.kernel_std = kernel_std_scaling*(this.c(2:end)-this.c(1:end-1));
+
+            % this.h = this.kernel_std * ones(N_kernels,1);
+            this.h = 1./(this.kernel_std).^2;
+            this.h = [this.h; this.h(end)];
+            
+            % find range of x outside which psi = 0 due to finite numerical precision
+            r_min = realmin;
+            this.x_min = this.c(1) - sqrt( -log(r_min) / this.h(1) );
+            this.x_max = this.c(end) + sqrt( -log(r_min) / this.h(end) );
+            
+        end
         
         %% Returns a column vector with the values of the kernel functions.
         %  @param[in] x: The phase variable.
@@ -301,9 +301,9 @@ classdef GMP_regressor < matlab.mixin.Copyable
         
     end
     
-    %% =====================================================
-    %% ===============  Public properties  =================
-    %% =====================================================
+    %% ======================================================
+    %% =============  'Protected' properties  ===============
+    %% ======================================================
     
     properties (SetAccess = private, GetAccess = public) %(Access = public)
         

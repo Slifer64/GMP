@@ -23,8 +23,8 @@ namespace gmp_
     fid.write(prefix + "N_kernels", N_kernels);
     fid.write(prefix + "N_DoFs", n_dofs);
     fid.write(prefix + "scale_type", (int)(gmp->traj_sc->getScaleType()));
-    fid.write(prefix + "c", gmp->c);
-    fid.write(prefix + "h", gmp->h);
+    fid.write(prefix + "c", gmp->getCenters());
+    fid.write(prefix + "h", gmp->getInvWidths());
   }
 
   void read(gmp_::GMP *gmp, const std::string &filename, const std::string &prefix)
