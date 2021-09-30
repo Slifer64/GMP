@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
+  INCLUDE_DIRS include #${catkin_INCLUDE_DIRS}
   DEPENDS
 )
 
@@ -37,6 +37,7 @@ add_library(${PROJECT_NAME}
   src/GMP/GMP.cpp
   src/GMP/GMP_Update.cpp
   src/GMP/GMP_Opt.cpp
+  src/GMP/GMP_MPC.cpp
   #------------------------
   src/GMP/GMPo.cpp
   src/GMP/GMPo_Update.cpp

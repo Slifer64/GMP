@@ -29,6 +29,7 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/csc_mat.cpp
   src/quadprog.cpp
+  src/qp_solver.cpp
   src/.dummy.cpp
 )
 

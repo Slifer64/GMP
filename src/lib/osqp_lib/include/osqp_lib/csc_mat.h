@@ -10,6 +10,7 @@ namespace osqp_
 class CSC_mat
 {
 public:
+  CSC_mat() {}
   CSC_mat(const arma::mat &A, bool upper_diag_mat=false);
 
   int n_rows;  // number of rows
