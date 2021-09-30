@@ -40,7 +40,9 @@ classdef GMP_MPC < handle
 
             % State tracking gains: (x(i) - xd(i))'*Qi*(x(i) - xd(i))
             this.Qi = blkdiag( opt_pos*speye(n_dof,n_dof) , opt_vel*10*speye(n_dof,n_dof));
-            this.QN = this.Qi; %blkdiag( 100*speye(n_dof,n_dof) , 1*speye(n_dof,n_dof));
+            
+            % if I set it to Qi or zero the velocity part, sometimes it fails to find feasible solution 
+            this.QN = blkdiag( 100*speye(n_dof,n_dof) , 1*speye(n_dof,n_dof) ); %this.Qi;
 
             n_dof3 = 3*n_dof;
             this.Z0 = zeros(n_dof*N_kernels + this.n_slack,1);
@@ -253,52 +255,50 @@ classdef GMP_MPC < handle
     
     properties (Access = protected)
         
-        exit_msg
+        exit_msg % std::string
         
-        gmp_ref
+        gmp_ref % const GMP*
 
-        gmp_mpc
+        gmp_mpc % std::shared_ptr<GMP>
 
-        N
-        dt_
-
+        N % unsigned
+        dt_ % arma::rowvec(N)
         
-
-        Aineq_slack
-        Q_slack
+        Aineq_slack % arma::mat(3*n_dof, n_slack)
+        Q_slack % arma::mat(n_slack, n_slack)
         
-        Qi
-        QN
+        Qi % arma::mat(n_dof*N_kernels, n_dof*N_kernels)
+        QN % arma::mat(n_dof*N_kernels, n_dof*N_kernels)
         
-        Z0
+        Z0 
         Z0_dual_ineq
         Z0_dual_eq
         
-        pos_lb
-        pos_ub
+        pos_lb % arma::vec(n_dof)
+        pos_ub % arma::vec(n_dof)
         
-        vel_lb
-        vel_ub
+        vel_lb % arma::vec(n_dof)
+        vel_ub % arma::vec(n_dof)
         
-        accel_lb
-        accel_ub
+        accel_lb % arma::vec(n_dof)
+        accel_ub % arma::vec(n_dof)
         
-        n_slack
+        n_slack % unsigned
         
-        pos_slack
-        vel_slack
-        accel_slack
+        pos_slack % bool
+        vel_slack % bool
+        accel_slack % bool
         
-        pos_slack_lim
-        vel_slack_lim
-        accel_slack_lim
+        pos_slack_lim % double
+        vel_slack_lim % double
+        accel_slack_lim % double
         
-        Phi0
-        x0
+        Phi0 % arma::mat(3*n_dof, n_dof*N_kernels)
+        x0 % arma::vec(3*n_dof)
         
-        s_f
-        Phi_f
-        x_f
+        s_f % double
+        Phi_f % arma::mat(3*n_dof, n_dof*N_kernels)
+        x_f % arma::vec(3*n_dof)
         
     end
     

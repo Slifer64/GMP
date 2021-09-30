@@ -15,6 +15,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     for j=1:length(s_data), Yd_data(:,j)=gmp.getYd(s_data(j)); end
     gmp = GMP(n_dof, N_kernels, 1.5);
     gmp.train('LS', s_data, Yd_data);
+    gmp.setTruncatedKernels(true,1e-8);
     
     Time = [];
     P_data = [];
@@ -53,7 +54,7 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     Aineq_slack = [];
     Q_slack = [];
     if (pos_slack)
-        Q_slack = blkdiag(Q_slack, 1000000); 
+        Q_slack = blkdiag(Q_slack, 1e6); 
         Aineq_slack = [Aineq_slack [-ones(n_dof,1); zeros(2*n_dof,1)] ];
     end
     if (vel_slack)
@@ -85,8 +86,6 @@ function [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp0, tau, y0, 
     Z0_dual_ineq = zeros(n_ineq, 1);
     Z0_dual_eq = zeros(n_eq, 1);
     
-    gmp.setTruncatedKernels(true,1e-8);
-
     %% --------  Init solver  --------
     if (qp_solver_type == 0)
         solver_opt = optimoptions('quadprog', 'Algorithm','interior-point-convex', 'LinearSolver','sparse', 'StepTolerance',0, 'Display','off', 'MaxIterations',2000);

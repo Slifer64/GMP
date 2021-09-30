@@ -9,16 +9,21 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     dP_data = [];
     ddP_data = [];
     slack_data = [];
+    
+    O_ndof = zeros(n_dof,1);
 
     t = 0;
     dt = 0.005;
     s = t/tau;
     s_dot = 1/tau;
     s_ddot = 0;
+    y = y0;
+    y_dot = O_ndof;
+    y_ddot = O_ndof;
     
-    pos_slack = 1;
-    vel_slack = 1;
-    accel_slack = 1;
+    pos_slack = 0;
+    vel_slack = 0;
+    accel_slack = 0;
     slack_flags = [pos_slack vel_slack accel_slack];
     slack_gains = [1e6 100 20];
     
@@ -33,10 +38,8 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     gmp_mpc.setVelSlackLimit(0.05);
     gmp_mpc.setAccelSlackLimit(0.1);
     
-    O_ndof = zeros(n_dof,1);
-    gmp_mpc.setInitialState(y0, O_ndof, O_ndof, s, s_dot, s_ddot);
+    gmp_mpc.setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
     gmp_mpc.setFinalState(yg, O_ndof, O_ndof, 1, 0, 0);
-    
     
     gmp.setScaleMethod(TrajScale_Prop(n_dof));
     gmp.setY0(y0);
@@ -52,31 +55,32 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
         
         %% --------  Stopping criteria  --------
         if (s > 1.0), break; end
-        
+
         text_prog.update(100*t/tau);
-        
+
         if (s >= 1)
             s = 1;
             s_dot = 0;
             s_ddot = 0;
         end
 
-       [exit_flag, y, y_dot, y_ddot, slack_var] = gmp_mpc.solve(s, s_dot, s_ddot);
-       
-       if (exit_flag)
-           warning(gmp_mpc.getExitMsg());
-           text_prog.printInNewLine();
-           if (exit_flag < 0), break; end
-       end  
-        
+        [exit_flag, y, y_dot, y_ddot, slack_var] = gmp_mpc.solve(s, s_dot, s_ddot);
+        gmp_mpc.setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
+
+        if (exit_flag)
+            warning(gmp_mpc.getExitMsg());
+            text_prog.printInNewLine();
+            if (exit_flag < 0), break; end
+        end  
+
         %% --------  Log data  --------
         Time = [Time t];
         P_data = [P_data y];
         dP_data = [dP_data y_dot];
         ddP_data = [ddP_data y_ddot];
-        
+
         slack_data = [slack_data slack_var];
-    
+
         %% --------  Numerical integration  --------
         t = t + dt;
         s = s + s_dot*dt;
