@@ -131,12 +131,23 @@ classdef GMP_MPC < handle
             
             n = n_dof * N_kernels + this.n_slack;
             
-            H = sparse(n,n);
+            H = 1e-6*speye(n); % for numerical stability
             q = zeros(n,1);
             % add slacks to bounds. I.e. one could optionaly define with slacks
             % bounds the maximum allowable error
             Aineq = sparse(this.N*n_dof3 + this.n_slack, n);
             Aineq(end-this.n_slack+1:end,end-this.n_slack+1:end) = speye(this.n_slack);
+            
+            z_min = [this.pos_lb; this.vel_lb; this.accel_lb];
+            z_max = [this.pos_ub; this.vel_ub; this.accel_ub];
+            
+            slack_lim = [];
+            if (this.pos_slack), slack_lim = [slack_lim; this.pos_slack_lim];  end
+            if (this.vel_slack), slack_lim = [slack_lim; this.vel_slack_lim];  end
+            if (this.accel_slack), slack_lim = [slack_lim; this.accel_slack_lim];  end
+            
+            Z_min = [repmat(z_min, this.N,1); -slack_lim];
+            Z_max = [repmat(z_max, this.N,1); slack_lim];
 
             % DMP phase variable
             si = s;
@@ -170,21 +181,7 @@ classdef GMP_MPC < handle
                 % si_ddot = ... (if it changes too)
             end
 
-            H = 1e-6*speye(n) + (H+H')/2; % to account for numerical errors
-
-            % Here we set the slacks to be unbounded, but in general, we could
-            % specify as bounds the maximum allowable violation from the
-            % kinematic bounds.
-            z_min = [this.pos_lb; this.vel_lb; this.accel_lb];
-            z_max = [this.pos_ub; this.vel_ub; this.accel_ub];
-            
-            slack_lim = [];
-            if (this.pos_slack), slack_lim = [slack_lim; this.pos_slack_lim];  end
-            if (this.vel_slack), slack_lim = [slack_lim; this.vel_slack_lim];  end
-            if (this.accel_slack), slack_lim = [slack_lim; this.accel_slack_lim];  end
-            
-            Z_min = [repmat(z_min, this.N,1); -slack_lim];
-            Z_max = [repmat(z_max, this.N,1); slack_lim];
+            H = (H+H')/2; % to account for numerical errors
 
             Aeq = [this.Phi0, sparse(n_dof3, this.n_slack)];
             beq = [this.x0];

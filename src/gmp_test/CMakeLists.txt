@@ -57,6 +57,9 @@ target_link_libraries(constr_opt_pos_test ${LIBS} )
 add_executable( constr_opt_pos_test2 src/optimization/constr_opt/constr_opt_pos_test2.cpp ${SRC_LIST})
 target_link_libraries(constr_opt_pos_test2 ${LIBS} )
 
+add_executable( gmp_mpc_opt src/optimization/constr_opt/off-on_line_opt/gmpMpcOpt.cpp)
+target_link_libraries(gmp_mpc_opt ${LIBS} )
+
 # ===================================================
 
 #[[

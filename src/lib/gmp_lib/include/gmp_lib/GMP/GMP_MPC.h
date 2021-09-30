@@ -10,8 +10,11 @@
 #include <cfloat>
 #include <armadillo>
 
+#include <osqp_lib/osqp.h>
 #include <osqp_lib/constants.h>
+#include <osqp_lib/csc_mat.h>
 
+#include <ros/ros.h>
 
 namespace as64_
 {
@@ -23,13 +26,30 @@ class GMP_MPC
 {
 
 public:
+
+  struct Solution
+  {
+    arma::vec y;
+    arma::vec y_dot;
+    arma::vec y_ddot;
+
+    arma::vec slack_var;
+
+    int exit_flag;
+    std::string exit_msg;
+  };
   
   GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsigned N_kernels, double kernel_std_scaling, const std::vector<bool> &slack_flags, const std::vector<double> &slack_gains)
   {
-    this->INF = OSQP_INFTY;
+    this->inf = OSQP_INFTY;
 
-    unsigned n_dof = gmp.numOfDoFs();
-    
+    this->n_dof = gmp->numOfDoFs();
+    this->n_dof3 = 3*n_dof;
+    this->I_ndof = arma::mat().eye(n_dof, n_dof);
+    this->inf_ndof = this->inf*arma::vec().ones(n_dof);
+    this->ones_ndof = arma::vec().ones(n_dof);
+    this->zeros_ndof = arma::vec().zeros(n_dof);
+     
     this->gmp_ref = gmp;
     
     this->gmp_mpc.reset(new GMP(n_dof, N_kernels, kernel_std_scaling));
@@ -50,39 +70,36 @@ public:
     if (this->pos_slack)
     {
       this->Q_slack = blkdiag(this->Q_slack, slack_gains[0]); 
-      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert(-arma::vec().ones(n_dof), arma::vec().zeros(2*n_dof)) );
+      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert( -ones_ndof, arma::vec().zeros(2*n_dof) ) );
     }
     if (this->vel_slack)
     {
       this->Q_slack = blkdiag(this->Q_slack, slack_gains[1]);
-      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert(arma::vec().zeros(n_dof), -arma::vec().ones(n_dof), arma::vec().zeros(n_dof) ) );
+      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert( zeros_ndof, -ones_ndof, zeros_ndof ) );
     }
     if (this->accel_slack)
     {
       this->Q_slack = blkdiag(this->Q_slack, slack_gains[2]);
-      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert(arma::vec().zeros(2*n_dof), -arma::vec().ones(n_dof)) );
+      this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert( arma::vec().zeros(2*n_dof), -ones_ndof ) );
     }
     //this->Q_slack = sparse(this->Q_slack);
     //this->Aineq_slack = sparse(this->Aineq_slack);
 
     // State tracking gains: (x(i) - xd(i)).t()*Qi*(x(i) - xd(i))
-    arma::mat I_ndof = arma::mat().eye(n_dof,n_dof);
-    this->Qi = blkdiag( opt_pos*I_ndof , opt_vel*10*I_ndof);
-    this->QN = this->Qi; // blkdiag( 100*speye(n_dof,n_dof) , 1*speye(n_dof,n_dof));
+    this->Qi = blkdiag( opt_pos*I_ndof, opt_vel*10*I_ndof );
+    this->QN = blkdiag( 100*I_ndof, 1*I_ndof ); // this->Qi;
 
-    unsigned n_dof3 = 3*n_dof;
     this->Z0 = arma::vec().zeros(n_dof*N_kernels + this->n_slack);
-    this->Z0_dual_ineq = aram::vec().zeros(this->N*n_dof3 + this->n_slack);
+    this->Z0_dual_ineq = arma::vec().zeros(this->N*n_dof3 + this->n_slack);
     this->Z0_dual_eq = arma::vec().zeros(n_dof3);
     
-    arma::vec inf_ndof = this->INF*arma::vec().ones(n_dof);
-    this->setPosLimits(-inf_ndof, inf_ndof));
+    this->setPosLimits(-inf_ndof, inf_ndof);
     this->setVelLimits(-inf_ndof, inf_ndof);
     this->setAccelLimits(-inf_ndof, inf_ndof);
     
-    this->setPosSlackLimit(this->INF);
-    this->setVelSlackLimit(this->INF);
-    this->setAccelSlackLimit(this->INF);
+    this->setPosSlackLimit(this->inf);
+    this->setVelSlackLimit(this->inf);
+    this->setAccelSlackLimit(this->inf);
   }
 
   arma::mat blkdiag(const arma::mat &A, const arma::mat &B)
@@ -98,30 +115,25 @@ public:
     C.submat(0,0, A.n_rows-1, A.n_cols-1) = A;
     C.submat(A.n_rows, A.n_cols, C.n_rows-1, C.n_cols-1) = b;
   }
-
   
   void setInitialState(const arma::vec &y0, const arma::vec &y0_dot, const arma::vec &y0_ddot, double s, double s_dot, double s_ddot)
   {
-    unsigned n_dof = this->gmp_mpc->numOfDoFs();
     arma::vec phi0 = this->gmp_mpc->regressVec(s);
     arma::vec phi0_dot = this->gmp_mpc->regressVecDot(s, s_dot);
     arma::vec phi0_ddot = this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
 
-    arma::mat In = arma::mat().eye(n_dof, n_dof);
-    this->Phi0 = arma::join_vert( arma::kron(In, phi0.t()), arma::kron(In, phi0_dot.t()), arma::kron(In, phi0_ddot.t()) );
+    this->Phi0 = arma::join_vert( arma::kron(I_ndof, phi0.t()), arma::kron(I_ndof, phi0_dot.t()), arma::kron(I_ndof, phi0_ddot.t()) );
     this->x0 = arma::join_vert(y0, y0_dot, y0_ddot);
   }
   
   void setFinalState(const arma::vec &yf, const arma::vec &yf_dot, const arma::vec &yf_ddot, double s, double s_dot, double s_ddot)
   {
-    unsigned n_dof = this->gmp_mpc->numOfDoFs();
     this->s_f = s;
     arma::vec phi_f = this->gmp_mpc->regressVec(s);
     arma::vec phi_f_dot = this->gmp_mpc->regressVecDot(s, s_dot);
     arma::vec phi_f_ddot = this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
 
-    arma::mat In = arma::mat().eye(n_dof, n_dof;
-    this->Phi_f = arma::join_vert( arma::kron(In, phi_f.t()), arma::kron(In, phi_f_dot.t()), arma::kron(In, phi_f_ddot.t()) );
+    this->Phi_f = arma::join_vert( arma::kron(I_ndof, phi_f.t()), arma::kron(I_ndof, phi_f_dot.t()), arma::kron(I_ndof, phi_f_ddot.t()) );
     this->x_f = arma::join_vert(yf, yf_dot, yf_ddot);
   }
 
@@ -158,149 +170,210 @@ public:
     this->accel_slack_lim = s_lim;
   }
 
-  void [exit_flag, y, y_dot, y_ddot, slack_var] = solve(s, s_dot, s_ddot)
+  GMP_MPC::Solution solve(double s, double s_dot, double s_ddot)
   {  
-      y = [];
-      y_dot = []; 
-      y_ddot = [];
-      slack_var = [];
-      
-      N_kernels = this->gmp_mpc->numOfKernels();
-      n_dof = this->gmp_ref.numOfDoFs();
-      n_dof3 = 3*n_dof; % for pos, vel, accel
-      
-      n = n_dof * N_kernels + this->n_slack;
-      
-      H = sparse(n,n);
-      q = zeros(n,1);
-      % add slacks to bounds. I.e. one could optionaly define with slacks
-      % bounds the maximum allowable error
-      Aineq = sparse(this->N*n_dof3 + this->n_slack, n);
-      Aineq(end-this->n_slack+1:end,end-this->n_slack+1:end) = speye(this->n_slack);
 
-      % DMP phase variable
-      si = s;
-      si_dot = s_dot;
-      si_ddot = s_ddot;
+    arma::vec y;
+    arma::vec y_dot; 
+    arma::vec y_ddot;
+    arma::vec slack_var;
 
-      for i=1:this->N
+    unsigned N_kernels = this->gmp_mpc->numOfKernels();
 
-          yd_i = this->gmp_ref.getYd(si);
-          dyd_i = this->gmp_ref.getYdDot(si, si_dot);
+    unsigned n = n_dof * N_kernels + this->n_slack;
 
-          phi = this->gmp_mpc->regressVec(si);
-          phi_dot = this->gmp_mpc->regressVecDot(si, si_dot);
-          phi_ddot = this->gmp_mpc->regressVecDDot(si, si_dot, si_ddot);
+    arma::mat H = 1e-6*arma::mat().eye(n,n); // for numerical stability
+    arma::vec q = arma::vec().zeros(n);
+    // add slacks to bounds. I.e. one could optionaly define with slacks
+    // bounds the maximum allowable error
+    arma::mat Aineq = arma::mat().zeros(this->N*n_dof3 + this->n_slack, n);
+    int i_end = Aineq.n_rows - 1;
+    int j_end = Aineq.n_cols - 1;
+    Aineq.submat(i_end-this->n_slack+1, j_end-this->n_slack+1, i_end, j_end) = arma::mat().eye(this->n_slack,this->n_slack);
 
-          if (i==this->N), Qi_ = this->QN;
-          else, Qi_ = this->Qi;
+    arma::vec z_min = arma::join_vert(this->pos_lb, this->vel_lb, this->accel_lb);
+    arma::vec z_max = arma::join_vert(this->pos_ub, this->vel_ub, this->accel_ub);
 
-          Psi = [kron(speye(n_dof),phi.t()); kron(speye(n_dof),phi_dot.t())];
-          xd_i = [yd_i; dyd_i];
+    arma::vec slack_lim;
+    if (this->pos_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->pos_slack_lim}) );
+    if (this->vel_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->vel_slack_lim}) );
+    if (this->accel_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->accel_slack_lim}) );
 
-          H = H + blkdiag(Psi.t()*Qi_*Psi, this->Q_slack);
-          q = q - [Psi.t()*Qi_*xd_i; zeros(this->n_slack,1)];
+    arma::vec Z_min = arma::join_vert( arma::repmat(z_min, this->N,1), -slack_lim);
+    arma::vec Z_max = arma::join_vert( arma::repmat(z_max, this->N,1), slack_lim);
 
-          Aineq_i = [kron(speye(n_dof),phi.t()); kron(speye(n_dof),phi_dot.t()); kron(speye(n_dof),phi_ddot.t())];
-          Aineq((i-1)*n_dof3+1 : i*n_dof3, :) = [Aineq_i, this->Aineq_slack];
+    // DMP phase variable
+    double si = s;
+    double si_dot = s_dot;
+    double si_ddot = s_ddot;
 
-          si = si + si_dot*this->dt_(i);
-          si_dot = si_dot + si_ddot*this->dt_(i);
-          % si_ddot = ... (if it changes too)
-      }
+    for (int i=1; i<=this->N; i++)
+    {
+      arma::vec yd_i = this->gmp_ref->getYd(si);
+      arma::vec dyd_i = this->gmp_ref->getYdDot(si, si_dot);
 
-      H = 1e-6*speye(n) + (H+H.t())/2; % to account for numerical errors
+      arma::vec phi = this->gmp_mpc->regressVec(si);
+      arma::vec phi_dot = this->gmp_mpc->regressVecDot(si, si_dot);
+      arma::vec phi_ddot = this->gmp_mpc->regressVecDDot(si, si_dot, si_ddot);
 
-      % Here we set the slacks to be unbounded, but in general, we could
-      % specify as bounds the maximum allowable violation from the
-      % kinematic bounds.
-      z_min = [this->pos_lb; this->vel_lb; this->accel_lb];
-      z_max = [this->pos_ub; this->vel_ub; this->accel_ub];
-      
-      slack_lim = [];
-      if (this->pos_slack), slack_lim = [slack_lim; this->pos_slack_lim];
-      if (this->vel_slack), slack_lim = [slack_lim; this->vel_slack_lim];
-      if (this->accel_slack), slack_lim = [slack_lim; this->accel_slack_lim];
-      
-      Z_min = [repmat(z_min, this->N,1); -slack_lim];
-      Z_max = [repmat(z_max, this->N,1); slack_lim];
+      arma::vec Qi_;
+      if (i==this->N) Qi_ = this->QN;
+      else Qi_ = this->Qi;
 
-      Aeq = [this->Phi0, sparse(n_dof3, this->n_slack)];
-      beq = [this->x0];
+      arma::mat Psi = arma::join_vert( arma::kron(I_ndof,phi.t()), arma::kron(I_ndof,phi_dot.t()) );
+      arma::vec xd_i = arma::join_vert( yd_i, dyd_i);
 
-      if (si >= this->s_f)
-          Aeq = [Aeq; [this->Phi_f, sparse(n_dof3, this->n_slack)] ];
-          beq = [beq; this->x_f];
+      H = H + blkdiag(Psi.t()*Qi_*Psi, this->Q_slack);
+      q = q - arma::join_vert( Psi.t()*Qi_*xd_i, arma::vec().zeros(this->n_slack) );
 
-          n_eq_plus = size(Aeq,1) - length(this->Z0_dual_eq);
-          if (n_eq_plus>0), this->Z0_dual_eq = [this->Z0_dual_eq; zeros(n_eq_plus, 1)];
-      }
+      arma::mat Aineq_i = arma::join_vert( arma::kron(I_ndof,phi.t()), arma::kron(I_ndof,phi_dot.t()), arma::kron(I_ndof,phi_ddot.t()) );
+      Aineq.rows((i-1)*n_dof3, i*n_dof3-1) = arma::join_horiz(Aineq_i, this->Aineq_slack);
 
-      %% ===========  solve optimization problem  ==========
+      si = si + si_dot*this->dt_(i);
+      si_dot = si_dot + si_ddot*this->dt_(i);
+      // si_ddot = ... (if it changes too)
+    }
 
-      A_osqp = [Aineq; Aeq];
-      lb = [Z_min; beq];
-      ub = [Z_max; beq];
+    arma::mat Aeq = arma::join_horiz( this->Phi0, arma::mat().zeros(n_dof3, this->n_slack) );
+    arma::vec beq = this->x0;
 
-      Z0_dual = [this->Z0_dual_ineq; this->Z0_dual_eq];
+    if (si >= this->s_f)
+    {
+      Aeq = arma::join_vert(Aeq, arma::join_horiz(this->Phi_f, arma::mat().zeros(n_dof3, this->n_slack) ) );
+      beq = arma::join_vert(beq, this->x_f);
 
-      % Create an OSQP object
-      osqp_solver = osqp;
-      //osqp_solver.setup(H, q, A_osqp, lb, ub, 'warm_start',false, 'verbose',false, 'eps_abs',1e-4, 'eps_rel',1e-5);%, 'max_iter',20000);
-      osqp_solver.warm_start('x', this->Z0, 'y',Z0_dual);
+      int n_eq_plus = Aeq.n_rows - this->Z0_dual_eq.size();
+      if (n_eq_plus>0) this->Z0_dual_eq = arma::join_vert(this->Z0_dual_eq, arma::vec().zeros(n_eq_plus) );
+    }
 
-      res = osqp_solver.solve();
+    // ===========  solve optimization problem  ==========
 
-      this->exit_msg = ""; % clear exit message
-      exit_flag = 0;
-      if ( res.info.status_val ~= 1)
-          %res.info
-          this->exit_msg = res.info.status;
-          exit_flag = 1;
-          if (res.info.status_val == -3 || res.info.status_val == -4 || res.info.status_val == -7 || res.info.status_val == -10)
-              exit_flag = -1;
-              return; 
-          }
-      }
+    arma::mat A_osqp = arma::join_vert(Aineq, Aeq);
+    arma::vec lb = arma::join_vert(Z_min, beq);
+    arma::vec ub = arma::join_vert(Z_max, beq);
 
-      Z = res.x;
-      this->Z0 = Z;
-      Z0_dual = res.y;
-      n_ineq = size(Aineq,1);
-      this->Z0_dual_ineq = Z0_dual(1:n_ineq);
-      this->Z0_dual_eq = Z0_dual(n_ineq+1:end);
-      
-      w = Z(1:end-this->n_slack);
-      slack_var = Z(end-this->n_slack+1:end);
-      W = reshape(w, N_kernels, n_dof).t();
+    arma::vec Z0_dual = arma::join_vert(this->Z0_dual_ineq, this->Z0_dual_eq);
 
-      %% --------  Generate output  --------
+    std::string exit_msg = "";
+    arma::vec X, Y;
+    int exit_flag = step_solve(H, q, A_osqp, lb, ub, this->Z0, Z0_dual, &X, &Y, &exit_msg);
 
-      y = W*this->gmp_mpc->regressVec(s);
-      y_dot = W*this->gmp_mpc->regressVecDot(s, s_dot);
-      y_ddot = W*this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
+    this->Z0 = X;
+    Z0_dual = Y;
+    unsigned n_ineq = Aineq.n_rows;
+    this->Z0_dual_ineq = Z0_dual.subvec(0, n_ineq-1);
+    this->Z0_dual_eq = Z0_dual.subvec(n_ineq, Z0_dual.n_elem-1);
 
-      this->setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
-      
+    arma::vec w = X.subvec(0, X.n_elem-1-this->n_slack);
+    if (this->n_slack) slack_var = X(X.n_elem-this->n_slack, X.n_elem-1);
+    arma::mat W = arma::reshape(w, N_kernels, n_dof).t();
+
+    // --------  Generate output  --------
+
+    y = W*this->gmp_mpc->regressVec(s);
+    y_dot = W*this->gmp_mpc->regressVecDot(s, s_dot);
+    y_ddot = W*this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
+
+    this->setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
+
+    Solution sol;
+    sol.y = y;
+    sol.y_dot = y_dot;
+    sol.y_ddot = y_ddot;
+    sol.slack_var = slack_var;
+    sol.exit_flag = exit_flag;
+    sol.exit_msg = exit_msg;
+    return sol;
   }
-  
-  std::string getExitMsg() const
-  {  
-    return this->exit_msg;
-      
-  {
 
 
 protected:
 
-  std::string exit_msg;
+    int step_solve(const arma::mat &H, arma::mat &q, const arma::mat &A, arma::vec &lb, arma::vec &ub, const arma::vec &X0, const arma::vec &Y0,
+                    arma::vec *X, arma::vec *Y, std::string *exit_msg=0)
+    {
+        int n_var = A.n_cols;
+        int n_constr = A.n_rows;
+
+        osqp_::CSC_mat P_cs(H, true);
+        osqp_::CSC_mat A_cs(A);
+
+        // Exitflag
+        c_int exitflag = 0;
+
+        // Workspace structures
+        OSQPWorkspace *work;
+        OSQPSettings  *settings = (OSQPSettings *)c_malloc(sizeof(OSQPSettings));
+        OSQPData      *data     = (OSQPData *)c_malloc(sizeof(OSQPData));
+
+        // Populate data
+        if (data)
+        {
+            data->n = n_var;
+            data->m = n_constr;
+            data->P = csc_matrix(data->n, data->n, P_cs.nnz, P_cs.dataPtr(), P_cs.rowIndPtr(), P_cs.csPtr());
+            data->A = csc_matrix(data->m, data->n, A_cs.nnz, A_cs.dataPtr(), A_cs.rowIndPtr(), A_cs.csPtr());
+            data->q = &(q(0));
+            data->l = &(lb(0));
+            data->u = &(ub(0));
+        }
+        else throw std::runtime_error("Failed to allocate space for QSQPData...");
+
+        // Define solver settings as default
+        if (settings)
+        {
+            osqp_set_default_settings(settings);
+            // printQSQPSettings(settings);
+            settings->alpha = 1.0; // Change alpha parameter
+            settings->warm_start = false;
+            settings->polish = 0;
+            //settings->time_limit = 0;
+            //settings->max_iter = 4000;
+            settings->verbose = false;
+        }
+        else throw std::runtime_error("Failed to allocate space for OSQPSettings...");
+
+        // ========  Setup workspace  =========
+         exitflag = osqp_setup(&work, data, settings);
+         if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work->info->status + "\n");
+
+        exitflag = osqp_warm_start(work, X0.memptr(), Y0.memptr());
+        if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work->info->status + "\n");
+
+        // Solve Problem
+        osqp_solve(work);
+
+        c_int sol_status = work->info->status_val;
+        int ret;
+
+        if (sol_status != 1)
+        {
+            if (exit_msg) *exit_msg = work->info->status;
+            ret = 1;
+            if (sol_status == -3 || sol_status == -4 || sol_status == -7 || sol_status == -10) ret = -1;
+        }
+
+        *X = arma::mat(work->solution->x, n_var, 1, true);
+        *Y = arma::mat(work->solution->y, n_var, 1, true);
+
+        // Cleanup
+        if (data)
+        {
+            if (data->A) c_free(data->A);
+            if (data->P) c_free(data->P);
+            c_free(data);
+        }
+        if (settings) c_free(settings);
+
+        return ret;
+    }
   
   const GMP *gmp_ref;
 
   GMP::Ptr gmp_mpc;
 
   unsigned N;
-  arma::rowvec<double> dt_;
+  arma::rowvec dt_;
 
   arma::mat Aineq_slack;
   arma::mat Q_slack;
@@ -340,7 +413,15 @@ protected:
 
 private:
 
-  double INF;
+  unsigned n_dof;
+  unsigned n_dof3;
+
+  double inf;
+
+  arma::mat I_ndof;
+  arma::vec inf_ndof;
+  arma::vec ones_ndof;
+  arma::vec zeros_ndof;
 
     
 }; // class GMP_MPC
