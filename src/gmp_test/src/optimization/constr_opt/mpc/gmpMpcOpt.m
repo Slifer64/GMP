@@ -21,9 +21,9 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     y_dot = O_ndof;
     y_ddot = O_ndof;
     
-    pos_slack = 1;
-    vel_slack = 1;
-    accel_slack = 1;
+    pos_slack = 0;
+    vel_slack = 0;
+    accel_slack = 0;
     slack_flags = [pos_slack vel_slack accel_slack];
     slack_gains = [1e6 100 20];
     
@@ -36,7 +36,7 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     
 %     gmp_mpc.setPosSlackLimit(1e-3);
 %     gmp_mpc.setVelSlackLimit(0.05);
-%     gmp_mpc.setAccelSlackLimit(0.1);
+%     gmp_mpc.setAccelSlackLimit(0.08);
     
     gmp_mpc.setPosSlackLimit(0);
     gmp_mpc.setVelSlackLimit(0);

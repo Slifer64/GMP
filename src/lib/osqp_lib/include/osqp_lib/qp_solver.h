@@ -1,7 +1,10 @@
 #ifndef OSQP_QP_SOLVER_H
 # define OSQP_QP_SOLVER_H
 
+#include <memory>
 #include <osqp_lib/osqp.h>
+#include <osqp_lib/csc_mat.h>
+
 #include <armadillo>
 
 #ifndef NULL_MAT
@@ -41,6 +44,10 @@ public:
   OSQPSettings  *settings;
 
 private:
+
+  std::shared_ptr<osqp_::CSC_mat> P_cs;
+  std::shared_ptr<osqp_::CSC_mat> A_cs;
+
   OSQPWorkspace *work;
   OSQPData      *data;
 

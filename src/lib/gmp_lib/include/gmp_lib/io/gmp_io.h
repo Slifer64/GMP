@@ -34,14 +34,14 @@ namespace gmp_
   void write(const gmp_::GMP *gmp, gmp_::FileIO &fid, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMP object.
+   * @param[in] gmp: Pointer to a preallocated @GMP object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */
   void read(gmp_::GMP *gmp, const std::string &filename, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMP object.
+   * @param[in] gmp: Pointer to a preallocated @GMP object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */
@@ -63,14 +63,14 @@ namespace gmp_
   void write(const gmp_::GMPo *gmp, gmp_::FileIO &fid, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMPo object.
+   * @param[in] gmp: Pointer to a preallocated @GMPo object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */
   void read(gmp_::GMPo *gmp, const std::string &filename, const std::string &prefix="");
 
   /** Reads the GMP model from a file.
-   * @param[in] gmp: Pointer to a @GMPo object.
+   * @param[in] gmp: Pointer to a preallocated @GMPo object.
    * @param[in] fid: Filename string or object of type @FileIO associated with the file.
    * @param[in] prefix: The prefix that will be used for reading the names of all GMP params (optional, default="").
    */

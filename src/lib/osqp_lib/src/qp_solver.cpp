@@ -5,6 +5,8 @@
 namespace osqp_
 {
 
+#define QPsolver_fun_ std::string("[QPsolver::") + __func__ + "]: "
+
 QPsolver::QPsolver(const arma::mat &H, const arma::vec &q,
          const arma::mat &A, const arma::vec &lb, const arma::vec &ub,
          const arma::mat &Aeq, const arma::vec &beq)
@@ -15,29 +17,46 @@ QPsolver::QPsolver(const arma::mat &H, const arma::vec &q,
   warm_start_x = false;
   warm_start_y = false;
 
+  if (H.n_rows != H.n_cols) throw std::runtime_error(QPsolver_fun_ + "H must be square");
+  if (H.n_rows != q.size()) throw std::runtime_error(QPsolver_fun_ + "H.n_cols must be equal to q.size()");
+  if (!A.empty())
+  {
+    if (A.n_cols != q.size()) throw std::runtime_error(QPsolver_fun_ + "A.n_cols must be equal to q.size()");
+    if (A.n_rows != lb.size()) throw std::runtime_error(QPsolver_fun_ + "A.n_rows must be equal to lb.size()");
+    if (A.n_rows != ub.size()) throw std::runtime_error(QPsolver_fun_ + "A.n_rows must be equal to ub.size()");
+  }
+  if (!Aeq.empty())
+  {
+    if (Aeq.n_cols != q.size()) throw std::runtime_error(QPsolver_fun_ + "Aeq.n_cols must be equal to q.size()");
+    if (Aeq.n_rows != beq.size()) throw std::runtime_error(QPsolver_fun_ + "Aeq.n_rows must be equal to beq.size()");
+  }
+
   this->n_ineq = A.n_rows;
   this->n_eq = Aeq.n_rows;
 
-  osqp_::CSC_mat P_cs(H, true);
-  osqp_::CSC_mat A_cs(arma::join_vert(A, Aeq));
+   P_cs.reset(new osqp_::CSC_mat(H, true));
+   A_cs.reset(new osqp_::CSC_mat( arma::join_vert(A, Aeq)) );
 
   this->q_ = q;
   this->lb_ = arma::join_vert(lb, beq);
   this->ub_ = arma::join_vert(ub, beq);
 
   settings = (OSQPSettings *)c_malloc(sizeof(OSQPSettings));
-  if (!settings) throw std::runtime_error("[QPsolver::QPsolver]: Failed to allocate space for OSQPSettings...");
+  if (!settings) throw std::runtime_error(QPsolver_fun_ + "Failed to allocate space for OSQPSettings...");
 
   data = (OSQPData *)c_malloc(sizeof(OSQPData));
-  if (!data) throw std::runtime_error("[QPsolver::QPsolver]: Failed to allocate space for QSQPData...");
+  if (!data) throw std::runtime_error(QPsolver_fun_ + "Failed to allocate space for QSQPData...");
 
-  int n_var = A.n_cols + Aeq.n_cols;
-  int n_constr = A.n_rows;
+  int n_var = q.size();
+  int n_constr = A.n_rows + Aeq.n_rows;
+
+//  std::cerr << "P_cs: " << P_cs.n_rows << " x " << P_cs.n_cols << ", nnz=" << P_cs.nnz << "\n";
+//  std::cerr << "A_cs: " << A_cs.n_rows << " x " << A_cs.n_cols << ", nnz=" << A_cs.nnz << "\n";
 
   data->n = n_var;
   data->m = n_constr;
-  data->P = csc_matrix(data->n, data->n, P_cs.nnz, P_cs.dataPtr(), P_cs.rowIndPtr(), P_cs.csPtr());
-  data->A = csc_matrix(data->m, data->n, A_cs.nnz, A_cs.dataPtr(), A_cs.rowIndPtr(), A_cs.csPtr());
+  data->P = csc_matrix(data->n, data->n, P_cs->nnz, P_cs->dataPtr(), P_cs->rowIndPtr(), P_cs->csPtr());
+  data->A = csc_matrix(data->m, data->n, A_cs->nnz, A_cs->dataPtr(), A_cs->rowIndPtr(), A_cs->csPtr());
   data->q = this->q_.memptr();
   data->l = this->lb_.memptr();
   data->u = this->ub_.memptr();
@@ -91,6 +110,7 @@ int QPsolver::solve()
   if (warm_start_x && warm_start_y) exit_flag = osqp_warm_start(work, x0.memptr(), y0.memptr());
   else if (warm_start_x) exit_flag = osqp_warm_start_x(work, x0.memptr());
   else if (warm_start_y) exit_flag = osqp_warm_start_y(work, y0.memptr());
+
 
   if (exit_flag != 0)
   {

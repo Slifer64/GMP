@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  INCLUDE_DIRS include #${catkin_INCLUDE_DIRS}
+  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
   DEPENDS
 )
 
@@ -28,6 +28,7 @@ add_library(${PROJECT_NAME}
   src/math/math.cpp
   src/io/gmp_io.cpp
   src/io/file_io.cpp
+  src/io/xml_parser.cpp
 
   src/TrajScale/TrajScale.cpp
 

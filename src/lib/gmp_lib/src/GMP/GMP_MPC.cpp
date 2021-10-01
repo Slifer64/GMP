@@ -19,13 +19,15 @@ arma::mat blkdiag(const arma::mat &A, const arma::mat &B)
   arma::mat C(A.n_rows + B.n_rows, A.n_cols + B.n_cols);
   C.submat(0,0, A.n_rows-1, A.n_cols-1) = A;
   C.submat(A.n_rows, A.n_cols, C.n_rows-1, C.n_cols-1) = B;
+  return C;
 }
 
 arma::mat blkdiag(const arma::mat &A, double b)
 {
   arma::mat C(A.n_rows + 1, A.n_cols + 1);
-  C.submat(0,0, A.n_rows-1, A.n_cols-1) = A;
+  if (!A.empty()) C.submat(0,0, A.n_rows-1, A.n_cols-1) = A;
   C.submat(A.n_rows, A.n_cols, C.n_rows-1, C.n_cols-1) = b;
+  return C;
 }
 
 
@@ -33,13 +35,18 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
 {
   this->inf = OSQP_INFTY;
 
+  this->settings.time_limit = 0;
+  this->settings.max_iter = 4000;
+  this->settings.abs_tol = 1e-4;
+  this->settings.rel_tol = 1e-5;
+
   this->n_dof = gmp->numOfDoFs();
   this->n_dof3 = 3*n_dof;
   this->I_ndof = arma::mat().eye(n_dof, n_dof);
   this->inf_ndof = this->inf*arma::vec().ones(n_dof);
   this->ones_ndof = arma::vec().ones(n_dof);
   this->zeros_ndof = arma::vec().zeros(n_dof);
-    
+
   this->gmp_ref = gmp;
   
   this->gmp_mpc.reset(new GMP(n_dof, N_kernels, kernel_std_scaling));
@@ -72,8 +79,6 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
     this->Q_slack = blkdiag(this->Q_slack, slack_gains[2]);
     this->Aineq_slack = arma::join_horiz(this->Aineq_slack, arma::join_vert( arma::vec().zeros(2*n_dof), -ones_ndof ) );
   }
-  //this->Q_slack = sparse(this->Q_slack);
-  //this->Aineq_slack = sparse(this->Aineq_slack);
 
   // State tracking gains: (x(i) - xd(i)).t()*Qi*(x(i) - xd(i))
   this->Qi = blkdiag( opt_pos*I_ndof, opt_vel*10*I_ndof );
@@ -82,11 +87,11 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->Z0 = arma::vec().zeros(n_dof*N_kernels + this->n_slack);
   this->Z0_dual_ineq = arma::vec().zeros(this->N*n_dof3 + this->n_slack);
   this->Z0_dual_eq = arma::vec().zeros(n_dof3);
-  
+
   this->setPosLimits(-inf_ndof, inf_ndof);
   this->setVelLimits(-inf_ndof, inf_ndof);
   this->setAccelLimits(-inf_ndof, inf_ndof);
-  
+
   this->setPosSlackLimit(this->inf);
   this->setVelSlackLimit(this->inf);
   this->setAccelSlackLimit(this->inf);
@@ -161,25 +166,32 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
   // add slacks to bounds. I.e. one could optionaly define with slacks
   // bounds the maximum allowable error
   arma::mat Aineq = arma::mat().zeros(this->N*n_dof3 + this->n_slack, n);
-  int i_end = Aineq.n_rows - 1;
-  int j_end = Aineq.n_cols - 1;
-  Aineq.submat(i_end-this->n_slack+1, j_end-this->n_slack+1, i_end, j_end) = arma::mat().eye(this->n_slack,this->n_slack);
+  if (this->n_slack)
+  {
+    int i_end = Aineq.n_rows - 1;
+    int j_end = Aineq.n_cols - 1;
+    Aineq.submat(i_end-this->n_slack+1, j_end-this->n_slack+1, i_end, j_end) = arma::mat().eye(this->n_slack,this->n_slack);
+  }
 
-  arma::vec z_min = arma::join_vert(this->pos_lb, this->vel_lb, this->accel_lb);
-  arma::vec z_max = arma::join_vert(this->pos_ub, this->vel_ub, this->accel_ub);
+  arma::vec lb_i = arma::join_vert(this->pos_lb, this->vel_lb, this->accel_lb);
+  arma::vec ub_i = arma::join_vert(this->pos_ub, this->vel_ub, this->accel_ub);
 
   arma::vec slack_lim;
   if (this->pos_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->pos_slack_lim}) );
   if (this->vel_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->vel_slack_lim}) );
   if (this->accel_slack) slack_lim = arma::join_vert(slack_lim, arma::vec({this->accel_slack_lim}) );
 
-  arma::vec Z_min = arma::join_vert( arma::repmat(z_min, this->N,1), -slack_lim);
-  arma::vec Z_max = arma::join_vert( arma::repmat(z_max, this->N,1), slack_lim);
+  arma::vec lb = arma::join_vert( arma::repmat(lb_i, this->N,1), -slack_lim);
+  arma::vec ub = arma::join_vert( arma::repmat(ub_i, this->N,1), slack_lim);
 
   // DMP phase variable
   double si = s;
   double si_dot = s_dot;
   double si_ddot = s_ddot;
+
+  arma::mat Hi(n,n);
+  arma::vec qi(n);
+  if (this->n_slack) Hi.submat(n-n_slack, n-n_slack, n-1, n-1) = this->Q_slack;
 
   for (int i=1; i<=this->N; i++)
   {
@@ -190,21 +202,23 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
     arma::vec phi_dot = this->gmp_mpc->regressVecDot(si, si_dot);
     arma::vec phi_ddot = this->gmp_mpc->regressVecDDot(si, si_dot, si_ddot);
 
-    arma::vec Qi_;
+    arma::mat Qi_;
     if (i==this->N) Qi_ = this->QN;
     else Qi_ = this->Qi;
 
     arma::mat Psi = arma::join_vert( arma::kron(I_ndof,phi.t()), arma::kron(I_ndof,phi_dot.t()) );
-    arma::vec xd_i = arma::join_vert( yd_i, dyd_i);
+    arma::vec xd_i = arma::join_vert(yd_i, dyd_i);
 
-    H = H + blkdiag(Psi.t()*Qi_*Psi, this->Q_slack);
-    q = q - arma::join_vert( Psi.t()*Qi_*xd_i, arma::vec().zeros(this->n_slack) );
+    Hi.submat(0,0, n-n_slack-1, n-n_slack-1) = Psi.t()*Qi_*Psi;
+    H = H + Hi;
+    qi.subvec(0, n-n_slack-1) = -Psi.t()*Qi_*xd_i;
+    q = q + qi;
 
     arma::mat Aineq_i = arma::join_vert( arma::kron(I_ndof,phi.t()), arma::kron(I_ndof,phi_dot.t()), arma::kron(I_ndof,phi_ddot.t()) );
     Aineq.rows((i-1)*n_dof3, i*n_dof3-1) = arma::join_horiz(Aineq_i, this->Aineq_slack);
 
-    si = si + si_dot*this->dt_(i);
-    si_dot = si_dot + si_ddot*this->dt_(i);
+    si = si + si_dot*this->dt_(i-1);
+    si_dot = si_dot + si_ddot*this->dt_(i-1);
     // si_ddot = ... (if it changes too)
   }
 
@@ -221,16 +235,16 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
   }
 
   // ===========  solve optimization problem  ==========
-  osqp_::QPsolver solver(H, q, Aineq, Z_min, Z_max, Aeq, beq);
+  osqp_::QPsolver solver(H, q, Aineq, lb, ub, Aeq, beq);
   solver.setPrimalSolutionGuess(this->Z0);
   solver.setDualSolutionGuess(this->Z0_dual_ineq, this->Z0_dual_eq);
 
-  solver.settings->time_limit = 0;
-  // solver.settings->max_iter = 4000;
-  solver.settings->verbose = false;
-  solver.settings->eps_abs = 1e-4;
-  solver.settings->eps_rel = 1e-5;
+  solver.settings->time_limit = this->settings.time_limit;
+  solver.settings->max_iter = this->settings.max_iter;
+  solver.settings->eps_abs = this->settings.abs_tol;
+  solver.settings->eps_rel = this->settings.rel_tol;
   solver.settings->warm_start = false;
+  solver.settings->verbose = false;
 
   int exit_flag = solver.solve();
   std::string exit_msg = solver.getExitMsg();
@@ -238,7 +252,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
   {
     arma::vec X = solver.getPrimalSolution();
     arma::vec w = X.subvec(0, X.n_elem-1-this->n_slack);
-    if (this->n_slack) slack_var = X(X.n_elem-this->n_slack, X.n_elem-1);
+    if (this->n_slack) slack_var = X.subvec(X.n_elem-this->n_slack, X.n_elem-1);
     arma::mat W = arma::reshape(w, N_kernels, n_dof).t();
 
     this->Z0 = X;
@@ -253,22 +267,6 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
     this->setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
   }
 
-  //  arma::mat A_osqp = arma::join_vert(Aineq, Aeq);
-  //  arma::vec lb = arma::join_vert(Z_min, beq);
-  //  arma::vec ub = arma::join_vert(Z_max, beq);
-  //
-  //  arma::vec Z0_dual = arma::join_vert(this->Z0_dual_ineq, this->Z0_dual_eq);
-  //
-  //  std::string exit_msg = "";
-  //  arma::vec X, Y;
-  //  int exit_flag = step_solve(H, q, A_osqp, lb, ub, this->Z0, Z0_dual, &X, &Y, &exit_msg);
-  //
-  //  this->Z0 = X;
-  //  Z0_dual = Y;
-  //  unsigned n_ineq = Aineq.n_rows;
-  //  this->Z0_dual_ineq = Z0_dual.subvec(0, n_ineq-1);
-  //  this->Z0_dual_eq = Z0_dual.subvec(n_ineq, Z0_dual.n_elem-1);
-
   Solution sol;
   sol.y = y;
   sol.y_dot = y_dot;
@@ -278,86 +276,6 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
   sol.exit_msg = exit_msg;
   return sol;
 }
-
-/*
-int GMP_MPC::step_solve(const arma::mat &H, arma::mat &q, const arma::mat &A, arma::vec &lb, arma::vec &ub, const arma::vec &X0, const arma::vec &Y0,
-                arma::vec *X, arma::vec *Y, std::string *exit_msg)
-{
-  int n_var = A.n_cols;
-  int n_constr = A.n_rows;
-
-  osqp_::CSC_mat P_cs(H, true);
-  osqp_::CSC_mat A_cs(A);
-
-  // Exitflag
-  c_int exitflag = 0;
-
-  // Workspace structures
-  OSQPWorkspace *work;
-  OSQPSettings  *settings = (OSQPSettings *)c_malloc(sizeof(OSQPSettings));
-  OSQPData      *data     = (OSQPData *)c_malloc(sizeof(OSQPData));
-
-  // Populate data
-  if (data)
-  {
-      data->n = n_var;
-      data->m = n_constr;
-      data->P = csc_matrix(data->n, data->n, P_cs.nnz, P_cs.dataPtr(), P_cs.rowIndPtr(), P_cs.csPtr());
-      data->A = csc_matrix(data->m, data->n, A_cs.nnz, A_cs.dataPtr(), A_cs.rowIndPtr(), A_cs.csPtr());
-      data->q = &(q(0));
-      data->l = &(lb(0));
-      data->u = &(ub(0));
-  }
-  else throw std::runtime_error("Failed to allocate space for QSQPData...");
-
-  // Define solver settings as default
-  if (settings)
-  {
-      osqp_set_default_settings(settings);
-      // printQSQPSettings(settings);
-      settings->alpha = 1.0; // Change alpha parameter
-      settings->warm_start = false;
-      settings->polish = 0;
-      //settings->time_limit = 0;
-      //settings->max_iter = 4000;
-      settings->verbose = false;
-  }
-  else throw std::runtime_error("Failed to allocate space for OSQPSettings...");
-
-  // ========  Setup workspace  =========
-  exitflag = osqp_setup(&work, data, settings);
-  if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work->info->status + "\n");
-
-  exitflag = osqp_warm_start(work, X0.memptr(), Y0.memptr());
-  if (exitflag != 0) throw std::runtime_error(std::string("[osqp_setup]: ") + work->info->status + "\n");
-
-  // Solve Problem
-  osqp_solve(work);
-
-  c_int sol_status = work->info->status_val;
-  int ret;
-
-  if (sol_status != 1)
-  {
-      if (exit_msg) *exit_msg = work->info->status;
-      ret = 1;
-      if (sol_status == -3 || sol_status == -4 || sol_status == -7 || sol_status == -10) ret = -1;
-  }
-
-  *X = arma::mat(work->solution->x, n_var, 1, true);
-  *Y = arma::mat(work->solution->y, n_var, 1, true);
-
-  // Cleanup
-  if (data)
-  {
-      if (data->A) c_free(data->A);
-      if (data->P) c_free(data->P);
-      c_free(data);
-  }
-  if (settings) c_free(settings);
-
-  return ret;
-}*/
   
 } // namespace gmp_
 

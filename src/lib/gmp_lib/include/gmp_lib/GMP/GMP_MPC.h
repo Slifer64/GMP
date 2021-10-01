@@ -19,6 +19,14 @@ class GMP_MPC
 
 public:
 
+  struct
+  {
+    unsigned max_iter;
+    double time_limit;
+    double abs_tol;
+    double rel_tol;
+  } settings;
+
   struct Solution
   {
     arma::vec y;
