@@ -9,8 +9,7 @@ extern "C" {
 /*******************
 * OSQP Versioning *
 *******************/
-# define OSQP_VERSION ("0.6.2") /* string literals automatically null-terminated
-                                   */
+#include "version.h"
 
 /******************
 * Solver Status  *
@@ -33,7 +32,7 @@ extern "C" {
 /*************************
 * Linear System Solvers *
 *************************/
-enum linsys_solver_type { QDLDL_SOLVER, MKL_PARDISO_SOLVER };
+enum linsys_solver_type { QDLDL_SOLVER, MKL_PARDISO_SOLVER, UNKNOWN_SOLVER=99 };
 extern const char * LINSYS_SOLVER_NAME[];
 
 

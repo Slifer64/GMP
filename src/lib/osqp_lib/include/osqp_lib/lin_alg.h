@@ -135,7 +135,7 @@ void mat_mult_scalar(csc    *A,
 void mat_premult_diag(csc           *A,
                       const c_float *d);
 
-/* Postmultiply matrix A by diagonal matrix with diagonal d,
+/* Premultiply matrix A by diagonal matrix with diagonal d,
    i.e. scale the columns of A by d
  */
 void mat_postmult_diag(csc           *A,

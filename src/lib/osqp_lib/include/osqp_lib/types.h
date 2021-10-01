@@ -175,37 +175,6 @@ typedef struct {
 # endif // ifdef PROFILING
 } OSQPSettings;
 
-/**
- * Define linsys_solver prototype structure
- *
- * NB: The details are defined when the linear solver is initialized depending
- *      on the choice
- */
-struct linsys_solver {
-  enum linsys_solver_type type;                 ///< linear system solver type functions
-  c_int (*solve)(LinSysSolver *self,
-                 c_float      *b);              ///< solve linear system
-
-# ifndef EMBEDDED
-  void (*free)(LinSysSolver *self);             ///< free linear system solver (only in desktop version)
-# endif // ifndef EMBEDDED
-
-# if EMBEDDED != 1
-  c_int (*update_matrices)(LinSysSolver *s,
-                           const csc *P,            ///< update matrices P
-                           const csc *A);           //   and A in the solver
-
-  c_int (*update_rho_vec)(LinSysSolver  *s,
-                          const c_float *rho_vec);  ///< Update rho_vec
-# endif // if EMBEDDED != 1
-
-# ifndef EMBEDDED
-  c_int nthreads; ///< number of threads active
-# endif // ifndef EMBEDDED
-};
-
-
-#include <stdio.h>
 
 /**
  * OSQP Workspace
@@ -316,9 +285,38 @@ typedef struct {
 # ifdef PRINTING
   c_int summary_printed; ///< Has last summary been printed? (true/false)
 # endif // ifdef PRINTING
+
 } OSQPWorkspace;
 
 
+/**
+ * Define linsys_solver prototype structure
+ *
+ * NB: The details are defined when the linear solver is initialized depending
+ *      on the choice
+ */
+struct linsys_solver {
+  enum linsys_solver_type type;                 ///< linear system solver type functions
+  c_int (*solve)(LinSysSolver *self,
+                 c_float      *b);              ///< solve linear system
+
+# ifndef EMBEDDED
+  void (*free)(LinSysSolver *self);             ///< free linear system solver (only in desktop version)
+# endif // ifndef EMBEDDED
+
+# if EMBEDDED != 1
+  c_int (*update_matrices)(LinSysSolver *s,
+                           const csc *P,            ///< update matrices P
+                           const csc *A);           //   and A in the solver
+
+  c_int (*update_rho_vec)(LinSysSolver  *s,
+                          const c_float *rho_vec);  ///< Update rho_vec
+# endif // if EMBEDDED != 1
+
+# ifndef EMBEDDED
+  c_int nthreads; ///< number of threads active
+# endif // ifndef EMBEDDED
+};
 
 
 # ifdef __cplusplus

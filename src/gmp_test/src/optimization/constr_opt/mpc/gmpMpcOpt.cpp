@@ -102,6 +102,8 @@ int main(int argc, char **argv)
 
     //text_prog.update(100*t/tau);
 
+    // std::cout << 100*t/tau << "\n";
+
     if (s >= 1)
     {
       s = 1;
