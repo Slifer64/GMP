@@ -3,10 +3,7 @@ close all;
 clear;
 
 %% =============  includes...  =============
-addpath('../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% =============  Create training data  =============
@@ -30,7 +27,7 @@ n_dof = size(Yd_data, 1);
 train_method = 'LS';
 N_kernels = 25;
 kernels_std_scaling = 1.5;
-    
+
 gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
 tic
 offline_train_mse = gmp.train(train_method, Timed/Timed(end), Yd_data);
@@ -76,7 +73,7 @@ gmp_up = GMP_Update(gmp);
 obst = struct('c',[0.49; 0.26; 0.51], 'r',0.05);
 
 while (true)
-    
+
     if (s >= 1), break; end
 
     yd = gmp.getYd(s);
@@ -89,17 +86,17 @@ while (true)
         % find direction of motion
         v1 = yd_dot/norm(yd_dot);
         v2 = cross([0; 0; 1], v1);
-        
+
         s1 = s;
         y1 = y + 0.2*v2 + obst.r*v1;
         s2 = s1 + 0.1;
         y2 = y - 0.2*v2 + obst.r*v1;
-        
+
         gmp_up.updatePos(s1, y1);
         gmp_up.updatePos(s2, y2);
-        
+
     end
-   
+
     Time = [Time t];
     Y_data = [Y_data y];
     dY_data = [dY_data y_dot];
@@ -138,18 +135,18 @@ ylabel('$Y$', 'interpreter','latex', 'fontsize',15);
 zlabel('$Z$', 'interpreter','latex', 'fontsize',15);
 grid on;
 view(-19.8, 16.3);
-   
+
 
 %% ===================================================================
 
 function s = plotSphere(ax, r, c)
 
     [X, Y, Z] = sphere(10);
-    
+
     X = r*X + c(1);
     Y = r*Y + c(2);
     Z = r*Z + c(3);
-    
+
     s = surf(X,Y,Z, 'Parent',ax, 'EdgeColor','none', 'FaceColor',[0.85 0.33 0.1], 'FaceAlpha',0.5);
 
 end
@@ -159,10 +156,10 @@ function [y, y_dot, y_ddot] = get5thOrderPol(y0, yf, Time)
     y0 = y0(:);
     yf = yf(:);
     Time = Time(:)';
-    
+
     T = Time(end);
     t = Time/T;
-    
+
     y = y0 + (yf - y0) * (10*t.^3 - 15*t.^4 + 6*t.^5 );
 
     if (nargout > 1)

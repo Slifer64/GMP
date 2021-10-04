@@ -2,10 +2,7 @@ clc;
 % close all;
 clear;
 
-addpath('../../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
@@ -75,13 +72,13 @@ opt_vel = 0;
 qp_solver_type = 1; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
-% 
+%
 % % --------- Offline GMP-weights optimization -----------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color',[0.64,0.08,0.18], 'legend',['opt-w:' opt_type], 'plot3D',true, 'plot2D',true);
-% 
+%
 % % ---------- Online GMP-weights optimization ------------
 % [Time, P_data, dP_data, ddP_data] = onlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
 % data{length(data)+1} = ...
@@ -105,7 +102,7 @@ data{length(data)+1} = ...
 % data{length(data)+1} = ...
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',':', ...
 %         'color','green', 'legend',['opt-traj:' opt_type], 'plot3D',true, 'plot2D',true);
-%      
+%
 % % ---------- Online GMP-trajectory optimization ------------
 % [Time, P_data, dP_data, ddP_data] = onlineGMPtrajOpt(gmp, tau, y0, yg, pos_lim + 0*[-1 1], 1*vel_lim, 1*accel_lim, opt_pos, opt_vel, qp_solver_type);
 % data{length(data)+1} = ...
@@ -122,7 +119,7 @@ data{length(data)+1} = ...
 % dP1_data = [diff(P_data) 0] / dt;
 % ddP1_data = [diff(dP1_data) 0] / dt;
 % ddP2_data = [diff(dP_data) 0] / dt;
-% 
+%
 % figure;
 % ax1 = subplot(3,1,1); hold on;
 % plot(Time, P_data, 'LineWidth',2, 'LineStyle','-');
@@ -133,7 +130,7 @@ data{length(data)+1} = ...
 % plot(Time, ddP_data, 'LineWidth',2, 'LineStyle','-', 'Color','blue');
 % plot(Time, ddP1_data, 'LineWidth',2, 'LineStyle','--', 'Color','magenta');
 % plot(Time, ddP2_data, 'LineWidth',2, 'LineStyle',':', 'Color','green');
-% linkaxes([ax1 ax2 ax3],'x');    
+% linkaxes([ax1 ax2 ax3],'x');
 
 %% ======== Plot Results ==========
 
@@ -188,7 +185,7 @@ for i=1:n_dof
     % plot start and final positions
     plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color',[0.47,0.67,0.19],'Marker','o', 'MarkerSize',10);
     plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
-    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
+    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10);
     % plot bounds
     plot(ax.XLim, [pos_lim(i,1) pos_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [pos_lim(i,2) pos_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
@@ -202,7 +199,7 @@ for i=1:n_dof
     ax = subplot(3,1,2);
     ax_vec = [ax_vec ax];
     hold on;
-    for k=1:length(data) 
+    for k=1:length(data)
         if (~data{k}.plot2D), continue; end
         plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
     end
@@ -230,7 +227,7 @@ for i=1:n_dof
     xlabel('time [$s$]', 'interpreter','latex', 'fontsize',label_font);
     ax.FontSize = ax_fontsize;
     hold off;
-    
+
     linkaxes(ax_vec,'x');
 
 end
@@ -238,7 +235,7 @@ end
 % ======================================================
 
 function plot3Dbounds(ax, bounds)
-    
+
     x1 = bounds(1,1);
     x2 = bounds(1,2);
     y1 = bounds(2,1);
@@ -248,11 +245,11 @@ function plot3Dbounds(ax, bounds)
 
 %     patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 %     patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
-    
+
     X = [x1 x1 x1 x1; x2 x2 x2 x2; x1 x1 x2 x2; x1 x1 x2 x2]';
     Y = [y1 y1 y2 y2; y1 y1 y2 y2; y1 y2 y2 y1; y1 y2 y2 y1]';
     Z = [z1 z2 z2 z1; z1 z2 z2 z1; z1 z1 z1 z1; z2 z2 z2 z2]';
-    
+
     patch( X , Y, Z, 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
 %     patch( [x1 x1 x2 x2] , [y1 y1 y1 y1], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');

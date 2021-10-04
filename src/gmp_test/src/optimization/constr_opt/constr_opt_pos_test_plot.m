@@ -2,7 +2,6 @@ clc;
 close all;
 clear;
 
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load data
@@ -21,7 +20,7 @@ yg = fid.read('yg');
 ygd = fid.read('ygd');
 tau = fid.read('tau');
 view_ = fid.read('view');
-  
+
 fid.close();
 
 
@@ -77,7 +76,7 @@ for i=1:n_dof
     % plot start and final positions
     plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',10);
     plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
-    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
+    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10);
     % plot bounds
     plot(ax.XLim, [pos_lim(i,1) pos_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [pos_lim(i,2) pos_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
@@ -90,7 +89,7 @@ for i=1:n_dof
 
     ax = subplot(3,1,2);
     hold on;
-    for k=1:length(data) 
+    for k=1:length(data)
         if (~data{k}.plot2D), continue; end
         plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
     end
@@ -132,14 +131,14 @@ function dat = readData(fid, prefix)
     legend_ = fid.read([prefix 'legend']);
     plot3D = fid.read([prefix 'plot3D']);
     plot2D = fid.read([prefix 'plot2D']);
-    
+
     dat = struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle',linestyle, ...
     'color',color, 'legend',legend_, 'plot3D',plot3D, 'plot2D',plot2D);
 
 end
 
 function plot3Dbounds(ax, bounds)
-    
+
     x1 = bounds(1,1);
     x2 = bounds(1,2);
     y1 = bounds(2,1);
@@ -157,5 +156,3 @@ function plot3Dbounds(ax, bounds)
 %     patch( [x1 x1 x2 x2] , [y2 y2 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
 end
-
-

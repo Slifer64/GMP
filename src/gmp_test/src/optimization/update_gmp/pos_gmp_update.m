@@ -2,10 +2,7 @@ clc;
 close all;
 clear;
 
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load GMP
@@ -91,7 +88,7 @@ gmp_up.updateWeights(s5, Z5, type5);
 Ts = 0.01;
 Time = (0:Ts:T);
 x = Time/Time(end);
- 
+
 N = length(x);
 P_new_data = zeros(3,N);
 dP_new_data = zeros(3,N);
@@ -105,7 +102,7 @@ for j=1:N
     P_data(:,j) = gmp0.getYd(x(j));
     dP_data(:,j) = gmp0.getYdDot(x(j), x_dot);
     ddP_data(:,j) = gmp0.getYdDDot(x(j), x_dot, x_ddot);
-    
+
     P_new_data(:,j) = gmp.getYd(x(j));
     dP_new_data(:,j) = gmp.getYdDot(x(j), x_dot);
     ddP_new_data(:,j) = gmp.getYdDDot(x(j), x_dot, x_ddot);

@@ -2,10 +2,7 @@ clc;
 % close all;
 clear;
 
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
@@ -64,7 +61,7 @@ Pos_low_lim = P_data2(:,ind) - 0.3;
 for i=1:3
     Pos_up_lim(i, Pos_up_lim(i,:)>P_max(i)) = P_max(i);
     Pos_low_lim(i, Pos_low_lim(i,:)<P_min(i)) = P_min(i);
-    
+
     ind2 = Pos_low_lim(i,:)> Pos_up_lim(i,:)-0.3;
     Pos_low_lim(i, ind2) = Pos_up_lim(i,ind2) - 0.3;
 end
@@ -89,8 +86,8 @@ n_accel_constr = length(x_accel_lim);
 accel_lb = -0.3*ones(n_dof,n_accel_constr);
 accel_ub = 0.6*ones(n_dof,n_accel_constr);
 
-xeq_accel = [0 1];%[]; % 
-accel_eq = zeros(3,2);%[]; % 
+xeq_accel = [0 1];%[]; %
+accel_eq = zeros(3,2);%[]; %
 
 %% Write constraints to file
 if (false) % set to 'true' to write constraints to file
@@ -141,9 +138,9 @@ toc
 
 % fid = FileIO('qp_solution.bin',FileIO.in);
 % W2 = fid.read('W')';
-% 
+%
 % W_err = gmp.W - W2;
-% 
+%
 % gmp.W = W2;
 
 
@@ -237,12 +234,12 @@ end
 function plotConstr(t, lb, ub, teq, feq, ax, i_dof)
 
     hold(ax, 'on');
-    
+
     if (~isempty(teq))
         eq_sc = scatter(teq, feq(i_dof,:), 'MarkerEdgeColor',[0 0.7 0], 'Marker','*', ...
                 'MarkerEdgeAlpha',0.6, 'LineWidth',2, 'SizeData', 100, 'Parent',ax);
     end
-    
+
     if (~isempty(t))
         less_sc = scatter(t, lb(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
                 'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);

@@ -2,7 +2,6 @@ clc;
 % close all;
 clear;
 
-addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 % ------------------------------------------
@@ -19,7 +18,7 @@ vRot_data = fid.read('vRot_data');
 dvRot_data = fid.read('dvRot_data');
 T_sc = fid.read('T_sc');
 kt = fid.read('temp_s');
-    
+
 
 %% Plot results
 
@@ -120,4 +119,3 @@ for i=1:3
    if (i==3), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
    hold off;
 end
-

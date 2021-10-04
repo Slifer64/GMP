@@ -3,10 +3,7 @@ close all;
 clear;
 
 %% =============  includes...  =============
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% =============  Load params  =============

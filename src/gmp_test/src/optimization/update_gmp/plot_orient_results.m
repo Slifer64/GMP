@@ -2,7 +2,6 @@ clc;
 close all;
 clear;
 
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load data
@@ -49,7 +48,7 @@ for i=1:3
        legend({'$\omega_{d,new}$', '$\omega$', '$\omega_{new}$'}, 'interpreter','latex', 'fontsize',15);
        title('Rotational Velocity', 'interpreter','latex', 'fontsize',17);
    end
-   
+
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
    axis tight;
 end

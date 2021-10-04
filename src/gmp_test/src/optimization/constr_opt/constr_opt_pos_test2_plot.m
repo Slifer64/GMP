@@ -2,7 +2,6 @@ clc;
 close all;
 clear;
 
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load results
@@ -97,12 +96,12 @@ end
 function plotConstr(t, lb, ub, teq, feq, ax, i_dof)
 
     hold(ax, 'on');
-    
+
     if (~isempty(teq))
         eq_sc = scatter(teq, feq(i_dof,:), 'MarkerEdgeColor',[0 0.7 0], 'Marker','*', ...
                 'MarkerEdgeAlpha',0.6, 'LineWidth',2, 'SizeData', 100, 'Parent',ax);
     end
-    
+
     if (~isempty(t))
         less_sc = scatter(t, lb(i_dof,:), 'MarkerEdgeColor',[1 0 0], 'Marker','.', ...
                 'MarkerEdgeAlpha',0.3, 'LineWidth',1, 'SizeData', 100, 'Parent',ax);

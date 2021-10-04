@@ -4,7 +4,6 @@ clc;
 % close all;
 clear;
 
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 gmp_o = GMPo();
@@ -90,7 +89,7 @@ Q_new_data = zeros(4, n_data);
 vRot_new_data = zeros(3, n_data);
 dvRot_new_data = zeros(3, n_data);
 
-for j=1:n_data  
+for j=1:n_data
     q_data(:,j) = gmp_o.getYd(x(j));
     Q_data(:,j) = gmp_o.getQd(x(j));
     vRot_data(:,j) = gmp_o.getVd(x(j), x_dot);
@@ -129,7 +128,7 @@ for i=1:3
        legend({'$\omega_{d,new}$', '$\omega$', '$\omega_{new}$'}, 'interpreter','latex', 'fontsize',15);
        title('Rotational Velocity', 'interpreter','latex', 'fontsize',17);
    end
-   
+
    if (i==4), xlabel('time [$s$]', 'interpreter','latex', 'fontsize',15); end
    axis tight;
 end

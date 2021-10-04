@@ -2,10 +2,7 @@ clc;
 % close all;
 clear;
 
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
-
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
 
 %% Load data
@@ -27,7 +24,7 @@ kt = 0.5;
 T = 10/kt;
 x_dot = 1/T;
 x_ddot = 0;
-  
+
 t1 = 1.5 / kt;
 x1 = t1/T;
 p1 = fid.read('p1');

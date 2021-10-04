@@ -3,10 +3,7 @@ close all;
 clear;
 
 %% =============  includes...  =============
-addpath('../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% =============  Load params  =============
@@ -41,12 +38,12 @@ Ts = Timed(2)-Timed(1);
 simulateGMPo = @simulateGMPo_in_Cart_space; % simulateGMPo_in_'log/quat/Cart'_space
 
 if (read_gmp_from_file)
-    
+
     gmp_o = GMPo();
     gmp_.read(gmp_o, gmp_filename, '');
 
 else
-    
+
     %% initialize and train GMP
     gmp_o = GMPo(N_kernels, kernels_std_scaling);
     tic
@@ -64,9 +61,9 @@ else
     else
         error(['Unsupported scale method ''' scale_type '''...']);
     end
-    
+
     gmp_o.setScaleMethod(traj_sc);
-    
+
 end
 
 if (write_gmp_to_file), gmp_.write(gmp_o, 'gmp_o.bin', ''); end
@@ -223,11 +220,11 @@ while (true)
     %% data logging
     Time = [Time t];
     Q_data = [Q_data Q];
-    rotVel_data = [rotVel_data rotVel];  
+    rotVel_data = [rotVel_data rotVel];
     rotAccel_data = [rotAccel_data rotAccel];
 
     tic;
-    
+
     %% GMP simulation
 %     Qd = gmp_o.getQd(x);
 %     Vd = gmp_o.getVd(x, x_dot);
@@ -235,15 +232,15 @@ while (true)
     [Qd, Vd, Vd_dot] = gmp_o.getRefTraj(x, x_dot, x_ddot);
 
     rotAccel = Vd_dot + 5*(Vd-rotVel) + 20*gmp_.quatLog(gmp_.quatDiff(Qd,Q));
-    
+
     elaps_t = [elaps_t toc()*1000];
-    
-    %% Stopping criteria   
+
+    %% Stopping criteria
     if (t>1.5*t_end)
         warning('Time limit reached... Stopping simulation!');
         break;
     end
-    
+
     eo = gmp_.quatLog(gmp_.quatProd(Qg, gmp_.quatInv(Q)));
     if (t>=t_end && norm(eo)<0.02)
         break;
@@ -253,12 +250,12 @@ while (true)
     t = t + dt;
     x = x + x_dot*dt;
     Q = gmp_.quatProd( gmp_.quatExp(rotVel*dt), Q);
-    rotVel = rotVel + rotAccel*dt;  
-    
+    rotVel = rotVel + rotAccel*dt;
+
     Q = Qd;
     rotVel = Vd;
     rotAccel = Vd_dot;
-    
+
 end
 
 mean_elaps_t = mean(elaps_t)
@@ -306,11 +303,11 @@ while (true)
     %% data logging
     Time = [Time t];
     Q_data = [Q_data Q];
-    rotVel_data = [rotVel_data rotVel];  
+    rotVel_data = [rotVel_data rotVel];
     rotAccel_data = [rotAccel_data rotAccel];
-    
+
     yc_dot = 0;
-    
+
     tic
 
     %% DMP simulation
@@ -322,15 +319,15 @@ while (true)
     dy = gmp_o.getYdot();
     dz = gmp_o.getZdot();
     rotAccel = gmp_o.getRotAccel(Q, yc_dot);
-    
+
     elaps_t = [elaps_t toc()*1000];
 
-    %% Stopping criteria   
+    %% Stopping criteria
     if (t>1.5*t_end)
         warning('Time limit reached... Stopping simulation!');
         break;
     end
-    
+
     eo = quatLog(quatProd(Qg, quatInv(Q)));
     if (t>=t_end && norm(eo)<0.02)
         break;
@@ -341,18 +338,18 @@ while (true)
     x = x + x_dot*dt;
     y = y + dy*dt;
     z = z + dz*dt;
-    
+
     q = y;
     dy = z;
     qdot = dy;
-    
+
     Q_prev = Q;
     Q = gmp_o.q2quat(q, Q0);
     if (Q_prev'*Q<0), Q = -Q; end
-    
+
     Q1 = gmp_o.getQ1(Q, Q0);
     rotVel = gmp_o.qLogDot_to_rotVel(qdot, Q1);
-    
+
 end
 
 mean_elaps_t = mean(elaps_t)
@@ -392,11 +389,11 @@ while (true)
     %% data logging
     Time = [Time t];
     Q_data = [Q_data Q];
-    rotVel_data = [rotVel_data rotVel];  
+    rotVel_data = [rotVel_data rotVel];
     rotAccel_data = [rotAccel_data rotAccel];
 
     tic;
-    
+
     %% GMP simulation
     yc = 0; % optional coupling for 'y' state
     zc = 0; % optional coupling for 'z' state
@@ -405,32 +402,28 @@ while (true)
     rotAccel = gmp_o.calcRotAccel(s, Q, rotVel, yc, zc, yc_dot);
 
     elaps_t = [elaps_t toc()*1000];
-    
-    %% Stopping criteria   
+
+    %% Stopping criteria
     if (t>1.5*t_end)
         warning('Time limit reached... Stopping simulation!');
         break;
     end
-    
+
     eo = quatLog(quatProd(Qg, quatInv(Q)));
     if (t>=t_end && norm(eo)<0.02)
         break;
     end
 
-    
+
     %% Numerical integration
     t = t + dt;
     x = x + x_dot*dt;
     Q = quatProd( quatExp(rotVel*dt), Q);
     rotVel = rotVel + rotAccel*dt;
-    
+
 end
 
 mean_elaps_t = mean(elaps_t)
 std_elaps_t = std(elaps_t,1)
 
 end
-
-
-
-

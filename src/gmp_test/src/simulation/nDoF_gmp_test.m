@@ -5,10 +5,7 @@ close all;
 clear;
 
 %% =============  includes...  =============
-addpath('../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../matlab/lib/io_lib/');
 import_io_lib();
 
 
@@ -29,7 +26,7 @@ read_gmp_from_file = false;
 write_gmp_to_file = false;
 
 gmp_filename = 'data/gmp_pos.bin';
-          
+
 
 %% =============  Load train data  =============
 fid = FileIO(train_filename, FileIO.in );
@@ -47,12 +44,12 @@ Ts = Timed(2) - Timed(1);
 n_dof = size(Pd_data, 1);
 
 if (read_gmp_from_file)
-    
+
     gmp = GMP();
     gmp_.read(gmp, gmp_filename, '');
 
 else
-    
+
     %% initialize and train GMP
     gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
     tic
@@ -75,7 +72,7 @@ else, error(['Unsupported scale type ''' scale_type '''...\n']);
 end
 
 gmp.setScaleMethod(traj_sc);
-  
+
 
 if (write_gmp_to_file), gmp_.write(gmp, gmp_filename, ''); end
 
@@ -194,7 +191,7 @@ while (true)
     %% data logging
     Time = [Time t];
     Y_data = [Y_data y];
-    dY_data = [dY_data dy];  
+    dY_data = [dY_data dy];
     ddY_data = [ddY_data ddy];
     % x_data = [x_data x];
 
@@ -221,7 +218,7 @@ while (true)
     z = z + dz*dt;
 
     s.x = x;
-    
+
 end
 
 

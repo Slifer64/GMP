@@ -2,10 +2,7 @@ clc;
 close all;
 clear;
 
-addpath('../../../../matlab/lib/gmp_lib/');
 import_gmp_lib();
-
-addpath('../../../../matlab/lib/io_lib/');
 import_io_lib();
 
 %% Load training data
@@ -162,7 +159,7 @@ for i=1:n_dof
     % plot start and final positions
     plot(0, y0(i), 'LineWidth', 4, 'LineStyle','none', 'Color','green','Marker','o', 'MarkerSize',10);
     plot(tau, yg(i), 'LineWidth', 4, 'LineStyle','none', 'Color','red','Marker','x', 'MarkerSize',10);
-    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10); 
+    plot(tau, ygd(i), 'LineWidth', 4, 'LineStyle','none', 'Color','magenta','Marker','x', 'MarkerSize',10);
     % plot bounds
     plot(ax.XLim, [pos_lim(i,1) pos_lim(i,1)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
     plot(ax.XLim, [pos_lim(i,2) pos_lim(i,2)], 'LineWidth',2, 'LineStyle','--', 'Color',[1 0 1]);
@@ -175,7 +172,7 @@ for i=1:n_dof
 
     ax = subplot(3,1,2);
     hold on;
-    for k=1:length(data) 
+    for k=1:length(data)
         if (~data{k}.plot2D), continue; end
         plot(data{k}.Time, data{k}.Vel(i,:), 'LineWidth',2.5, 'LineStyle',data{k}.linestyle, 'Color',data{k}.color);
     end
@@ -207,9 +204,9 @@ end
 % ======================================================
 
 function [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel)
-    
+
     gmp2 = gmp.deepCopy();
-    
+
     gmp2.setScaleMethod(TrajScale_Prop(3));
     gmp2.setY0(y0);
     gmp2.setGoal(yg);
@@ -235,9 +232,9 @@ function [Time, P_data, dP_data, ddP_data] = getOptGMPTrajectory(gmp, tau, y0, y
     elaps_t = toc;
     fprintf('===> Optimization finished! Elaps time: %f ms\n',elaps_t*1000);
     fprintf([gmp_opt.getExitMsg() '\n']);
-    
+
     [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp2, tau, y0, yg);
-    
+
 end
 
 function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
@@ -250,7 +247,7 @@ function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
     p = y0;
     p_dot = zeros(size(p));
     p_ddot = zeros(size(p));
-    
+
     gmp.setY0(y0);
     gmp.setGoal(yg);
 
@@ -261,15 +258,15 @@ function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
 
         x = t/tau;
         x_dot = 1/tau;
-        
+
         if (x >= 1)
             x_dot = 0;
         end
-        
+
         p_ref = gmp.getYd(x);
         p_ref_dot = gmp.getYdDot(x, x_dot);
         p_ref_ddot = gmp.getYdDDot(x, x_dot, 0);
-        
+
         P = p_ref;
         p_dot = p_ref_dot;
         p_ddot = p_ref_ddot;
@@ -292,7 +289,7 @@ function [Time, P_data, dP_data, ddP_data] = getGMPTrajectory(gmp, tau, y0, yg)
 end
 
 function plot3Dbounds(ax, bounds)
-    
+
     x1 = bounds(1,1);
     x2 = bounds(1,2);
     y1 = bounds(2,1);
@@ -302,7 +299,7 @@ function plot3Dbounds(ax, bounds)
 
 %     patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 %     patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
-    
+
     patch( [x1 x1 x1 x1] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
     patch( [x2 x2 x2 x2] , [y1 y1 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
@@ -313,5 +310,3 @@ function plot3Dbounds(ax, bounds)
 %     patch( [x1 x1 x2 x2] , [y2 y2 y2 y2], [z1 z2 z2 z1], 'red', 'FaceAlpha',0.05, 'LineStyle','none', 'Parent',ax, 'HandleVisibility','off');
 
 end
-
-
