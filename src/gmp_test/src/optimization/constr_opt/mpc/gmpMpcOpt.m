@@ -21,14 +21,10 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     y_dot = O_ndof;
     y_ddot = O_ndof;
     
-    pos_slack = 1;
-    vel_slack = 1;
-    accel_slack = 1;
-    slack_flags = [pos_slack vel_slack accel_slack];
     slack_gains = [1e5 100 1];
     
     %% --------  GMP - MPC  --------
-    gmp_mpc = GMP_MPC(gmp, 10, 0.1, 30, 1.5, slack_flags, slack_gains); % try 12 , 0.025
+    gmp_mpc = GMP_MPC(gmp, 10, 0.1, 30, 1.5, opt_pos, opt_vel, slack_gains); % try 12 , 0.025
     
     gmp_mpc.setPosLimits(pos_lim(:,1), pos_lim(:,2));
     gmp_mpc.setVelLimits(vel_lim(:,1), vel_lim(:,2));
@@ -43,7 +39,7 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
 %     gmp_mpc.setAccelSlackLimit(0);
     
     gmp_mpc.setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
-    gmp_mpc.setFinalState(yg, O_ndof, O_ndof, 1, 0, 0);
+    gmp_mpc.setFinalState(yg, O_ndof, O_ndof, 1, s_dot, 0, 1e-3*ones(n_dof,1));
     
     gmp.setScaleMethod(TrajScale_Prop(n_dof));
     gmp.setY0(y0);
@@ -58,15 +54,16 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     while (true)
         
         %% --------  Stopping criteria  --------
-        if (s > 1.0), break; end
+        %if (s > 1.0), break; end
+        if (s >= 1 && norm(y_dot)<1e-2 && norm(y-yg)<1e-2 ), break; end
 
-        text_prog.update(100*t/tau);
+        if (s<=1), text_prog.update(100*t/tau); end
 
-        if (s >= 1)
-            s = 1;
-            s_dot = 0;
-            s_ddot = 0;
-        end
+%         if (s >= 1)
+%             s = 1;
+%             s_dot = 0;
+%             s_ddot = 0;
+%         end     
 
         [exit_flag, y, y_dot, y_ddot, slack_var] = gmp_mpc.solve(s, s_dot, s_ddot);
         
@@ -94,6 +91,11 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     end
 
     if (~isempty(slack_data))
+        
+        pos_slack = slack_gains(1) > 0;
+        vel_slack = slack_gains(2) > 0;
+        accel_slack = slack_gains(3) > 0;
+        
         n_slack = size(slack_data,1);
         y_lb = {};
         if (pos_slack), y_lb = [y_lb, {'pos'}]; end
