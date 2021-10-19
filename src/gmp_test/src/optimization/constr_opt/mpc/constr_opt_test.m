@@ -56,7 +56,7 @@ yg = ygd + y_offset(ind);  view_ = [171.9421, -3.0690];
 pos_lim = [[-1.2 -1.2 0.2]' [1.2 1.2 0.6]'];
 pos_lim = pos_lim(ind,:);
 vel_lim = 1*[-0.3*ones(n_dof,1) 0.3*ones(n_dof,1)];  % lower and upper limit, same for all DoFs
-accel_lim = 3*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
+accel_lim = 2*[-0.4*ones(n_dof,1) 0.4*ones(n_dof,1)];
 
 data = {};
 
@@ -72,7 +72,7 @@ opt_vel = 0;
 qp_solver_type = 1; % matlab-quadprog:0 , osqp:1, Goldfarb-Idnani: 2
 opt_type = 'pos';
 if (opt_vel), opt_type = 'vel'; end
-%
+
 % % --------- Offline GMP-weights optimization -----------
 % [Time, P_data, dP_data, ddP_data] = offlineGMPweightsOpt(gmp, tau, y0, yg, pos_lim, vel_lim, accel_lim, opt_pos, opt_vel);
 % data{length(data)+1} = ...
@@ -85,16 +85,16 @@ if (opt_vel), opt_type = 'vel'; end
 %     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
 %     'color',[1, 0.41, 0.16], 'legend',['opt-w:' opt_type '(online)'], 'plot3D',true, 'plot2D',true);
 
-% % ---------- GMP-MPC optimization ------------
-% [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
-% data{length(data)+1} = ...
-%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-%     'color',[0.72 0.27 1], 'legend',['gmp-mpc:' opt_type], 'plot3D',true, 'plot2D',true);
-
-[Time, P_data, dP_data, ddP_data] = gmpMpcOptCpp(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, 'out');
+% ---------- GMP-MPC optimization ------------
+[Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, opt_pos, opt_vel, qp_solver_type);
 data{length(data)+1} = ...
     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
-    'color',[1 0.07 0.65], 'legend',['gmp-mpc:' opt_type], 'plot3D',true, 'plot2D',true);
+    'color',[0.72 0.27 1], 'legend',['gmp-mpc:' opt_type], 'plot3D',true, 'plot2D',true);
+
+% [Time, P_data, dP_data, ddP_data] = gmpMpcOptCpp(gmp, tau, y0, yg, pos_lim, 1*vel_lim, accel_lim, 'out');
+% data{length(data)+1} = ...
+%     struct('Time',Time, 'Pos',P_data, 'Vel',dP_data, 'Accel',ddP_data, 'linestyle','-', ...
+%     'color',[1 0.07 0.65], 'legend',['gmp-mpc:' opt_type], 'plot3D',true, 'plot2D',true);
 
 
 % % ---------- Offline GMP-trajectory optimization ------------

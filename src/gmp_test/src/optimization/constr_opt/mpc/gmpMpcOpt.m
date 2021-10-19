@@ -21,26 +21,26 @@ function [Time, P_data, dP_data, ddP_data] = gmpMpcOpt(gmp0, tau, y0, yg, pos_li
     y_dot = O_ndof;
     y_ddot = O_ndof;
     
-    pos_slack = 0;
-    vel_slack = 0;
-    accel_slack = 0;
+    pos_slack = 1;
+    vel_slack = 1;
+    accel_slack = 1;
     slack_flags = [pos_slack vel_slack accel_slack];
-    slack_gains = [1e6 100 20];
+    slack_gains = [1e5 100 1];
     
     %% --------  GMP - MPC  --------
-    gmp_mpc = GMP_MPC(gmp, 10, 0.02, 30, 1.5, slack_flags, slack_gains); % try 12 , 0.025
+    gmp_mpc = GMP_MPC(gmp, 10, 0.1, 30, 1.5, slack_flags, slack_gains); % try 12 , 0.025
     
     gmp_mpc.setPosLimits(pos_lim(:,1), pos_lim(:,2));
     gmp_mpc.setVelLimits(vel_lim(:,1), vel_lim(:,2));
     gmp_mpc.setAccelLimits(accel_lim(:,1), accel_lim(:,2));
     
-%     gmp_mpc.setPosSlackLimit(1e-3);
-%     gmp_mpc.setVelSlackLimit(0.05);
-%     gmp_mpc.setAccelSlackLimit(0.08);
+    gmp_mpc.setPosSlackLimit(5e-3);
+    gmp_mpc.setVelSlackLimit(0.05);
+    gmp_mpc.setAccelSlackLimit(0.2);
     
-    gmp_mpc.setPosSlackLimit(0);
-    gmp_mpc.setVelSlackLimit(0);
-    gmp_mpc.setAccelSlackLimit(0);
+%     gmp_mpc.setPosSlackLimit(0);
+%     gmp_mpc.setVelSlackLimit(0);
+%     gmp_mpc.setAccelSlackLimit(0);
     
     gmp_mpc.setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
     gmp_mpc.setFinalState(yg, O_ndof, O_ndof, 1, 0, 0);
