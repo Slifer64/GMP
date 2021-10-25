@@ -200,7 +200,6 @@ protected: // properties
   friend void read(gmp_::GMP *gmp, gmp_::FileIO &fid, const std::string &prefix);
 
   friend class GMP_Update;
-  friend class GMP_IO;
 
   arma::vec Y0; ///< initial position
   arma::vec Yg; ///< target position

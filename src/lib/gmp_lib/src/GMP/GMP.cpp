@@ -114,11 +114,11 @@ namespace gmp_
     for (int j=0; j<n_data; j++) H.col(j) = this->regressVec(x(j));
 
     if (train_method.compare("LWR") == 0)
-        this->W = yd_data*H.t() / arma::repmat(arma::sum(H,1).t(),n_dofs,1);
+      this->W = yd_data*H.t() / arma::repmat(arma::sum(H,1).t(),n_dofs,1);
     else if (train_method.compare("LS") == 0)
-        this->W = arma::solve(H.t(), yd_data.t()).t(); // yd_data / H;
+      this->W = arma::solve(H.t(), yd_data.t()).t(); // yd_data / H;
     else
-        throw std::runtime_error("[WSoG::train]: Unsupported training method...");
+      throw std::runtime_error("[WSoG::train]: Unsupported training method...");
 
     this->Y0d = this->W*H.col(0);
     this->Ygd = this->W*H.col(i_end);

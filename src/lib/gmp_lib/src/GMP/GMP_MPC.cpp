@@ -31,7 +31,7 @@ arma::mat blkdiag(const arma::mat &A, double b)
 }
 
 
-GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsigned N_kernels, double kernel_std_scaling, const std::vector<bool> &slack_flags, const std::vector<double> &slack_gains)
+GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsigned N_kernels, double kernel_std_scaling, const std::vector<double> &slack_gains)
 {
   this->inf = OSQP_INFTY;
 
@@ -55,11 +55,9 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->N = N_horizon;
   this->dt_ = pred_time_step*arma::rowvec().ones(this->N);
 
-  bool opt_pos = 1;
-  bool opt_vel = 0;
-  this->pos_slack = slack_flags[0];
-  this->vel_slack = slack_flags[1];
-  this->accel_slack = slack_flags[2];
+  this->pos_slack = slack_gains[0] > 0;
+  this->vel_slack = slack_gains[1] > 0;
+  this->accel_slack = slack_gains[2] > 0;
   this->n_slack = this->pos_slack + this->vel_slack + this->accel_slack;
 
   // this->Aineq_slack = [];
@@ -81,8 +79,9 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   }
 
   // State tracking gains: (x(i) - xd(i)).t()*Qi*(x(i) - xd(i))
-  this->Qi = blkdiag( opt_pos*I_ndof, opt_vel*10*I_ndof );
-  this->QN = blkdiag( 100*I_ndof, 1*I_ndof ); // this->Qi;
+  setObjCostGains(1.0, 0.0);
+  // this->Qi = blkdiag( opt_pos_gain*I_ndof, opt_vel_gain*I_ndof );
+  // this->QN = this->Qi; //blkdiag( 100*I_ndof, 1*I_ndof );
 
   this->Z0 = arma::vec().zeros(n_dof*N_kernels + this->n_slack);
   this->Z0_dual_ineq = arma::vec().zeros(this->N*n_dof3 + this->n_slack);
@@ -97,6 +96,12 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->setAccelSlackLimit(this->inf);
 }
 
+void GMP_MPC::setObjCostGains(double pos_gain, double vel_gain)
+{
+  this->Qi = blkdiag( pos_gain*I_ndof, vel_gain*I_ndof );
+  this->QN = this->Qi; //blkdiag( 100*I_ndof, 1*I_ndof );
+}
+
 void GMP_MPC::setInitialState(const arma::vec &y0, const arma::vec &y0_dot, const arma::vec &y0_ddot, double s, double s_dot, double s_ddot)
 {
   arma::vec phi0 = this->gmp_mpc->regressVec(s);
@@ -109,7 +114,13 @@ void GMP_MPC::setInitialState(const arma::vec &y0, const arma::vec &y0_dot, cons
 
 void GMP_MPC::setFinalState(const arma::vec &yf, const arma::vec &yf_dot, const arma::vec &yf_ddot, double s, double s_dot, double s_ddot)
 {
+  setFinalState(yf, yf_dot, yf_ddot, s, s_dot, s_ddot, arma::vec().zeros(yf.size()) );
+}
+
+void GMP_MPC::setFinalState(const arma::vec &yf, const arma::vec &yf_dot, const arma::vec &yf_ddot, double s, double s_dot, double s_ddot, const arma::vec &err_tol)
+{
   this->s_f = s;
+  this->err_tol_f = arma::kron( err_tol, arma::vec().ones(n_dof,1) );
   arma::vec phi_f = this->gmp_mpc->regressVec(s);
   arma::vec phi_f_dot = this->gmp_mpc->regressVecDot(s, s_dot);
   arma::vec phi_f_ddot = this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
@@ -153,10 +164,10 @@ void GMP_MPC::setAccelSlackLimit(double s_lim)
 
 GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
 {
-  arma::vec y;
-  arma::vec y_dot; 
-  arma::vec y_ddot;
-  arma::vec slack_var;
+  arma::vec y = x0.subvec(0, n_dof-1);
+  arma::vec y_dot = x0.subvec(n_dof, 2*n_dof-1);
+  arma::vec y_ddot = x0.subvec(2*n_dof, 3*n_dof-1);
+  arma::vec slack_var = arma::vec().zeros(n_slack);
 
   unsigned N_kernels = this->gmp_mpc->numOfKernels();
   unsigned n = n_dof * N_kernels + this->n_slack;
@@ -198,6 +209,12 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
     arma::vec yd_i = this->gmp_ref->getYd(si);
     arma::vec dyd_i = this->gmp_ref->getYdDot(si, si_dot);
 
+    if (si >= 1)
+    {
+      yd_i = x_f.subvec(0,n_dof-1);
+      dyd_i = x_f.subvec(n_dof, 2*n_dof-1);
+    }
+
     arma::vec phi = this->gmp_mpc->regressVec(si);
     arma::vec phi_dot = this->gmp_mpc->regressVecDot(si, si_dot);
     arma::vec phi_ddot = this->gmp_mpc->regressVecDDot(si, si_dot, si_ddot);
@@ -225,14 +242,21 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
   arma::mat Aeq = arma::join_horiz( this->Phi0, arma::mat().zeros(n_dof3, this->n_slack) );
   arma::vec beq = this->x0;
 
-  if (si >= this->s_f)
-  {
-    Aeq = arma::join_vert(Aeq, arma::join_horiz(this->Phi_f, arma::mat().zeros(n_dof3, this->n_slack) ) );
-    beq = arma::join_vert(beq, this->x_f);
+  // if (si >= this->s_f)
+  // {
+    Aineq = arma::join_vert(Aineq, arma::join_horiz(this->Phi_f, arma::mat().zeros(n_dof3, this->n_slack) ) );
+    lb = arma::join_vert(lb, this->x_f - this->err_tol_f);
+    ub = arma::join_vert(ub, this->x_f + this->err_tol_f);
 
-    int n_eq_plus = Aeq.n_rows - this->Z0_dual_eq.size();
-    if (n_eq_plus>0) this->Z0_dual_eq = arma::join_vert(this->Z0_dual_eq, arma::vec().zeros(n_eq_plus) );
-  }
+    int n_ineq_plus = Aineq.n_rows - this->Z0_dual_ineq.size();
+    if (n_ineq_plus>0) this->Z0_dual_ineq = arma::join_vert(this->Z0_dual_ineq, arma::vec().zeros(n_ineq_plus) );
+
+    // Aeq = arma::join_vert(Aeq, arma::join_horiz(this->Phi_f, arma::mat().zeros(n_dof3, this->n_slack) ) );
+    // beq = arma::join_vert(beq, this->x_f);
+
+    // int n_eq_plus = Aeq.n_rows - this->Z0_dual_eq.size();
+    // if (n_eq_plus>0) this->Z0_dual_eq = arma::join_vert(this->Z0_dual_eq, arma::vec().zeros(n_eq_plus) );
+  // }
 
   // ===========  solve optimization problem  ==========
   osqp_::QPsolver solver(H, q, Aineq, lb, ub, Aeq, beq);
@@ -264,9 +288,21 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot, double s_ddot)
     y_dot = W*this->gmp_mpc->regressVecDot(s, s_dot);
     y_ddot = W*this->gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
 
+    if (this->n_slack)
+    {
+      // check just in case...
+      if ( !arma::find( arma::abs(slack_var) > slack_lim ).is_empty() )
+      {
+        exit_msg = "Slack variable limits violated";
+        exit_flag = -1;
+        goto end_solve;  
+      }
+    }
+
     this->setInitialState(y, y_dot, y_ddot, s, s_dot, s_ddot);
   }
 
+  end_solve:
   Solution sol;
   sol.y = y;
   sol.y_dot = y_dot;

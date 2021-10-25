@@ -3,11 +3,16 @@
 
 #include <gmp_lib/TrajScale/TrajScale.h>
 
+#include <iostream>
+#include <cstring>
+
 namespace as64_
 {
 
 namespace gmp_
 {
+
+
 
 class TrajScale_Prop : public TrajScale
 {
@@ -34,6 +39,11 @@ protected:
 
   arma::mat calcScaling() const
   {
+    double d = arma::min( arma::abs( this->Ygd - this->Y0d ) );
+    if (d < 1e-2)
+      std::cerr << "\033[1m" << "\033[33m" << "[WARNING]: " << "Scaling may be very big (on the order of "
+                << std::to_string(1/d) << ") due to init and final positions being close." << "\033[0m\n";
+
     return arma::diagmat( (this->Yg - this->Y0) / (this->Ygd - this->Y0d) );
   }
 

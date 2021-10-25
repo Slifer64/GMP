@@ -1,7 +1,5 @@
 #include <gmp_lib/GMP/GMP_regressor.h>
 
-#include <cfloat>
-
 namespace as64_
 {
 
@@ -18,13 +16,13 @@ namespace gmp_
 
   void GMP_regressor::setTruncatedKernels(bool set, double zero_tol)
   {
-    // find range of x outside which psi = 0 due to finite numerical precision
-    double r_min = zero_tol;
-    this->x_min = this->c(0) - std::sqrt( -std::log(r_min) / this->h(0) );
-    this->x_max = this->c.back() + std::sqrt( -std::log(r_min) / this->h.back() );
-    
-    if (set) this->kernel_fun_ptr = std::bind(&GMP_regressor::truncGaussKernel,this, std::placeholders::_1, zero_tol);
-    else this->kernel_fun_ptr = std::bind(&GMP_regressor::kernelFun,this,std::placeholders::_1);
+    if (set)
+    {
+      setKernels(this->c, this->h, zero_tol);
+      this->kernel_fun_ptr = std::bind(&GMP_regressor::truncGaussKernel,this, std::placeholders::_1, zero_tol);
+    }
+    else 
+      this->kernel_fun_ptr = std::bind(&GMP_regressor::kernelFun,this,std::placeholders::_1);
   }
 
   // ============================================================
@@ -49,6 +47,11 @@ namespace gmp_
     {
       psi = this->kernel_fun_ptr(x);
     }
+
+    // if ( arma::sum(psi)  < DBL_MIN)
+    // {
+    //   std::cerr << "x=" << x << " : ZERO! << (" << this->x_min << ", " << this->x_max << ")\n";
+    // }
     
     return psi / arma::sum(psi);
   }
@@ -151,17 +154,27 @@ namespace gmp_
   {
     if (N_kernels < 2) throw std::runtime_error("[GMP_regressor::setKernels]: At least 2 kernels are required!");
 
-    this->c = arma::linspace<arma::vec>(0,N_kernels-1, N_kernels)/(N_kernels-1);
+    arma::vec c = arma::linspace<arma::vec>(0,1, N_kernels);
 
-    this->kernel_std_scaling = kernel_std_scaling;
+    double hi = 1 / std::pow(kernel_std_scaling*(c(1)-c(0)),2);
+    arma::vec h = arma::vec().ones(N_kernels) * hi;
 
-    double hi = 1 / std::pow(kernel_std_scaling*(this->c(1)-this->c(0)),2);
-    this->h = arma::vec().ones(N_kernels) * hi; 
+    setKernels(c, h);
+  }
+
+  void GMP_regressor::setKernels(const arma::vec &c, const arma::vec &h, double zero_tol)
+  {
+    if (c.size() < 2) throw std::runtime_error("[GMP_regressor::setKernels]: At least 2 kernels are required!");
+
+    this->c = c;
+    this->h = h;
+
+    // assuming all kernels have the same width
+    this->kernel_std_scaling = std::sqrt(1.0 / h(0)) / ( c(1) - c(0) );
 
     // find range of x outside which psi = 0 due to finite numerical precision
-    double r_min = DBL_MAX;
-    this->x_min = this->c(0) - std::sqrt( -std::log(r_min) / this->h(0) );
-    this->x_max = this->c.back() + std::sqrt( -std::log(r_min) / this->h.back() );
+    this->x_min = this->c(0) - std::sqrt( -std::log(zero_tol) / this->h(0) );
+    this->x_max = this->c.back() + std::sqrt( -std::log(zero_tol) / this->h.back() );
   }
 
 } // namespace gmp_

@@ -40,8 +40,11 @@ namespace gmp_
     fid.read(prefix + "stiffness", gmp->K);
     int scale_type;
     fid.read(prefix + "scale_type", scale_type);
-    fid.read(prefix + "c", gmp->c);
-    fid.read(prefix + "h", gmp->h);
+
+    arma::vec c, h;
+    fid.read(prefix + "c", c);
+    fid.read(prefix + "h", h);
+    gmp->setKernels(c, h);
 
     unsigned n_dofs = gmp->numOfDoFs();
 

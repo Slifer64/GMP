@@ -19,6 +19,7 @@
 #include <cstring>
 #include <memory>
 #include <exception>
+#include <cfloat>
 #include <functional>
 #include <fstream>
 #include <armadillo>
@@ -118,6 +119,13 @@ protected:
   * @param[in] kernel_std_scaling Scaling of the kernel's std.
   */
   void setKernels(unsigned N_kernels, double kernel_std_scaling);
+
+  /** Set the kernels centers and widths.
+  * @param[in] c Column vector with the center of each kernel.
+  * @param[in] h Column vector with the width of each kernel.
+  * @param[in] zero_tol Values equal or below this value are treated as zero (optional, default=DBL_MIN).
+  */
+  void setKernels(const arma::vec &c, const arma::vec &h, double zero_tol = DBL_MIN);
 
   /** Returns a column vector with the values of the kernel functions.
    * @param[in] x The phase variable.

@@ -31,6 +31,11 @@ protected:
 
   arma::mat calcScaling() const
   {
+    double d = arma::norm(this->Ygd - this->Y0d);
+    if (d < 1e-2)
+      std::cerr << "\033[1m" << "\033[33m" << "[WARNING]: " << "Scaling may be very big (on the order of "
+                << std::to_string(1/d) << ") due to init and final positions being close." << "\033[0m\n";
+
     arma::vec nd = this->Ygd - this->Y0d;  nd = nd/arma::norm(nd);
     arma::vec n = this->Yg - this->Y0;  n = n/arma::norm(n);
     double dot_n_nd = arma::dot(n,nd);
