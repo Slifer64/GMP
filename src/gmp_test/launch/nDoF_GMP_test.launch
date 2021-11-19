@@ -17,11 +17,11 @@
           scale_type: "rot_wb" # {"prop", "rot_min", "rot_wb"}
           wb_normal: [0, 0, 1] # work-bench normal
 
-          spat_s: [2, 3, 1.1] # spatial scale
-          temp_s: 1.2 # temporal scale
+          Pg: [1.2, 1.8, 0.36] # new target for execution
+          T: 8.33 # new time duration for execution
 
-          read_gmp_from_file: false
-          write_gmp_to_file: false
+          read_gmp_from_file: true
+          write_gmp_to_file: true
           gmp_filename: "src/simulation/data/gmp_pos.bin"
 
         </rosparam>

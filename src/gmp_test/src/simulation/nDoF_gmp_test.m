@@ -1,4 +1,5 @@
-%% Simulates a GMP
+%% Simulates a GMP for encoding and executing a Cartesian position trajectory.
+%  Works similarly for an n-DoF trajectory as well.
 
 clc;
 close all;
@@ -9,103 +10,129 @@ import_gmp_lib();
 import_io_lib();
 
 
-%% =============  Load params  =============
-train_method = 'LS';
-N_kernels = 25;
-kernels_std_scaling = 1.5;
+%% =============  Set GMP params  =============
+train_method = 'LS'; % {'LS', 'LWR'}
+N_kernels = 25;  % number or kernels (Gaussians)
+kernels_std_scaling = 1.5; % scaling of the width of each Gaussian. The greater 
+                           % the scaling the more the overlapping). A vaule 
+                           % in [1 1.5] is usually good.
 
-train_filename = 'data/pos_data.bin';
+train_filename = 'data/pos_data.bin'; % file containing the training data
 
-scale_type = 'rot_wb'; % {"prop", "rot_min", "rot_wb"}
-wb_normal = [0; 0; 1]; % work-bench normal
+%% Choose scaling type for the generalization
+scale_type = 'rot_wb'; % {'prop', 'rot_min', 'rot_wb'}, use 'prop' if n-DoFs > 3
+wb_normal = [0; 0; 1]; % work-bench normal (for use with "rot_wb")
 
-spat_s = [2; 3; 1.1]; % spatial scale
-temp_s = 1.2; % temporal scale
+% %% Set scaling for the executed trajectory (for testing purposes...)
+% spat_s = [2; 3; 1.1]; % spatial scaling
+% temp_s = 1.2; % temporal scaling: execute the trajectory 1.2 times faster than the demo
 
+%% For loading/writing the gmp from/to a file.
 read_gmp_from_file = false;
 write_gmp_to_file = false;
 
-gmp_filename = 'data/gmp_pos.bin';
-
+gmp_filename = 'data/gmp_pos.bin'; % location of the DMP model
 
 %% =============  Load train data  =============
-fid = FileIO(train_filename, FileIO.in );
+fid = FileIO(train_filename, FileIO.in);
 Timed = fid.read('Timed');
 Pd_data = fid.read('Pd_data');
 dPd_data = fid.read('dPd_data');
 ddPd_data = fid.read('ddPd_data');
+% % Or you can just do
+% data = fid.readAll();
+% Timed = data.Timed;
+% Pd_data = data.Pd_data;
+% dPd_data = data.dPd_data;
+% ddPd_data = data.ddPd_data;
 fid.close();
 
 Ts = Timed(2) - Timed(1);
 
-
 %% =============  Create/Train GMP  =============
 
-n_dof = size(Pd_data, 1);
+n_dof = size(Pd_data, 1); % number of DoFs
 
 if (read_gmp_from_file)
 
     gmp = GMP();
     gmp_.read(gmp, gmp_filename, '');
+    disp('Loaded GMP from file!');
 
 else
 
     %% initialize and train GMP
     gmp = GMP(n_dof, N_kernels, kernels_std_scaling);
-    tic
+    t_start = tic;
     offline_train_mse = gmp.train(train_method, Timed/Timed(end), Pd_data);
     offline_train_mse
-    toc
+    toc(t_start)
 
 end
 
-
+% % Optionally, readjust the number of kernels and their widths
 % gmp.autoRetrain(50, 2, 200, 'LWR');
 
-% set scaling type
-if ( strcmpi(scale_type, 'prop') ), traj_sc = TrajScale_Prop(n_dof);
-elseif ( strcmpi(scale_type, 'rot_min') ), traj_sc = TrajScale_Rot_min();
+% set scaling method for generalizing the DMP to new targets/initial positions
+% You can also add your own scaling method, by implementing a similar class
+% that inherits from @TrajScale.
+if ( strcmpi(scale_type, 'prop') )
+    traj_sc = TrajScale_Prop(n_dof);
+elseif ( strcmpi(scale_type, 'rot_min') )
+    traj_sc = TrajScale_Rot_min();
 elseif ( strcmpi(scale_type, 'rot_wb') )
     traj_sc = TrajScale_Rot_wb();
-    traj_sc.setWorkBenchNormal(wb_normal);
-else, error(['Unsupported scale type ''' scale_type '''...\n']);
+    traj_sc.setWorkBenchNormal(wb_normal); % set also the workbench normal
+else
+    error(['Unsupported scale type ''' scale_type '''...\n']);
 end
 
 gmp.setScaleMethod(traj_sc);
 
 
-if (write_gmp_to_file), gmp_.write(gmp, gmp_filename, ''); end
+if (write_gmp_to_file)
+    gmp_.write(gmp, gmp_filename, ''); 
+    disp('Wrote GMP from file!');
+end
 
 %% DMP simulation
 disp('GMP simulation...');
-tic
+t_start = tic;
 
-P0d = Pd_data(:,1);
-Pgd = Pd_data(:,end);
-P0 = P0d;
-Pg = spat_s.*(Pgd - P0) + P0;
-T = Timed(end) / temp_s;
-dt = Ts;
+%% Initial/Final values
+P0d = Pd_data(:,1);   % Initial demo position
+Pgd = Pd_data(:,end); % Target demo position
+P0 = P0d;   % set initial position for execution (for simplicity lets leave it the same as the demo)
+Pg = [1.2; 1.8; 0.36];  % set target position for execution
+% Pg = spat_s.*(Pgd - P0) + P0;
+T = 8.33; % set the time duration of the executed motion
+% T = Timed(end) / temp_s;
 
+
+dt = Ts; % time step for numerical integration
+
+%% Execute the DMP
 [Time, P_data, dP_data, ddP_data] = simulateGMP(gmp, P0, Pg, T, dt);
-toc
+toc(t_start)
 
-%% Reference trajectory (scaled)
-Timed = Timed / temp_s;
-Pd2_data = spat_s.*( Pd_data-P0 ) + P0;
-dPd2_data = spat_s.*dPd_data*temp_s;
-ddPd2_data = spat_s.*ddPd_data*temp_s^2;
+%% This is the groundtruth trajectory that should be produced
+Ks = gmp.getScaling(); % spatial scaling 
+temp_s = Timed(end) / T; % temporal scaling 
+Timed2 = Timed / temp_s;
+Pd2_data = Ks*( Pd_data-P0d ) + P0;
+dPd2_data = Ks*dPd_data*temp_s;
+ddPd2_data = Ks*ddPd_data*temp_s^2;
 
 %% Plot results
 for i=1:3
     figure;
     subplot(3,1,1);
     hold on;
-    plot(Time, P_data(i,:), 'LineWidth',2.0 , 'Color','blue');
-    plot(Timed, Pd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
+    plot(Time, P_data(i,:), 'LineWidth',2.0 , 'Color','blue', 'DisplayName', 'DMP');
+    plot(Timed2, Pd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta', 'DisplayName','ground-truth');
     ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
-    title(['temporal scale: $' num2str(temp_s) '$     ,     spatial scale: $' num2str(spat_s(1)) ', ' num2str(spat_s(2)), ', ' num2str(spat_s(3)) '$'], 'interpreter','latex', 'fontsize',18);
-    legend({'sim','$k_s$*demo'}, 'interpreter','latex', 'fontsize',15);
+    title(['DoF $' num2str(i) '$'], 'interpreter','latex', 'fontsize',18);
+    legend({}, 'interpreter','latex', 'fontsize',15);
 
     axis tight;
     hold off;
@@ -113,7 +140,7 @@ for i=1:3
     subplot(3,1,2);
     hold on;
     plot(Time, dP_data(i,:), 'LineWidth',2.0, 'Color','blue');
-    plot(Timed, dPd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
+    plot(Timed2, dPd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
     ylabel('vel [$m/s$]', 'interpreter','latex', 'fontsize',15);
     axis tight;
     hold off;
@@ -121,24 +148,29 @@ for i=1:3
     subplot(3,1,3);
     hold on;
     plot(Time, ddP_data(i,:), 'LineWidth',2.0, 'Color','blue');
-    plot(Timed, ddPd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
+    plot(Timed2, ddPd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta');
     ylabel('accel [$m/s^2$]', 'interpreter','latex', 'fontsize',15);
     axis tight;
     hold off;
 end
 
 
-figure;
+fig = figure;
+fig.Position(3:4) = [686 616];
 hold on;
-plot3(P_data(1,:), P_data(2,:), P_data(3,:), 'LineWidth',2, 'LineStyle','-', 'Color','magenta');
-plot3(Pd2_data(1,:), Pd2_data(2,:), Pd2_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color','blue');
-plot3(Pd_data(1,:), Pd_data(2,:), Pd_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color',[0 0.7 0]);
-legend({'sim','$k_s$*demo','demo'}, 'interpreter','latex', 'fontsize',15, 'Position',[0.1887 0.7924 0.2204 0.1711]);
+plot3(P_data(1,:), P_data(2,:), P_data(3,:), 'LineWidth',2, 'LineStyle','-', 'Color','magenta', 'DisplayName', 'DMP');
+plot3(Pd2_data(1,:), Pd2_data(2,:), Pd2_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color','blue', 'DisplayName','ground-truth');
+plot3(Pd_data(1,:), Pd_data(2,:), Pd_data(3,:), 'LineWidth',2, 'LineStyle',':', 'Color',[0 0.7 0], 'DisplayName','demo');
+plot3(P0(1), P0(2), P0(3), 'LineWidth',4, 'Marker','o', 'MarkerSize',10, 'LineStyle','none', 'Color','green', 'DisplayName', '$p_0$');
+plot3(Pg(1), Pg(2), Pg(3), 'LineWidth',4, 'Marker','x', 'MarkerSize',10, 'LineStyle','none', 'Color','red', 'DisplayName', 'target');
+plot3(Pgd(1), Pgd(2), Pgd(3), 'LineWidth',4, 'Marker','x', 'MarkerSize',10, 'LineStyle','none', 'Color','magenta', 'DisplayName', 'demo target');
+legend({}, 'interpreter','latex', 'fontsize',15, 'Position',[0.1887 0.7924 0.2204 0.1711]);
 xlabel('$x$', 'interpreter','latex', 'fontsize',15);
 ylabel('$y$', 'interpreter','latex', 'fontsize',15);
 zlabel('$z$', 'interpreter','latex', 'fontsize',15);
 view(-7.8, 30.92);
 axis tight;
+grid on;
 hold off;
 
 
@@ -148,7 +180,7 @@ hold off;
 
 function [Time, Y_data, dY_data, ddY_data] = simulateGMP(gmp, y0, g, T, dt)
 %% Simulates a dmp
-% @param[in] gmp: Dim x 1 cell array, where each cell is a 1D GMP.
+% @param[in] gmp: object of type @GMP.
 % @param[in] y0: Dim x 1 vector with the initial position..
 % @param[in] g: Dim x 1 vector with the goal/target position.
 % @param[in] T: Movement total time duration.
@@ -161,28 +193,39 @@ function [Time, Y_data, dY_data, ddY_data] = simulateGMP(gmp, y0, g, T, dt)
 
 
 %% set initial values
-Dim = gmp.numOfDoFs();
-ddy = zeros(Dim,1);
-dy = zeros(Dim,1);
-y = y0;
+Dim = gmp.numOfDoFs(); % number of DoFs
+
+y = y0; % position
+dy = zeros(Dim,1); % velocity
+ddy = zeros(Dim,1); % acceleration
+
 t = 0.0;
-dz = zeros(Dim,1);
-z = zeros(Dim,1);
+
+% dz = zeros(Dim,1);
+% z = zeros(Dim,1);
 
 t_end = T;
 tau = t_end;
+
+% phase variable, from 0 to 1
 x = 0.0;
 x_dot = 1/tau;
-s = GMP_phase(x, x_dot, 0);
+x_ddot = 0; % since x_dot is constant here
+% s = GMP_phase(x, x_dot, 0);
 
 iters = 0;
+
+% data to log
 Time = [];
 Y_data = [];
 dY_data = [];
 ddY_data = [];
 x_data = [];
 
+% set initial position
 gmp.setY0(y0);
+
+% set target/final position
 gmp.setGoal(g);
 
 %% simulate
@@ -194,19 +237,41 @@ while (true)
     dY_data = [dY_data dy];
     ddY_data = [ddY_data ddy];
     % x_data = [x_data x];
+    
+    % Update the target if you want...
+    % gmp.setGoal(g);
 
     %% DMP simulation
-    y_c = 0.0;
-    z_c = 0.0;
-    gmp.update(s, y, z, y_c, z_c);
-    dy = gmp.getYdot();
-    dz = gmp.getZdot();
+    
+    % Deprecated, old DMP style evolution:
+%     y_c = 0.0;
+%     z_c = 0.0;
+%     gmp.update(s, y, z, y_c, z_c);
+%     dy = gmp.getYdot();
+%     dz = gmp.getZdot();
+%     yc_dot = 0.0;
+%     ddy = gmp.getYddot(yc_dot);
 
-    yc_dot = 0.0;
-    ddy = gmp.getYddot(yc_dot);
+    % get the scaled DMP learned trajectory
+    y_x = gmp.getYd(x);
+    dy_x = gmp.getYdDot(x, x_dot);
+    ddy_x = gmp.getYdDDot(x, x_dot, x_ddot);
+    
+    K = 300; % set the DMP stiffness
+    D = 60; % set the DMP damping
+    
+    external_signal = 0; % optionally add some external signal
+    
+    % Track it using a 2nd order dynamical system. This is actually the DMP. 
+    ddy = ddy_x + D*(dy_x - dy) + K*(y_x - y) + external_signal;
 
+    % if external_signal == 0 you can obviously set directly:
+%     y = y_x;
+%     dy = dy_x;
+%     ddy = ddy_x;
+    
     %% Stopping criteria
-    if (t>=1.1*t_end) % && norm(y-g)<5e-3 && norm(dy)<5e-3)
+    if (t>=1.0*t_end) % && norm(y-g)<1e-3 && norm(dy)<5e-3)
         break;
     end
 
@@ -214,10 +279,12 @@ while (true)
     iters = iters + 1;
     t = t + dt;
     x = x + x_dot*dt;
+    x_dot = x_dot + x_ddot*dt;
     y = y + dy*dt;
-    z = z + dz*dt;
+    dy = dy + ddy*dt;
+%     z = z + dz*dt;
 
-    s.x = x;
+%     s.x = x;
 
 end
 

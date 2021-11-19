@@ -17,10 +17,10 @@
           scale_type: "rot_wb" # {"prop", "rot_min", "rot_wb"}
           wb_normal: [0, 0, 1] # work-bench normal
 
-          spat_s: [1.2, 1.3, 1.1] # spatial scale
-          temp_s: 1.2 # temporal scale
+          Qg: [0.7361, 0.3551, 0.4142, -0.4007] # new target for execution
+          T: 8.33 # new time duration for execution
 
-          orient_sim_fun: "Cart" # {"log", "quat", "Cart"}
+          orient_sim_fun: "Cart" # {"log", "Cart"}
 
           read_gmp_from_file: false
           write_gmp_to_file: false

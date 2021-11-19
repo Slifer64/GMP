@@ -23,13 +23,13 @@ void loadParams();
 
 std::string train_filename;
 std::string results_filename;
-std::string train_method = "LS";
-int N_kernels = 25;
-double kernels_std_scaling = 1.5;
+std::string train_method;
+int N_kernels;
+double kernels_std_scaling;
 std::string scale_type;
 arma::vec wb_normal;
-arma::vec spat_s;
-double temp_s;
+arma::vec Qg;
+double T;
 sim_fun_ptr simulateGMPo;
 
 bool read_gmp_from_file;
@@ -59,9 +59,13 @@ int main(int argc, char** argv)
 
   // =============  Create/Train GMP  =============
   unsigned n_dof = 3;
-  gmp_::GMPo::Ptr gmp_o(new gmp_::GMPo(2) );
+  gmp_::GMPo::Ptr gmp_o(new gmp_::GMPo() );
 
-  if (read_gmp_from_file) gmp_::read(gmp_o.get(), gmp_filename, "");
+  if (read_gmp_from_file)
+  {
+    gmp_::read(gmp_o.get(), gmp_filename, "");
+    PRINT_INFO_MSG("Loaded GMP from file!\n");
+  }
   else
   {
     // initialize and train GMP
@@ -87,7 +91,11 @@ int main(int argc, char** argv)
 
   gmp_o->setScaleMethod(traj_sc);
 
-  if (write_gmp_to_file) gmp_::write(gmp_o.get(), gmp_filename, "");
+  if (write_gmp_to_file)
+  {
+    gmp_::write(gmp_o.get(), gmp_filename, "");
+    PRINT_INFO_MSG("Wrote GMP to file!\n");
+  }
 
   // =============  GMP simulation  =============
   PRINT_INFO_MSG("GMP_orient simulation...\n");
@@ -99,16 +107,19 @@ int main(int argc, char** argv)
   arma::vec Q0 = Qd0; // math_.quatProd(rotm2quat(rotz(57))',Qd0);
   arma::vec Qgd = Qd_data.col(i_end);
 
-  arma::mat ks = arma::diagmat(spat_s);
-  double kt = temp_s;
-  arma::vec e0 = ks*gmp_::quatLogDiff(Qgd,Qd0);
-  arma::vec Qg = gmp_::quatProd(gmp_::quatExp(e0), Q0);
-  double T = Timed(i_end) / kt;
+  // double kt = temp_s;
+  // arma::vec e0 = arma::diagmat(spat_s)*gmp_::quatLogDiff(Qgd,Qd0);
+  // arma::vec Qg = gmp_::quatProd(gmp_::quatExp(e0), Q0);
+  // double T = Timed(i_end) / kt;
+
   double dt = Ts;
 
   arma::rowvec Time;
   arma::mat Q_data, vRot_data, dvRot_data;
   simulateGMPo(gmp_o, Q0, Qg, T, dt, Time, Q_data, vRot_data, dvRot_data);
+
+  arma::mat Ks = gmp_o->getScaling();
+  double temp_s = Timed.back() / T;
 
   Timer::toc();
 
@@ -123,9 +134,8 @@ int main(int argc, char** argv)
     fid.write("Q_data", Q_data);
     fid.write("vRot_data", vRot_data);
     fid.write("dvRot_data", dvRot_data);
-    arma::mat T_sc = gmp_o->getScaling();
-    fid.write("T_sc", T_sc);
-    fid.write("temp_s", kt);
+    fid.write("Ks",Ks);
+    fid.write("temp_s", temp_s);
   }
 
   // ===========  Shutdown ROS node  ==================
@@ -152,15 +162,14 @@ void loadParams()
   if (!nh.getParam("wb_normal", wb_normal_temp)) throw_error("Failed to load param \"wb_normal\"...\n");
   wb_normal = wb_normal_temp;
 
-  std::vector<double> spat_s_;
-  if (!nh.getParam("spat_s", spat_s_)) throw_error("Failed to load param \"spat_s\"...\n");
-  spat_s = spat_s_;
-  if (!nh.getParam("temp_s", temp_s)) throw_error("Failed to load param \"temp_s\"...\n");
+  std::vector<double> Qg_;
+  if (!nh.getParam("Qg", Qg_)) throw_error("Failed to load param \"Qg\"...\n");
+  Qg = Qg_;
+  if (!nh.getParam("T", T)) throw_error("Failed to load param \"T\"...\n");
 
   std::string orient_sim_fun;
   if (!nh.getParam("orient_sim_fun", orient_sim_fun)) throw_error("Failed to load param \"orient_sim_fun\"...\n");
   if (orient_sim_fun.compare("log") == 0) simulateGMPo = &simulateGMPo_in_log_space;
-  else if (orient_sim_fun.compare("quat") == 0) simulateGMPo = &simulateGMPo_in_quat_space;
   else if (orient_sim_fun.compare("Cart") == 0) simulateGMPo = &simulateGMPo_in_Cart_space;
   else throw_error("Unsupported orient-simulation function \"" + orient_sim_fun + "\"...\n");
 

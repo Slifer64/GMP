@@ -14,13 +14,13 @@ using namespace as64_;
 
 std::string train_filename;
 std::string results_filename;
-std::string train_method = "LS";
-int N_kernels = 25;
-double kernels_std_scaling = 1.5;
+std::string train_method;
+int N_kernels;
+double kernels_std_scaling;
 std::string scale_type;
 arma::vec wb_normal;
-arma::vec spat_s;
-double temp_s;
+arma::vec Pg;
+double T;
 
 bool read_gmp_from_file;
 bool write_gmp_to_file;
@@ -52,10 +52,14 @@ int main(int argc, char **argv)
   double Ts = Timed(1) - Timed(0);
 
   // =============  Create/Train GMP  =============
-  gmp_::GMP::Ptr gmp(new gmp_::GMP(1, 2) );
+  gmp_::GMP::Ptr gmp( new gmp_::GMP() );
 
   unsigned n_dof = Pd_data.n_rows;
-  if (read_gmp_from_file) gmp_::read(gmp.get(), gmp_filename, "");
+  if (read_gmp_from_file)
+  {
+    gmp_::read(gmp.get(), gmp_filename, "");
+    PRINT_INFO_MSG("Loaded GMP from file!\n");
+  }
   else
   {
     // initialize and train GMP
@@ -81,8 +85,11 @@ int main(int argc, char **argv)
 
   gmp->setScaleMethod(traj_sc);
 
-  if (write_gmp_to_file) gmp_::write(gmp.get(), gmp_filename, "");
-
+  if (write_gmp_to_file)
+  {
+    gmp_::write(gmp.get(), gmp_filename, "");
+    PRINT_INFO_MSG("Wrote GMP to file!\n");
+  }
 
   // gmp->autoRetrain(50, 2, 200, "LWR");
 
@@ -96,8 +103,8 @@ int main(int argc, char **argv)
   arma::vec P0d = Pd_data.col(0);
   arma::vec Pgd = Pd_data.col(i_end);
   arma::vec P0 = P0d;
-  arma::vec Pg = spat_s%(Pgd - P0) + P0;
-  double T = Timed(i_end) / temp_s;
+  // arma::vec Pg = spat_s%(Pgd - P0) + P0;
+  // double T = Timed(i_end) / temp_s;
   double dt = Ts;
 
   arma::rowvec Time;
@@ -106,18 +113,29 @@ int main(int argc, char **argv)
 
   Timer::toc();
 
+  // This is the groundtruth trajectory that should be produced
+  arma::mat Ks = gmp->getScaling();
+  double temp_s = Timed.back() / T; // temporal scaling 
+  // arma::rowvec Timed2 = Timed / temp_s;
+  // arma::mat Pd2_data = Ks*( Pd_data-P0d ) + P0;
+  // arma::mat dPd2_data = Ks*dPd_data*temp_s;
+  // arma::mat ddPd2_data = Ks*ddPd_data*std::pow(temp_s,2);
+
   // =============  Write results  =============
   {
     gmp_::FileIO fid(results_filename, gmp_::FileIO::out | gmp_::FileIO::trunc);
+    // write the demo data
     fid.write("Timed",Timed);
     fid.write("Pd_data",Pd_data);
     fid.write("dPd_data",dPd_data);
     fid.write("ddPd_data",ddPd_data);
+    // write the DMP data
     fid.write("Time",Time);
     fid.write("P_data",P_data);
     fid.write("dP_data",dP_data);
     fid.write("ddP_data",ddP_data);
-    fid.write("spat_s",spat_s);
+    // write the spatial scaling matrix and the temporal scaling
+    fid.write("Ks",Ks);
     fid.write("temp_s",temp_s);
   }
 
@@ -144,10 +162,10 @@ void loadParams()
   if (!nh.getParam("wb_normal", wb_normal_temp)) throw_error("Failed to load param \"wb_normal\"...\n");
   wb_normal = wb_normal_temp;
 
-  std::vector<double> spat_s_;
-  if (!nh.getParam("spat_s", spat_s_)) throw_error("Failed to load param \"spat_s\"...\n");
-  spat_s = spat_s_;
-  if (!nh.getParam("temp_s", temp_s)) throw_error("Failed to load param \"temp_s\"...\n");
+  std::vector<double> Pg_;
+  if (!nh.getParam("Pg", Pg_)) throw_error("Failed to load param \"Pg\"...\n");
+  Pg = Pg_;
+  if (!nh.getParam("T", T)) throw_error("Failed to load param \"T\"...\n");
 
   if (!nh.getParam("read_gmp_from_file", read_gmp_from_file)) throw_error("Failed to load param \"read_gmp_from_file\"...\n");
   if (!nh.getParam("write_gmp_to_file", write_gmp_to_file)) throw_error("Failed to load param \"write_gmp_to_file\"...\n");
