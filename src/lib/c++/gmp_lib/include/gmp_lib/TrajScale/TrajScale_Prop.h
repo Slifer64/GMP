@@ -12,7 +12,14 @@ namespace as64_
 namespace gmp_
 {
 
-
+/** For generalizing an n-DoF trajectory to new target/initial positions using 
+ * proportional scaling (as in the original DMP):
+ * 
+ * scaling matrix: Ks = diag( (g - y0) ./ (gd - yd0) )
+ * 
+ * where g, y0 are the new target and initial positions
+ *      gd, yd0 are the demonstrated target and initial positions
+ */
 
 class TrajScale_Prop : public TrajScale
 {
