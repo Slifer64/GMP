@@ -92,5 +92,45 @@ browse to the repository head and type:
 
 + #### Enforcing constraints online:
 
+---
+
+### Miscellaneous
+
++ #### IO functionalities
+
+    The package has additionally IO functionalities for reading/writing data from/to binary files, provided by the class `FileIO`. Each variable has a name-identifier assigned to it, which is used to write or read the variable. In general, it works like this for writing:
+    ```matlab
+    % data to write
+    A = rand(4,5);
+    v = rand(1,3);
+    str = 'Hello World!';
+    gmp = GMP(6, 30); % DMP with 6 DoFs and 30 kernels per DoF
+    gmp_o = GMPo(40); % orientation DMP with 40 kernels
+    
+    % write to file
+    fid = FileIO('my_data.bin', FileIO.out);
+    fid.write('my_vector', v);
+    fid.write('my_message', str);
+    fid.write('some_matrix', A);
+    gmp_.write(gmp, fid, 'my_gmp'); % use dedicated function for writing GMP
+    gmp_.write(gmp_o, fid, 'o_gmp');
+    ```
+    and to read:
+    ```matlab
+    % read from file (in any order you like)
+    fid = FileIO('my_data.bin', FileIO.in);
+    
+    gmp = GMP(); % create empty object
+    gmp_.read(gmp, fid, 'my_gmp'); % use dedicated function for reading GMP
+
+    A = fid.read('some_matrix');
+
+    gmp_o = GMPo(); % create empty object
+    gmp_.read(gmp_o, fid, 'o_gmp');
+    
+    v = fid.read('my_vector');
+    str = fid.read('my_message');
+    ```
+    To see more details on how it works, check the examples `io_example.m` and `gmp_io_example.m` in the folder `src\gmp_test\src\simulation`. The API is almost identical for c++ and compatible with the matlab API. Therefore you can read from c++, data written in matlab and vice versa.  
 
 
