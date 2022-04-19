@@ -11,6 +11,7 @@ classdef TrajScale < matlab.mixin.Copyable
     properties (Constant, Access = public)
         
         % enum TrajScaleType{
+        NONE = -1
         PROP_SCALE = 0
         ROT_MIN_SCALE = 1
         ROT_WB_SCALE = 2
@@ -24,6 +25,7 @@ classdef TrajScale < matlab.mixin.Copyable
         %  @param[in] n_dof: degrees of freedom.
         function this = TrajScale(n_dof)
             
+            this.n_dof = n_dof;
             this.Y0d = zeros(n_dof,1);
             this.Ygd = ones(n_dof,1);
             % Initialization required for 'setScaleMethod'
@@ -107,7 +109,9 @@ classdef TrajScale < matlab.mixin.Copyable
     end
     
     properties (Access = protected)
-
+        
+        n_dof % number of DoFs
+        
         Y0d % Nominal start position.
         Ygd % Nominal final position.
         Y0 % New start position.

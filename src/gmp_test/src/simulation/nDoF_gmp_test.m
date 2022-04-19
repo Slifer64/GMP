@@ -2,7 +2,7 @@
 %  Works similarly for an n-DoF trajectory as well.
 
 clc;
-close all;
+% close all;
 clear;
 
 %% =============  includes...  =============
@@ -20,7 +20,7 @@ kernels_std_scaling = 1.5; % scaling of the width of each Gaussian. The greater
 train_filename = 'data/pos_data.bin'; % file containing the training data
 
 %% Choose scaling type for the generalization
-scale_type = 'rot_wb'; % {'prop', 'rot_min', 'rot_wb'}, use 'prop' if n-DoFs > 3
+scale_type = 'none'; % {'prop', 'rot_min', 'rot_wb', 'none'}, use 'prop' if n-DoFs > 3
 wb_normal = [0; 0; 1]; % work-bench normal (for use with "rot_wb")
 
 % %% Set scaling for the executed trajectory (for testing purposes...)
@@ -83,6 +83,8 @@ elseif ( strcmpi(scale_type, 'rot_min') )
 elseif ( strcmpi(scale_type, 'rot_wb') )
     traj_sc = TrajScale_Rot_wb();
     traj_sc.setWorkBenchNormal(wb_normal); % set also the workbench normal
+elseif ( strcmpi(scale_type, 'none') )
+    traj_sc = TrajScale_None(n_dof);
 else
     error(['Unsupported scale type ''' scale_type '''...\n']);
 end
@@ -102,7 +104,7 @@ t_start = tic;
 %% Initial/Final values
 P0d = Pd_data(:,1);   % Initial demo position
 Pgd = Pd_data(:,end); % Target demo position
-P0 = P0d;   % set initial position for execution (for simplicity lets leave it the same as the demo)
+P0 = P0d; % - [0.1; 0.05; 0.08];   % set initial position for execution (for simplicity lets leave it the same as the demo)
 Pg = [1.2; 1.8; 0.36];  % set target position for execution
 % Pg = spat_s.*(Pgd - P0) + P0;
 T = 8.33; % set the time duration of the executed motion
@@ -128,6 +130,7 @@ for i=1:3
     figure;
     subplot(3,1,1);
     hold on;
+    plot(Time(end), Pg(i), 'LineWidth',4, 'Marker','x', 'MarkerSize',10, 'LineStyle','none', 'Color','red', 'HandleVisibility','off');
     plot(Time, P_data(i,:), 'LineWidth',2.0 , 'Color','blue', 'DisplayName', 'DMP');
     plot(Timed2, Pd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta', 'DisplayName','ground-truth');
     ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
@@ -222,11 +225,14 @@ dY_data = [];
 ddY_data = [];
 x_data = [];
 
-% set initial position
-gmp.setY0(y0);
+% set initial and final position
+if (gmp.traj_sc.getScaleType() ~= TrajScale.NONE)
+    gmp.setY0(y0);
+    gmp.setGoal(g);
+else
+    gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot), y, dy);
+end
 
-% set target/final position
-gmp.setGoal(g);
 
 %% simulate
 while (true)
@@ -237,9 +243,6 @@ while (true)
     dY_data = [dY_data dy];
     ddY_data = [ddY_data ddy];
     % x_data = [x_data x];
-    
-    % Update the target if you want...
-    % gmp.setGoal(g);
 
     %% DMP simulation
     
@@ -274,7 +277,16 @@ while (true)
     if (t>=1.0*t_end) % && norm(y-g)<1e-3 && norm(dy)<5e-3)
         break;
     end
-
+    
+    % Update the target if you want...
+    if (gmp.traj_sc.getScaleType() ~= TrajScale.NONE)
+        gmp.setGoal(g);
+    else
+        % Either one works:
+        gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot));
+        % gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot), y, dy);
+    end
+    
     %% Numerical integration
     iters = iters + 1;
     t = t + dt;

@@ -28,6 +28,7 @@ classdef GMP < GMP_regressor
             this.D = 30 * ones(n_dofs,1);
             
             this.W = zeros(n_dofs, N_kernels);
+            this.W0 = this.W;
             
             this.Y0d = zeros(n_dofs,1);
             this.Ygd = ones(n_dofs,1);
@@ -38,7 +39,6 @@ classdef GMP < GMP_regressor
 
             this.y_dot = zeros(n_dofs,1);
             this.z_dot = zeros(n_dofs,1);
-            
         end
 
         %% Returns the number of DoFs.
@@ -88,6 +88,8 @@ classdef GMP < GMP_regressor
             else
                 error('[WSoG::train]: Unsupported training method...');
             end
+            
+            this.W0 = this.W;
             
             this.Y0d = this.W*H(:,1);
             this.Ygd = this.W*H(:,end);
@@ -167,6 +169,41 @@ classdef GMP < GMP_regressor
             this.Yg = g;
             this.traj_sc.setNewStartFinalPos(this.Y0, this.Yg);
         
+        end
+        
+        
+        %% Scales non-linearly the GMP trajectory to the new goal.
+        %  \note: The trajectory scale method must be set to
+        %  TrajScale.None. Otherwise an error is thrown.
+        %  @param[in] g: goal position.
+        %  @param[in] xdot_g: phase variable 1st time derivative at the goal.
+        %  @param[in] s: current state of phase variable as a @GMP_phase object.
+        %  @param[in] y: current position (optional, default='the current position of the model').
+        %  @param[in] y_dot: current velocity (optional, default='the current velocity of the model').
+        function updateGoal(this, g, xdot_g, s, y, y_dot)
+            
+            if (nargin < 5), y = this.getYd(s.x); end
+            if (nargin < 6), y_dot = this.getYdDot(s.x, s.x_dot); end
+                
+            if (this.traj_sc.getScaleType() ~= TrajScale.NONE)
+                error('[GMP::updateGoal]: the scaling method must be ''TrajScale.NONE''');
+            end
+
+            y_ddot = this.getYdDDot(s.x, s.x_dot, s.x_ddot);
+            
+            % this.W = this.W0;
+
+            gmp_up = GMP_Update(this);
+            gmp_up.initExpSigmaw(0.01);
+            % gmp_up.plotWeightsCovariance();
+            gmp_up.enableSigmawUpdate(false);
+            sf = GMP_phase(1, xdot_g, 0);
+            s_vec = [s s s sf sf sf];
+            z = [y y_dot y_ddot g zeros(3,2)];
+            type = repmat([GMP_UpdateType.POS GMP_UpdateType.VEL, GMP_UpdateType.ACCEL], 1, 2);
+            r_n = repmat([1e-5 1e-4 1e-3], 1, 2);
+            gmp_up.updateWeights(s_vec, z, type, r_n);
+            
         end
 
         %% Returns the goal/final position.
@@ -375,6 +412,8 @@ classdef GMP < GMP_regressor
         
         Y0d % trained initial position
         Ygd % trained target position
+        
+        W0 % initial weights
         
         %% output state
         %  Used with @update, @getY, @getZ.

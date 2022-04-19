@@ -38,6 +38,22 @@ classdef GMP_Update < matlab.mixin.Copyable
             
         end
         
+        function initExpSigmaw(this, decay_rate)
+            
+            if (nargin < 2), decay_rate = 0.01; end
+            
+            N_kernels = this.gmp.numOfKernels();
+            S = zeros(N_kernels,N_kernels);
+            for i=1:N_kernels
+                for j=i+1:N_kernels
+                    S(i,j) = exp(-decay_rate * abs(i-j));
+                end
+            end
+            this.Sigma_w = S + S' + eye(N_kernels,N_kernels); 
+  
+        end
+        
+        
         function initSigmaWfromMsr(this, x_data)
               
 %             n_data = length(x_data);
@@ -150,6 +166,13 @@ classdef GMP_Update < matlab.mixin.Copyable
             if (this.enable_Sigma_w_update)
                 this.Sigma_w = this.Sigma_w - C*B;
             end
+            
+%             D = 1e-1*eye(n_ker, n_ker) / n_ker;
+%             inv_S = inv(this.Sigma_w);
+%             inv_R = inv(Rn);
+%             w0 = this.gmp.W';
+%             w =  (inv_S + D + H*inv_R*H')\(inv_S*w0 + H*inv_R*Z');
+%             this.gmp.W = w';
             
         end
 

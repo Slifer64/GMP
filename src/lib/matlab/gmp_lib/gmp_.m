@@ -402,6 +402,7 @@ classdef gmp_
             end
             
             gmp.W = fid.read([prefix 'weights']);
+            gmp.W0 = gmp.W;
             gmp.D = fid.read([prefix 'damping']);
             gmp.K = fid.read([prefix 'stiffness']);
             %N_kernels = fid.read([prefix 'N_kernels']);
