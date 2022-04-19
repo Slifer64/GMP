@@ -2,7 +2,7 @@
 %  Works similarly for an n-DoF trajectory as well.
 
 clc;
-% close all;
+close all;
 clear;
 
 %% =============  includes...  =============
@@ -104,8 +104,9 @@ t_start = tic;
 %% Initial/Final values
 P0d = Pd_data(:,1);   % Initial demo position
 Pgd = Pd_data(:,end); % Target demo position
-P0 = P0d; % - [0.1; 0.05; 0.08];   % set initial position for execution (for simplicity lets leave it the same as the demo)
-Pg = [1.2; 1.8; 0.36];  % set target position for execution
+P0 = P0d; % set initial position for execution (for simplicity lets leave it the same as the demo)
+% Pg = [1.2; 1.8; 0.36];  % set target position for execution
+Pg = [0.8; 0.9; -0.2];  % set target position for execution
 % Pg = spat_s.*(Pgd - P0) + P0;
 T = 8.33; % set the time duration of the executed motion
 % T = Timed(end) / temp_s;
@@ -133,6 +134,7 @@ for i=1:3
     plot(Time(end), Pg(i), 'LineWidth',4, 'Marker','x', 'MarkerSize',10, 'LineStyle','none', 'Color','red', 'HandleVisibility','off');
     plot(Time, P_data(i,:), 'LineWidth',2.0 , 'Color','blue', 'DisplayName', 'DMP');
     plot(Timed2, Pd2_data(i,:), 'LineWidth',2.0, 'LineStyle',':', 'Color','magenta', 'DisplayName','ground-truth');
+    plot(Timed*Time(end)/Timed(end), Pd_data(i,:), 'LineWidth',2.0, 'LineStyle','-.' , 'Color','green', 'DisplayName', 'demo');
     ylabel('pos [$m$]', 'interpreter','latex', 'fontsize',15);
     title(['DoF $' num2str(i) '$'], 'interpreter','latex', 'fontsize',18);
     legend({}, 'interpreter','latex', 'fontsize',15);
@@ -233,6 +235,11 @@ else
     gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot), y, dy);
 end
 
+count = 0;
+g0 = g;
+g_data = [];
+W2_data = [];
+
 
 %% simulate
 while (true)
@@ -243,6 +250,9 @@ while (true)
     dY_data = [dY_data dy];
     ddY_data = [ddY_data ddy];
     % x_data = [x_data x];
+    
+    g_data = [g_data g];
+    W2_data = [W2_data gmp.W(2,:)'];
 
     %% DMP simulation
     
@@ -278,6 +288,12 @@ while (true)
         break;
     end
     
+%     if (count > 0 && count < 3000)
+%         g = (1 + floor(count/500)*0.1)*g0;
+%     end
+%     if (count == 1500), g = 1.2 * g0; end
+    count = count + 1;
+        
     % Update the target if you want...
     if (gmp.traj_sc.getScaleType() ~= TrajScale.NONE)
         gmp.setGoal(g);
@@ -300,5 +316,10 @@ while (true)
 
 end
 
+% figure;
+% plot(Time, g_data)
+% 
+% figure;
+% plot(W2_data')
 
 end

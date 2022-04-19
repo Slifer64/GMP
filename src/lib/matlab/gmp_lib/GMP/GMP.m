@@ -39,6 +39,13 @@ classdef GMP < GMP_regressor
 
             this.y_dot = zeros(n_dofs,1);
             this.z_dot = zeros(n_dofs,1);
+            
+            this.gmp_up = GMP_Update(this);
+            this.gmp_up.initExpSigmaw(0.01);
+            %this.gmp_up.initSigmaWfromMsr(0:0.01:1)
+            %this.gmp_up.plotWeightsCovariance(); pause;
+            this.gmp_up.enableSigmawUpdate(false);
+
         end
 
         %% Returns the number of DoFs.
@@ -191,18 +198,13 @@ classdef GMP < GMP_regressor
 
             y_ddot = this.getYdDDot(s.x, s.x_dot, s.x_ddot);
             
-            % this.W = this.W0;
-
-            gmp_up = GMP_Update(this);
-            gmp_up.initExpSigmaw(0.01);
-            % gmp_up.plotWeightsCovariance();
-            gmp_up.enableSigmawUpdate(false);
+            %this.W = this.W0;
             sf = GMP_phase(1, xdot_g, 0);
             s_vec = [s s s sf sf sf];
             z = [y y_dot y_ddot g zeros(3,2)];
             type = repmat([GMP_UpdateType.POS GMP_UpdateType.VEL, GMP_UpdateType.ACCEL], 1, 2);
             r_n = repmat([1e-5 1e-4 1e-3], 1, 2);
-            gmp_up.updateWeights(s_vec, z, type, r_n);
+            this.gmp_up.updateWeights(s_vec, z, type, r_n);
             
         end
 
@@ -406,6 +408,8 @@ classdef GMP < GMP_regressor
     
     
     properties (Access = {?GMP_Update, ?gmp_})
+        
+        gmp_up
         
         Y0 % initial position
         Yg % target position
