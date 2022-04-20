@@ -25,15 +25,6 @@ classdef GMP_Update < matlab.mixin.Copyable
         function initSigmaw(this)
             
             N_kernels = this.gmp.numOfKernels();
-%             S = zeros(N_kernels,N_kernels);
-%             for i=1:N_kernels
-%                 for j=i+1:N_kernels
-%                     S(i,j) = exp(-0.2 * abs(i-j));
-%                     %S(i,j) = 1 - 1*(abs(i-j)/n)^3;
-%                 end
-%             end
-%             S = S + S' + eye(N_kernels,N_kernels); 
-%             this.Sigma_w = S;
             this.Sigma_w = eye(N_kernels, N_kernels);
             
         end
@@ -71,6 +62,26 @@ classdef GMP_Update < matlab.mixin.Copyable
             for j=1:n_data, H(:,j) = this.gmp.regressVec(x_data(j)); end
             
             this.Sigma_w = inv(H*H');
+            
+        end
+        
+        function initSigmaWfromVelMsr(this, x_data, tau)
+            
+            n_data = length(x_data);
+            H = zeros(this.gmp.numOfKernels(), n_data);
+            for j=1:n_data, H(:,j) = this.gmp.regressVecDot(x_data(j), 1/tau); end
+            
+            this.Sigma_w = inv(H*H' + 1e-10*eye(this.gmp.numOfKernels()));
+            
+        end
+        
+        function initSigmaWfromAccelMsr(this, x_data, tau)
+            
+            n_data = length(x_data);
+            H = zeros(this.gmp.numOfKernels(), n_data);
+            for j=1:n_data, H(:,j) = this.gmp.regressVecDDot(x_data(j), 1/tau, 0); end
+            
+            this.Sigma_w = inv(H*H' + 1e-10*eye(this.gmp.numOfKernels()));
             
         end
         

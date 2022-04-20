@@ -105,7 +105,7 @@ t_start = tic;
 P0d = Pd_data(:,1);   % Initial demo position
 Pgd = Pd_data(:,end); % Target demo position
 P0 = P0d; % set initial position for execution (for simplicity lets leave it the same as the demo)
-% Pg = [1.2; 1.8; 0.36];  % set target position for execution
+% Pg = [1.2; 1.8; 1.36];  % set target position for execution
 Pg = [0.8; 0.9; -0.2];  % set target position for execution
 % Pg = spat_s.*(Pgd - P0) + P0;
 T = 8.33; % set the time duration of the executed motion
@@ -233,6 +233,11 @@ if (gmp.traj_sc.getScaleType() ~= TrajScale.NONE)
     gmp.setGoal(g);
 else
     gmp.resetWeights();
+%     gmp.gmp_up.initExpSigmaw(0.01);
+%     gmp.gmp_up.initSigmaWfromMsr(0:0.01:1);
+%     gmp.gmp_up.initSigmaWfromVelMsr(0:0.01:1, tau);
+    gmp.gmp_up.initSigmaWfromAccelMsr(0:0.01:1, tau);
+    gmp.gmp_up.plotWeightsCovariance(); %pause;
     gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot), y, dy);
 end
 

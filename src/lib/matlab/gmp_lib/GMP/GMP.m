@@ -399,7 +399,9 @@ classdef GMP < GMP_regressor
     end
     
     properties (Access = public)
-
+        
+        gmp_up
+        
         traj_sc % object of type @TrajScale
         
         %% weights
@@ -414,7 +416,7 @@ classdef GMP < GMP_regressor
     
     properties (Access = {?GMP_Update, ?gmp_})
         
-        gmp_up
+        
         
         Y0 % initial position
         Yg % target position
