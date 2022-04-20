@@ -81,6 +81,7 @@ int main(int argc, char **argv)
     traj_sc.reset( new gmp_::TrajScale_Rot_wb() );
     dynamic_cast<gmp_::TrajScale_Rot_wb *>(traj_sc.get())->setWorkBenchNormal( {0, 0, 1} );
   }
+  else if (scale_type.compare("none") == 0) traj_sc.reset( new gmp_::TrajScale_None(n_dof) );
   else throw_error("Unsupported scale type \"" + scale_type + "\"...\n");
 
   gmp->setScaleMethod(traj_sc);

@@ -32,6 +32,17 @@ namespace gmp_
       this->Sigma_w = arma::mat().eye(N_kernels, N_kernels);
   }
 
+  void GMP_Update::initExpSigmaw(double decay_rate)
+  {      
+    unsigned N_kernels = this->gmp->numOfKernels();
+    arma::mat S = arma::mat().zeros(N_kernels, N_kernels);
+    for (int i=0; i<N_kernels; i++)
+    {
+      for (int j=i+1; j<N_kernels; j++) S(i,j) = std::exp(-decay_rate * std::abs(i-j));
+    }
+    this->Sigma_w = S + S.t() + arma::mat().eye(N_kernels, N_kernels); 
+  }
+
   void GMP_Update::initSigmaWfromMsr(const arma::rowvec &x_data)
   {
       unsigned n_data = x_data.size();
@@ -56,7 +67,7 @@ namespace gmp_
     return this->Sigma_w;
   }
 
-  double GMP_Update::setMsrNoiseVar(double rv)
+  void GMP_Update::setMsrNoiseVar(double rv)
   {
     this->rv = rv;
   }

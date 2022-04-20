@@ -296,6 +296,11 @@ classdef GMP < GMP_regressor
 
         end
         
+        function resetWeights(this)
+           
+            this.W = this.W0;
+            
+        end
         
         %% ===============================================
         %% ==========  original DMP functions ============

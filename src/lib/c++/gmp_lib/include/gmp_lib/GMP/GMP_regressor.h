@@ -45,6 +45,14 @@ public:
   */
   GMP_regressor(unsigned N_kernels, double kernel_std_scaling=1.0);
 
+  /**
+   * @brief Copy constructor.
+   * @param[in] obj: Copy the contents of obj to *this. 
+   */
+  GMP_regressor(const GMP_regressor &obj);
+
+  const GMP_regressor &operator=(const GMP_regressor &obj);
+
   /** Enable kernels truncation. 
   *  @param[in] zero_tol threshold below which the activation of a kernel is set to zero (optional, default=1e-8).
   *                      Set to zero, to disable kernels truncation.
@@ -150,13 +158,13 @@ protected:
   arma::vec c; ///< N_kernels x 1 vector with the kernels' centers
   arma::vec h; ///< N_kernels x 1 vector with the kernels' inverse width  
 
+  std::function<arma::vec(double)> kernel_fun_ptr;
+
 // ======================================================
 // ===============  Private properties  =================
 // ======================================================
 private:
-  
-  std::function<arma::vec(double)> kernel_fun_ptr;
-  
+
   // range of input x outside which psi = 0 due to finite numerical precision
   double x_min;
   double x_max; 

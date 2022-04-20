@@ -26,7 +26,7 @@ namespace as64_
       double x_ddot; ///< phase variable 2nd time derivative
 
       /** constructor.
-       *  @param[in] x: phase variable.
+       * @param[in] x: phase variable.
        * @param[in] x_dot: phase variable 1st time derivative.
        * @param[in] x_ddot: phase variable 2nd time derivative.
        */

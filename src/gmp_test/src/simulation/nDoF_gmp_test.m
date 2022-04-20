@@ -232,6 +232,7 @@ if (gmp.traj_sc.getScaleType() ~= TrajScale.NONE)
     gmp.setY0(y0);
     gmp.setGoal(g);
 else
+    gmp.resetWeights();
     gmp.updateGoal(g, 1/tau, GMP_phase(x, x_dot, x_ddot), y, dy);
 end
 

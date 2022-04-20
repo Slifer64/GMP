@@ -29,6 +29,7 @@ public:
 
   enum ScaleType
   {
+    NONE = -1,
     PROP_SCALE = 0,
     ROT_MIN_SCALE = 1,
     ROT_WB_SCALE = 2
@@ -95,6 +96,8 @@ protected:
   // =======  Protected Properties  ========
   // =======================================
 
+  unsigned n_dof; ///< number of DoFs
+  
   arma::vec Y0d; ///< Nominal start position.
   arma::vec Ygd; ///< Nominal final position.
   arma::vec Y0; ///< New start position.

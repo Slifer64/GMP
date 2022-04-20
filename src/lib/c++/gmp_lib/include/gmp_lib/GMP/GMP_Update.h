@@ -5,6 +5,7 @@
 //
 
 #include <gmp_lib/GMP/GMP.h>
+#include <gmp_lib/utils.h>
 
 namespace as64_
 {
@@ -28,13 +29,15 @@ public:
 
   void initSigmaWfromMsr(const arma::rowvec &x_data);
 
+  void initExpSigmaw(double decay_rate=0.01);
+
   void enableSigmawUpdate(bool flag);
 
   void setSigmaW(const arma::mat &Sw);
 
   arma::mat getSigmaW() const;
 
-  double setMsrNoiseVar(double rv);
+  void setMsrNoiseVar(double rv);
 
   // ==================================================
   // ===============   Online update  =================

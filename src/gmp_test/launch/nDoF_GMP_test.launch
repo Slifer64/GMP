@@ -14,10 +14,10 @@
           N_kernels: 25
           kernels_std_scaling: 1.5
 
-          scale_type: "rot_wb" # {"prop", "rot_min", "rot_wb"}
+          scale_type: "none" # {"prop", "rot_min", "rot_wb", "none"}
           wb_normal: [0, 0, 1] # work-bench normal
 
-          Pg: [1.2, 1.8, 0.36] # new target for execution
+          Pg: [0.8, 0.9, -0.2] # [1.2, 1.8, 0.36] # new target for execution
           T: 8.33 # new time duration for execution
 
           read_gmp_from_file: true

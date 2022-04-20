@@ -3,6 +3,7 @@
 #include <gmp_lib/TrajScale/TrajScale_Prop.h>
 #include <gmp_lib/TrajScale/TrajScale_Rot_min.h>
 #include <gmp_lib/TrajScale/TrajScale_Rot_wb.h>
+#include <gmp_lib/TrajScale/TrajScale_None.h>
 
 namespace as64_
 {
@@ -13,6 +14,8 @@ namespace gmp_
 
 TrajScale::TrajScale(unsigned n_dof)
 {
+  this->n_dof = n_dof;
+
   this->Y0d = arma::vec().zeros(n_dof);
   this->Ygd = arma::vec().ones(n_dof);
   //Initialization required for 'setScaleMethod'
@@ -44,6 +47,8 @@ gmp_::TrajScale::Ptr TrajScale::deepCopy() const
 {
   gmp_::TrajScale::Ptr cp_obj;
 
+  arma::vec n_wb;
+
   gmp_::TrajScale::ScaleType sc_t = this->getScaleType();
   switch (getScaleType())
   {
@@ -55,8 +60,11 @@ gmp_::TrajScale::Ptr TrajScale::deepCopy() const
       break;
     case gmp_::TrajScale::ROT_WB_SCALE:
       cp_obj.reset( new gmp_::TrajScale_Rot_wb() );
-      arma::vec n_wb = dynamic_cast<const gmp_::TrajScale_Rot_wb *>(this)->getWorkBenchNormal();
+      n_wb = dynamic_cast<const gmp_::TrajScale_Rot_wb *>(this)->getWorkBenchNormal();
       dynamic_cast<gmp_::TrajScale_Rot_wb *>(cp_obj.get())->setWorkBenchNormal(n_wb);
+      break;
+    case gmp_::TrajScale::NONE:
+      cp_obj.reset( new gmp_::TrajScale_None(numOfDoFs()) );
       break;
   }
 

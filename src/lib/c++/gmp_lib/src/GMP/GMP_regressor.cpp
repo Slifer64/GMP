@@ -10,7 +10,7 @@ namespace gmp_
 
   GMP_regressor::GMP_regressor(unsigned N_kernels, double kernel_std_scaling)
   {
-    this->kernel_fun_ptr = std::bind(&GMP_regressor::kernelFun,this,std::placeholders::_1);
+    this->setTruncatedKernels(0);
     this->setKernels(N_kernels, kernel_std_scaling);
   }
 
@@ -24,8 +24,28 @@ namespace gmp_
       setKernels(this->c, this->h, zero_tol);
       this->kernel_fun_ptr = std::bind(&GMP_regressor::truncGaussKernel,this, std::placeholders::_1, zero_tol);
     }
-    else 
+    else
       this->kernel_fun_ptr = std::bind(&GMP_regressor::kernelFun,this,std::placeholders::_1);
+    
+  }
+
+  GMP_regressor::GMP_regressor(const GMP_regressor &obj)
+  {
+    *this = obj;
+  }
+
+  const GMP_regressor &GMP_regressor::operator=(const GMP_regressor &obj)
+  {
+    this->c = obj.c;
+    this->h = obj.h;
+    this->x_min = obj.x_min;
+    this->x_max = obj.x_max;
+    this->kernel_std_scaling = obj.kernel_std_scaling;
+    this->kernel_std = obj.kernel_std;
+    this->zero_tol = obj.zero_tol;
+    this->setTruncatedKernels(obj.zero_tol);
+
+    return *this;
   }
 
   // ============================================================

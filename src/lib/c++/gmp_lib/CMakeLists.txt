@@ -32,6 +32,8 @@ add_library(${PROJECT_NAME}
 
   src/TrajScale/TrajScale.cpp
 
+  src/CanonicalSystem/CanonicalSystem.cpp
+
   #------------------------
   src/GMP/GMP_regressor.cpp
   #------------------------

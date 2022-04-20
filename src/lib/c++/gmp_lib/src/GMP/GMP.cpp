@@ -1,4 +1,5 @@
 #include <gmp_lib/GMP/GMP.h>
+#include <gmp_lib/GMP/GMPo_Update.h>
 
 namespace as64_
 {
@@ -17,6 +18,7 @@ namespace gmp_
     this->D = 30 * arma::vec().ones(n_dofs);
 
     this->W = arma::mat().zeros(n_dofs, N_kernels);
+    this->W0 = W;
 
     this->Y0d = arma::vec().zeros(n_dofs);
     this->Ygd = arma::vec().ones(n_dofs);
@@ -27,8 +29,11 @@ namespace gmp_
 
     this->y_dot = arma::vec().zeros(n_dofs);
     this->z_dot = arma::vec().zeros(n_dofs);
-  }
 
+    this->gmp_up.reset(new GMP_Update(this));
+    this->gmp_up->initExpSigmaw(0.01);
+    this->gmp_up->enableSigmawUpdate(false);
+  }
 
   /** Returns the number of DoFs.
    *  return: number of DoFs.
@@ -80,6 +85,27 @@ namespace gmp_
     return this->Yg;
   }
 
+  void GMP::updateGoal(const arma::vec &g, double xdot_g, const gmp_::Phase &s)
+  { 
+    updateGoal(g, xdot_g, s, this->getYd(s.x), this->getYdDot(s.x, s.x_dot)); 
+  }
+
+  void GMP::updateGoal(const arma::vec &g, double xdot_g, const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot)
+  {
+    if (this->traj_sc->getScaleType() != TrajScale::NONE)
+      throw std::runtime_error("\33[1m\33[31m[GMP::updateGoal]: the scaling method must be 'TrajScale.NONE'\33[0m");
+
+    arma::vec y_ddot = this->getYdDDot(s.x, s.x_dot, s.x_ddot);
+
+    // this.W = this.W0;
+    gmp_::Phase sf(1, xdot_g, 0);
+    std::vector<gmp_::Phase> s_vec = {s, s, s, sf, sf, sf};
+    arma::mat z = arma::join_horiz(arma::join_horiz(y, y_dot, y_ddot), arma::join_horiz(g, arma::mat().zeros(3,2)) );
+    std::vector<gmp_::UPDATE_TYPE> type = {gmp_::UPDATE_TYPE::POS, gmp_::UPDATE_TYPE::VEL, gmp_::UPDATE_TYPE::ACCEL, gmp_::UPDATE_TYPE::POS, gmp_::UPDATE_TYPE::VEL, gmp_::UPDATE_TYPE::ACCEL};
+    arma::rowvec r_n = {1e-5, 1e-4, 1e-3, 1e-5, 1e-4, 1e-3};
+    this->gmp_up->updateWeights(s_vec, z, type, r_n);
+  }
+
   arma::mat GMP::getScaling() const
   {
     return this->traj_sc->getScaling();
@@ -93,7 +119,7 @@ namespace gmp_
   void GMP::setScaleMethod(const std::shared_ptr<gmp_::TrajScale> &traj_scale_obj)
   {
       if (this->numOfDoFs() != traj_scale_obj->numOfDoFs())
-        throw std::runtime_error("[GMP::setScaleMethod]: Incompatible number of DoFs...");
+        throw std::runtime_error("\33[1m\33[31m[GMP::setScaleMethod]: Incompatible number of DoFs...\33[0m");
 
       this->traj_sc = traj_scale_obj;
       this->traj_sc->setNominalStartFinalPos(this->Y0d, this->Ygd);
@@ -103,7 +129,7 @@ namespace gmp_
   void GMP::train(const std::string &train_method, const arma::rowvec &x, const arma::mat &yd_data, arma::vec *train_err, arma::mat *Sw)
   {
     for (int i=0; i<x.size(); i++)
-    { if (x(i)>1 || x(i)<0) throw std::runtime_error("[GMP::train]: The training timestamps are not normalized..."); }
+    { if (x(i)>1 || x(i)<0) throw std::runtime_error("\33[1m\33[31m[GMP::train]: The training timestamps are not normalized...\33[0m"); }
 
     unsigned n_data = x.size();
     unsigned num_ker = this->numOfKernels();
@@ -118,7 +144,9 @@ namespace gmp_
     else if (train_method.compare("LS") == 0)
       this->W = arma::solve(H.t(), yd_data.t()).t(); // yd_data / H;
     else
-      throw std::runtime_error("[WSoG::train]: Unsupported training method...");
+      throw std::runtime_error("\33[1m\33[31m[GMP::train]: Unsupported training method...\33[0m");
+
+    this->W0 = this->W;
 
     this->Y0d = this->W*H.col(0);
     this->Ygd = this->W*H.col(i_end);
@@ -148,7 +176,6 @@ namespace gmp_
       
       this->setKernels(N_kernels, kern_std_scale);
       this->train(train_method, x, yd_data, train_err, Sw);
-  
   }
 
   void GMP::update(const gmp_::Phase &s, const arma::vec &y, const arma::vec &z, arma::vec y_c, arma::vec z_c)
@@ -184,7 +211,7 @@ namespace gmp_
     return this->getZdot() + yc_dot;
   }
 
-  arma::vec GMP::calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c, arma::vec z_c, arma::vec yc_dot)
+  arma::vec GMP::calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c, arma::vec z_c, arma::vec yc_dot) const
   {
       unsigned n_dofs = this->numOfDoFs();
 
@@ -226,6 +253,10 @@ namespace gmp_
     cp_obj->traj_sc = this->traj_sc->deepCopy();
   }
 
+  void GMP::resetWeights()
+  {
+    this->W = this->W0;
+  }
 
 } // namespace gmp_
 

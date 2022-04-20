@@ -5,22 +5,22 @@ arma::wall_clock Timer::timer;
 
 void PRINT_INFO_MSG(const std::string &msg, std::ostream &out)
 {
-  out << "\033[1m" << "\033[34m" << msg << "\033[0m";
+  out << "\033[1m" << "\033[34m" << msg << "\033[0m" << std::flush;
 }
 
 void PRINT_CONFIRM_MSG(const std::string &msg, std::ostream &out)
 {
-  out << "\033[1m" << "\033[32m" << msg << "\033[0m";
+  out << "\033[1m" << "\033[32m" << msg << "\033[0m" << std::flush;
 }
 
 void PRINT_WARNING_MSG(const std::string &msg, std::ostream &out)
 {
-  out << "\033[1m" << "\033[33m" << msg << "\033[0m";
+  out << "\033[1m" << "\033[33m" << msg << "\033[0m" << std::flush;
 }
 
 void PRINT_ERROR_MSG(const std::string &msg, std::ostream &out)
 {
-  out << "\033[1m" << "\033[31m" << msg << "\033[0m";
+  out << "\033[1m" << "\033[31m" << msg << "\033[0m" << std::flush;
 }
 
 void throw_error(const std::string &err_msg)
@@ -49,8 +49,17 @@ void simulateGMP(gmp_::GMP::Ptr &gmp, const arma::vec &y0,
   double x_ddot = 0;
   // gmp_::Phase s(x, x_dot, x_ddot);
 
-  gmp->setY0(y0); // set initial position
-  gmp->setGoal(yg); // set target/final position
+  if (gmp->traj_sc->getScaleType() != gmp_::TrajScale::NONE)
+  {
+    gmp->setY0(y0); // set initial position
+    gmp->setGoal(yg); // set target/final position
+  }
+  else
+  {
+    gmp->resetWeights();
+    gmp->updateGoal(yg, 1/tau, gmp_::Phase(x, x_dot, x_ddot), y, dy);
+  }
+    
 
   // simulate
   while (true)

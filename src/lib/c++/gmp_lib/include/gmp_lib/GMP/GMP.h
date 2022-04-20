@@ -10,6 +10,7 @@
 #include <gmp_lib/TrajScale/TrajScale_Prop.h>
 #include <gmp_lib/TrajScale/TrajScale_Rot_min.h>
 #include <gmp_lib/TrajScale/TrajScale_Rot_wb.h>
+#include <gmp_lib/TrajScale/TrajScale_None.h>
 
 #include <gmp_lib/io/file_io.h>
 
@@ -91,6 +92,17 @@ public:
   arma::vec getGoal() const;
 
 
+  /** Adapts the GMP weights so that the generated trajectory scales (non-linearly) to the new goal.
+   *  \note: The trajectory scale method must be set to TrajScale.None. Otherwise an error is thrown.
+   *  @param[in] g: goal position.
+   *  @param[in] xdot_g: phase variable 1st time derivative at the goal.
+   *  @param[in] s: current state of phase variable as a @GMP_phase object.
+   *  @param[in] y: current position (optional, default='the current position of the model').
+   *  @param[in] y_dot: current velocity (optional, default='the current velocity of the model').
+   */ 
+  void updateGoal(const arma::vec &g, double xdot_g, const gmp_::Phase &s);
+  void updateGoal(const arma::vec &g, double xdot_g, const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot);
+
   // ===========================================
   // =========  GMP output trajectory  =========
   // ===========================================
@@ -136,8 +148,9 @@ public:
   // ============  Misc ==============
   // =================================
   void deepCopy(gmp_::GMP *cp_obj) const;
-  
 
+  void resetWeights();
+  
   // ===============================================
   // ==========  original DMP functions ============
   //  Deprecated. Use @getYd, @getYdDot, @getYdDDot instead.
@@ -181,7 +194,7 @@ public:
    * @param[in] yc_dot time derivative of the 'y' state coupling (optional, default=0).
    * @return acceleration.
    */
-  arma::vec calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c={0}, arma::vec z_c={0}, arma::vec yc_dot={0});
+  arma::vec calcYddot(const gmp_::Phase &s, const arma::vec &y, const arma::vec &y_dot, arma::vec y_c={0}, arma::vec z_c={0}, arma::vec yc_dot={0}) const;
 
 
 public: // properties
@@ -190,6 +203,7 @@ public: // properties
 
   // weights
   arma::mat W; ///< num_DoF x num_Kernels matrix where each row contrains the weights for each DoF
+  arma::mat W0; ///< stores a copy of W, so that we can restore them if needed after @updateGoal
 
   // impedance params
   arma::vec K; ///< num_DoF x 1 stiffness vector
@@ -210,6 +224,8 @@ protected: // properties
   // output state
   arma::vec y_dot; ///< position derivative
   arma::vec z_dot; ///< scaled velocity derivative
+
+  std::shared_ptr<GMP_Update> gmp_up;
 
 }; // GMP
 

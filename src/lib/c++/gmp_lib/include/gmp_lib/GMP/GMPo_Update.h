@@ -17,6 +17,9 @@ namespace gmp_
 class GMPo_Update : public GMP_Update
 {
 public:
+
+  typedef std::shared_ptr<GMPo_Update> Ptr;
+
   // GMP constructor.
   //  @param[in] gmp: n_DoF dmp.
   GMPo_Update(GMPo *gmp);

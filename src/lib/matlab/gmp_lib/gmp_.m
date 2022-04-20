@@ -422,9 +422,14 @@ classdef gmp_
             gmp.y_dot = zeros(n_dofs,1);
             gmp.z_dot = zeros(n_dofs,1);
             
+            gmp.gmp_up = GMP_Update(gmp);
+            gmp.gmp_up.initExpSigmaw(0.01);
+            gmp.gmp_up.enableSigmawUpdate(false);
+            
             if (scale_type == TrajScale.PROP_SCALE), gmp.setScaleMethod(TrajScale_Prop(n_dofs));
             elseif (scale_type == TrajScale.ROT_MIN_SCALE), gmp.setScaleMethod(TrajScale_Rot_min());
             elseif (scale_type == TrajScale.ROT_WB_SCALE), gmp.setScaleMethod(TrajScale_Rot_wb());
+                elseif (scale_type == TrajScale.NONE), gmp.setScaleMethod(TrajScale_None(n_dofs));
             else, error(['[GMP_IO::read]: Unsupported scale type ''' num2str(scale_type) '''...']);
             end
             
