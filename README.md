@@ -134,3 +134,23 @@ browse to the repository head and type:
     To see more details on how it works, check the examples `io_example.m` and `gmp_io_example.m` in the folder `src\gmp_test\src\simulation`. The API is almost identical for c++ and compatible with the matlab API. Therefore you can read from c++, data written in matlab and vice versa.  
 
 
+
+---
+
+## Citing GMP
+
+If you are using GMP for your work, you are encouraged to
+
+- Cite the related papers:
+  ```
+  @INPROCEEDINGS{9562059,  
+  author={Sidiropoulos, Antonis and Doulgeri, Zoe},  
+  booktitle={2021 IEEE International Conference on Robotics and Automation (ICRA)},   
+  title={A Reversible Dynamic Movement Primitive formulation},   
+  year={2021},  
+  volume={},  
+  number={},  
+  pages={3147-3153},  
+  doi={10.1109/ICRA48506.2021.9562059}}
+  ```
+- Put a star on this repository.
