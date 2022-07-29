@@ -44,7 +44,7 @@ classdef GMP < GMP_regressor
             this.gmp_up.initExpSigmaw(0.01);
             %this.gmp_up.initSigmaWfromMsr(0:0.01:1)
             %this.gmp_up.plotWeightsCovariance(); pause;
-            this.gmp_up.enableSigmawUpdate(false);
+            this.gmp_up.recursiveUpdate(false);
 
         end
 

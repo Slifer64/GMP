@@ -18,7 +18,8 @@ classdef GMP_Update < matlab.mixin.Copyable
             this.initSigmaw();
             this.rv = 1;
             
-            this.enableSigmawUpdate(false);
+            this.recursiveUpdate(false);
+            this.syncUpdate(true);
 
         end
 
@@ -44,19 +45,8 @@ classdef GMP_Update < matlab.mixin.Copyable
   
         end
         
-        
         function initSigmaWfromMsr(this, x_data)
               
-%             n_data = length(x_data);
-%             H = zeros(this.gmp.numOfKernels(), n_data);
-%             H_dot = zeros(this.gmp.numOfKernels(), n_data);
-%             for j=1:n_data
-%                 H(:,j) = this.gmp.regressVec(x_data(j));
-%                 H_dot(:,j) = this.gmp.regressVecDot(x_data(j),0.05);
-%             end
-%             
-%             this.Sigma_w = inv(H*H' + 100*(H_dot*H_dot'));
-            
             n_data = length(x_data);
             H = zeros(this.gmp.numOfKernels(), n_data);
             for j=1:n_data, H(:,j) = this.gmp.regressVec(x_data(j)); end
@@ -85,9 +75,15 @@ classdef GMP_Update < matlab.mixin.Copyable
             
         end
         
-        function enableSigmawUpdate(this, flag)
+        function recursiveUpdate(this, set)
            
-            this.enable_Sigma_w_update = flag;
+            this.recursive_up = set;
+            
+        end
+        
+        function syncUpdate(this, set)
+           
+            this.sync_up = set;
             
         end
         
@@ -113,27 +109,49 @@ classdef GMP_Update < matlab.mixin.Copyable
         %% ===============   Online update  =================
         %% ==================================================
         
+        function updateNow(this)
+            
+            this.updateWeights(this.batch_s, this.batch_Z, this.batch_type, this.batch_r_n);
+            this.clearBatch();
+    
+        end
+
         function updatePos(this, x, y, r_n)
             
             if (nargin < 4), r_n=this.rv; end
             
-            this.updateWeights(GMP_phase(x,0,0), y, GMP_UpdateType.POS, r_n);
+            this.batch_s = [this.batch_s, GMP_phase(x,0,0)];
+            this.batch_Z = [this.batch_Z, y];
+            this.batch_type = [this.batch_type, GMP_UpdateType.POS];
+            this.batch_r_n = [this.batch_r_n, r_n];
+
+            if (this.sync_up), this.updateNow(); end
             
         end
         
         function updateVel(this, x, x_dot, y_dot, r_n)
             
             if (nargin < 5), r_n=this.rv; end
-            
-            this.updateWeights(GMP_phase(x,x_dot,0), y_dot, GMP_UpdateType.VEL, r_n);
+
+            this.batch_s = [this.batch_s, GMP_phase(x,x_dot,0)];
+            this.batch_Z = [this.batch_Z, y_dot];
+            this.batch_type = [this.batch_type, GMP_UpdateType.VEL];
+            this.batch_r_n = [this.batch_r_n, r_n];
+
+            if (this.sync_up), this.updateNow(); end
             
         end
         
         function updateAccel(this, x, x_dot, x_ddot, y_ddot, r_n)
             
             if (nargin < 6), r_n=this.rv; end
-            
-            this.updateWeights(GMP_phase(x,x_dot,x_ddot), y_ddot, GMP_UpdateType.ACCEL, r_n);
+
+            this.batch_s = [this.batch_s, GMP_phase(x,x_dot,x_ddot)];
+            this.batch_Z = [this.batch_Z, y_ddot];
+            this.batch_type = [this.batch_type, GMP_UpdateType.ACCEL];
+            this.batch_r_n = [this.batch_r_n, r_n];
+
+            if (this.sync_up), this.updateNow(); end
             
         end
         
@@ -174,7 +192,7 @@ classdef GMP_Update < matlab.mixin.Copyable
             B = eye(n,n) / (H'*this.Sigma_w*H + Rn) * C';
             this.gmp.W = this.gmp.W + (Z - this.gmp.W*H)*B;
             
-            if (this.enable_Sigma_w_update)
+            if (this.recursive_up)
                 this.Sigma_w = this.Sigma_w - C*B;
             end
             
@@ -199,13 +217,32 @@ classdef GMP_Update < matlab.mixin.Copyable
         
     end
     
+    methods (Access = protected)
+       
+        function clearBatch(this)
+            
+            this.batch_s = [];
+            this.batch_Z = [];
+            this.batch_type = [];
+            this.batch_r_n = [];
+            
+        end
+        
+    end
+    
     properties (Access = protected)
 
         gmp % n_DoF GMP
         
         Sigma_w % weights covariance for trajectory update
         rv % noise variance for trajectory update
-        enable_Sigma_w_update
+        recursive_up
+        sync_up
+        
+        batch_s
+        batch_Z
+        batch_type
+        batch_r_n
 
     end
     
