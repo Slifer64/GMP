@@ -32,7 +32,8 @@ namespace gmp_
 
     this->gmp_up.reset(new GMP_Update(this));
     this->gmp_up->initExpSigmaw(0.01);
-    this->gmp_up->enableSigmawUpdate(false);
+    this->gmp_up->recursiveUpdate(false);
+    this->gmp_up->syncUpdate(true);
   }
 
   /** Returns the number of DoFs.

@@ -50,24 +50,40 @@ arma::mat blkdiag(const arma::mat &A, double b)
   return C;
 }
 
-void addTriplets(std::vector<Eigen::Triplet<double>> &a, const std::vector<Eigen::Triplet<double>> &b, int row_offset=0, int col_offset=0)
+void addTriplets(std::vector<Eigen::Triplet<double>> &a, const std::vector<Eigen::Triplet<double>> &b,
+                 unsigned row_offset=0, unsigned col_offset=0)
 {
   for (const Eigen::Triplet<double> &t : b)
     a.push_back( Eigen::Triplet<double>( t.row()+row_offset , t.col()+col_offset, t.value() ) );
 }
 
-void addDiagonalTriplets(std::vector<Eigen::Triplet<double>> &coeff, const Eigen::VectorXd &v, int row_offset=0, int col_offset=0)
+void addTriplets(std::vector<Eigen::Triplet<double>> &a, const arma::mat &m,
+                 unsigned row_offset=0, unsigned col_offset=0)
+{
+  for (int i=0; i<m.n_rows; i++)
+  {
+    for (int j=0; j<m.n_cols; j++)
+    {
+      if (m(i,j)) a.push_back( Eigen::Triplet<double>( i+row_offset , j+col_offset, m(i, j) ) );
+    }
+  }
+}
+
+void addDiagonalTriplets(std::vector<Eigen::Triplet<double>> &coeff, const Eigen::VectorXd &v,
+                         unsigned row_offset=0, unsigned col_offset=0)
 {
   for (int i=0; i<v.size(); i++) coeff.push_back(Eigen::Triplet<double>(row_offset+i,col_offset+i,v[i]));
 }
 
-void addDiagonalTriplets(std::vector<Eigen::Triplet<double>> &coeff, int dim, double value, int row_offset=0, int col_offset=0)
+void addDiagonalTriplets(std::vector<Eigen::Triplet<double>> &coeff, unsigned dim, double value,
+                         unsigned row_offset=0, unsigned col_offset=0)
 {
   for (int i=0; i<dim; i++) coeff.push_back(Eigen::Triplet<double>(row_offset+i,col_offset+i,value));
 }
 
-void addToAineqTriplets(std::vector<Eigen::Triplet<double>> &Aineq_triplets, int n_dof, 
-    const arma::vec &phi, const arma::vec &phi_dot, const arma::vec &phi_ddot, int row_offset)
+void addToAineqTriplets(std::vector<Eigen::Triplet<double>> &Aineq_triplets, unsigned n_dof,
+                        const arma::vec &phi, const arma::vec &phi_dot, const arma::vec &phi_ddot,
+                        unsigned row_offset)
 {
   int N_kernels = phi.size();
 
@@ -141,7 +157,6 @@ Eigen::SpMat GMP_MPC::getAjMat(double s, double s_dot, double s_ddot) const
   return sm;
 }
 
-
 // ====================================================================
 // ====================================================================
 // ====================================================================
@@ -155,7 +170,6 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->settings.max_iter = 12000;
   this->settings.abs_tol = 1e-3;
   this->settings.rel_tol = 1e-5;
-
 
   this->n_dof = gmp->numOfDoFs();
   this->n_dof3 = 3*n_dof;
@@ -171,6 +185,8 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->gmp_mpc.reset(new GMP(n_dof, N_kernels, kernel_std_scaling));
   this->gmp_mpc->setTruncatedKernels(trunc_kern_thres);
 
+  this->W_mpc = arma::mat().zeros(n_dof, N_kernels);
+
   this->N_kernels = N_kernels;
   
   this->N = N_horizon;
@@ -185,7 +201,11 @@ GMP_MPC::GMP_MPC(const GMP *gmp, unsigned N_horizon, double pred_time_step, unsi
   this->n_via = 3; // number of via-points to consider at each optimization window
 
   this->n_var = n_dof*N_kernels + n_slack;
-  this->n_ineq = N*n_dof3 + n_dof3 + n_via*n_dof3 + n_slack; //  pos,vel,accel limits, via-pints, final state and slacks
+  unsigned n_bound = N * n_dof3; // pos,vel,accel limits
+  unsigned n_final_state = n_dof3;
+  this->n_obst = N;
+  unsigned n_via_constr = n_via*n_dof3;
+  this->n_ineq = n_bound + n_final_state + n_obst + n_via_constr + n_slack;
   this->n_eq = n_dof3; // initial state constraint
 
   this->Z0 = arma::vec().zeros(n_var);
@@ -353,6 +373,18 @@ void GMP_MPC::addViaPoint(double s, const arma::vec &y, double err_tol)
   via_points.insert(it.base(), vp); // base returns one element after 'it'
 }
 
+void GMP_MPC::addEllipsoidObstacle(const arma::vec &c, const arma::mat &Sigma, std::string name)
+{
+  if (name.empty()) name = std::to_string(this->obst_map.size());
+  this->obst_map[name] = std::shared_ptr<Obstacle>(new EllipseObstacle(c, Sigma, name));
+}
+
+void GMP_MPC::removeObstacle(const std::string &name)
+{
+  auto it = this->obst_map.find(name);
+  if (it != this->obst_map.end()) this->obst_map.erase(it);
+}
+
 // -----------------------------------------------
     
 void GMP_MPC::setPosLimits(const arma::vec &lb, const arma::vec &ub)
@@ -468,8 +500,6 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
   arma::vec y_ddot = arma::vec(&x0(2*n_dof), n_dof, false);
   arma::vec slack_var = arma::vec().zeros(n_slack);
 
-  unsigned N_kernels = this->gmp_mpc->numOfKernels();
-  
   Eigen::VectorXd q = Eigen::VectorXd::Zero(n_var);
 
   Eigen::VectorXd lb_i(3*n_dof);
@@ -500,6 +530,13 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     timer_H.tic();
   #endif
 
+  std::vector<Eigen::Triplet<double>> A_obst_triplets;
+  A_obst_triplets.reserve( n_obst * n_var );
+  Eigen::VectorXd b_obst(n_obst);
+  Eigen::VectorXd b_obst_up = 1e30*Eigen::VectorXd::Ones(n_obst);
+
+  log.clear();
+
   for (int i=0; i<this->N; i++)
   {
     double si = si_data[i];
@@ -508,7 +545,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
 
     arma::vec yd_i_ = this->gmp_ref->getYd(si);
     arma::vec dyd_i_ = this->gmp_ref->getYdDot(si, si_dot);
-    Eigen::Map<Eigen::VectorXd> yd_i(yd_i_.memptr(), n_dof); 
+    Eigen::Map<Eigen::VectorXd> yd_i(yd_i_.memptr(), n_dof);
     Eigen::Map<Eigen::VectorXd> dyd_i(dyd_i_.memptr(), n_dof);
 
     if (si >= 1)
@@ -533,7 +570,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     Eigen::SpMat Hi_ = Psi_gain.transpose()*Psi_gain;
 
     Eigen::appendTriplets(H_triplets, Hi_);
-    // Hi.submat(0,0, n-n_slack-1, n-n_slack-1) = 
+    // Hi.submat(0,0, n-n_slack-1, n-n_slack-1) =
     // H = H + Hi;
 
     // std::cout << "Hi_:\n" << std::setprecision(2) << std::setw(4) << Hi_.toDense() << "\n";
@@ -549,10 +586,29 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     // triplets for identity to insert slacks in constraints: [Aj I] * [w; s]
     addTriplets(Aineq_triplets, Aineq_slack_triplets, i*n_dof3, n_var-n_slack);
 
+    // check collisions with ellipsoids and calculate plane constraints to avoid them
+    arma::rowvec Ai;
+    double bi;
+    arma::vec y_pred = this->getYd(si);
+    this->process_obstacles(y_pred, phi, &Ai, &bi);
+    addTriplets(A_obst_triplets, Ai, i, 0);
+    b_obst(i) = bi;
+
+    log.yd_points.emplace_back(arma::vec(yd_i.data(), yd_i.size(), true));
+    log.y_pred_points.push_back(y_pred);
+
     // si = si + si_dot*this->dt_(i-1);
     // si_dot = si_dot + si_ddot*this->dt_(i-1);
     // si_ddot = ... (if it changes too)
   }
+
+  log.y_current = {x0(0), x0(1), x0(2)};
+  log.yd_current = this->gmp_ref->getYd(s);
+  log.si_data = si_data;
+  log.W_opt = W_mpc;
+  log.Wd = this->gmp_ref->W;
+  log.y_target = arma::vec(x_f.segment(0,n_dof).data(), n_dof, false);
+  if (plot_callback) plot_callback(log);
 
   // =======  initial state constraint  =======
   Eigen::SpMat Aeq = Eigen::join_horiz( this->Phi0, Eigen::SpMat(n_dof3, this->n_slack) );
@@ -566,9 +622,10 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
   Eigen::VectorXd ub_f = this->x_f + this->err_tol_f;
 
   // add final state to cost function too, to help the optimizer
-  Eigen::SpMat Hi_ = Phi_f.transpose()*Qf*Phi_f;
-  Eigen::appendTriplets(H_triplets, Hi_);
-  q.segment(0, n_var - n_slack) -= Phi_f.transpose()*Qf*this->x_f;
+  // Maybe no... it could affect tracking during intermediate steps...
+//  Eigen::SpMat Hi_ = Phi_f.transpose()*Qf*Phi_f;
+//  Eigen::appendTriplets(H_triplets, Hi_);
+//  q.segment(0, n_var - n_slack) -= Phi_f.transpose()*Qf*this->x_f;
 
   // =======  process via-points  =======
 
@@ -579,7 +636,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     else it++;
   }
 
-  // consider only up to the first 'n_via' active via-points 
+  // consider only up to the first 'n_via' active via-points
   unsigned n_vp = std::min( (size_t)n_via, this->via_points.size() );
 
   Eigen::VectorXd lb_v = -inf*Eigen::VectorXd::Ones(n_via * n_dof3);
@@ -616,6 +673,13 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
   // H.setIdentity();
   // H.diagonal() *= 1e-6; // for numerical stability
 
+  // =======  obstacle constraints triplets  =======
+  addTriplets(Aineq_triplets, A_obst_triplets, n_ineq-n_obst-n_slack, 0);
+
+//  Eigen::SpMat A_obst(n_obst, n_var);
+//  A_obst.setFromTriplets(A_obst_triplets.begin(), A_obst_triplets.end());
+//  std::cout << "A_obst:\n" << A_obst.toDense() << "\nb_obst: " << b_obst.transpose() << "\n";
+
   // triplets for slack variable limits
   addDiagonalTriplets(Aineq_triplets, n_slack, 1.0, n_ineq-n_slack, n_var-n_slack);
   // if (this->n_slack)
@@ -630,21 +694,21 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
   Aineq.setFromTriplets(Aineq_triplets.begin(), Aineq_triplets.end());
 
   Eigen::VectorXd lb(n_ineq);
-  lb << lb_i.replicate(this->N,1), lb_f, lb_v, -slack_lim;
+  lb << lb_i.replicate(this->N,1), lb_f, lb_v, b_obst, -slack_lim;
   Eigen::VectorXd ub(n_ineq);
-  ub << ub_i.replicate(this->N,1), ub_f, ub_v, slack_lim; 
+  ub << ub_i.replicate(this->N,1), ub_f, ub_v, b_obst_up, slack_lim;
 
-  Eigen::MatrixXd lb_A_ub( lb.rows() , lb.cols() + Aineq.cols() + ub.cols() );
-  lb_A_ub << lb, Aineq.toDense(), ub;
-  Eigen::MatrixXd Aeq_beq( beq.rows() , beq.cols() + Aeq.cols() );
-  Aeq_beq << Aeq.toDense(), beq;
-
-  // std::cout << "========== QP problem ============\n";
-  // std::cout << std::setprecision(2) << std::setw(4)
-  //           << "H: \n" << H.toDense() << "\n"
-  //           << "q: \n" << q.transpose() << "\n"
-  //           << "lb < A < ub :\n" << lb_A_ub << "\n"
-  //           << "Aeq = beq: \n" << Aeq_beq << "\n";
+//  Eigen::MatrixXd lb_A_ub( lb.rows() , lb.cols() + Aineq.cols() + ub.cols() );
+//  lb_A_ub << lb, Aineq.toDense(), ub;
+//  Eigen::MatrixXd Aeq_beq( beq.rows() , beq.cols() + Aeq.cols() );
+//  Aeq_beq << Aeq.toDense(), beq;
+//
+//   std::cout << "========== QP problem ============\n";
+//   std::cout << std::setprecision(2) << std::setw(4)
+//             << "H: \n" << H.toDense() << "\n"
+//             << "q: \n" << q.transpose() << "\n"
+//             << "lb < A < ub :\n" << lb_A_ub << "\n"
+//             << "Aeq = beq: \n" << Aeq_beq << "\n";
 
   // exit(-1);
 
@@ -681,7 +745,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
 
   #ifdef GMP_MPC_L0G_STATISTICS
     solve_elaps_t_data.push_back( timer_solve.toc()*1000 );
-  #endif 
+  #endif
 
   std::string exit_msg = solver.getExitMsg();
   if (exit_flag >= 0)
@@ -695,7 +759,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     this->Z0 = X;
     this->Z0_dual_ineq = solver.getIneqDualSolution();
     this->Z0_dual_eq = solver.getEqDualSolution();
- 
+
     // =======  Generate optimal output  =======
     y = this->getYd(s);
     y_dot = this->getYdDot(s, s_dot);
@@ -711,7 +775,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
       {
         exit_msg = "Slack variable limits violated: max violation = " + std::to_string(max_violation);
         exit_flag = -1;
-        goto end_solve;  
+        goto end_solve;
       }
     }
 
@@ -722,7 +786,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     elaps_t_data.push_back( timer.toc()*1000 );
   #endif
 
-  end_solve:
+end_solve:
   Solution sol;
   sol.y = y;
   sol.y_dot = y_dot;
@@ -739,7 +803,7 @@ GMP_MPC::Solution GMP_MPC::solve(double s, double s_dot)
     sol.vel_slack = slack_var.subvec(i1,i2);
     i1 += n_dof;
     i2 += n_dof;
-  }  
+  }
   if (accel_slack) sol.accel_slack = slack_var.subvec(i1,i2);
   sol.exit_flag = exit_flag;
   sol.exit_msg = exit_msg;
@@ -761,6 +825,27 @@ arma::vec GMP_MPC::getYdDDot(double s, double s_dot, double s_ddot) const
   return W_mpc*gmp_mpc->regressVecDDot(s, s_dot, s_ddot);
 }
   
+void GMP_MPC::process_obstacles(const arma::vec &p1, const arma::vec &phi, arma::rowvec *Ai, double *bi)
+{
+  // check collisions with ellipsoids and calculate plane constraints to avoid them
+  Ai->zeros(this->n_var);
+  *bi = -1;
+  for (auto &it : this->obst_map)
+  {
+    auto obst = it.second;
+    if (obst->getConstrPlain(p1, phi, Ai, bi))
+    {
+      *Ai = arma::join_horiz(*Ai, arma::rowvec().zeros(this->n_slack));
+
+      log.n_e_data.push_back(obst->n_e);
+      log.p_e_data.push_back(obst->p_e);
+      log.p_data.push_back(obst->p);
+
+      break;
+    }
+  }
+}
+
 } // namespace gmp_
 
 } // namespace as64_

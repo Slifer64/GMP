@@ -7,6 +7,7 @@
 #include <gmp_lib/GMP/GMP.h>
 #include <gmp_lib/math/linear_algebra.h>
 #include <list>
+#include <map>
 #include <array>
 #include <functional>
 
@@ -20,12 +21,99 @@ namespace as64_
 namespace gmp_
 {
 
+class Obstacle
+{
+public:
+  Obstacle(const std::string &name_): name(name_) {}
+  virtual bool getConstrPlain(const arma::vec &p, const arma::vec &phi, arma::rowvec *Ai, double *bi) = 0;
+
+  std::string getName() const { return name; }
+
+public:
+  arma::vec n_e;
+  arma::vec p_e;
+  arma::vec p;
+
+private:
+  std::string name;
+
+};
+
+class EllipseObstacle: public Obstacle
+{
+public:
+  EllipseObstacle(const arma::vec &c_, const arma::mat &Sigma, const std::string &name_):
+  Obstacle(name_), c(c_), inv_Sigma(arma::pinv(Sigma)) {}
+
+  bool getConstrPlain(const arma::vec &p, const arma::vec &phi, arma::rowvec *Ai, double *bi) override
+  {
+    arma::vec &c = this->c;
+    arma::mat inv_Sigma = 0.9*this->inv_Sigma; // enlarge to avoid numerical precision issues related to the solver's settings
+    double temp = arma::as_scalar((p-c).t()*inv_Sigma*(p-c));
+
+    if (temp > 1.1) return false;
+
+    // std::cout << "p = " << p.t() << "\n";
+    // std::cout << "c = " << c.t() << "\n";
+    // std::cerr << "temp = " << temp << "\n";
+    // std::cerr << "Sigma = \n" << arma::inv(inv_Sigma) << "\n";
+    // exit(-1);
+
+    // Find the point on the ellipsoid surface
+    arma::vec p_e = c + (p-c) / std::sqrt(temp);
+    // Find the norm to the ellipsoid on that point
+    arma::vec n_e = inv_Sigma*(p_e - c);
+    n_e /= arma::norm(n_e);
+    arma::mat a_e = phi*n_e.t();
+    // scale to avoid numeral issues related to the solver settings
+    *Ai = 0.1*arma::vectorise(a_e).t();
+    *bi = 0.1*arma::dot(n_e, p_e);
+
+//    std::cout << "center: " << c.t() << "\n";
+//    std::cout << "inv_Sigma: \n" << inv_Sigma << "\n";
+//    std::cout << "Ai = \n";
+//    for (int i=0; i<Ai->size(); i++) printf("%.4f  ", Ai->at(i));
+//    printf("\nbi = %.3f\n", *bi);
+//    exit(-1);
+
+    this->p_e = p_e;
+    this->n_e = n_e;
+    this->p = p;
+
+    return true;
+  }
+
+private:
+  arma::vec c;
+  arma::mat inv_Sigma;
+};
+
 class GMP_MPC
 {
 
 public:
 
   typedef std::shared_ptr<GMP_MPC> Ptr;
+
+  struct Log
+  {
+    void clear()
+    { n_e_data.clear(); p_e_data.clear(); p_data.clear(); si_data.clear(); yd_points.clear(); y_pred_points.clear(); }
+
+    std::vector<arma::vec> n_e_data;
+    std::vector<arma::vec> p_e_data;
+    std::vector<arma::vec> p_data;
+    std::vector<double> si_data;
+    std::vector<arma::vec> yd_points;
+    std::vector<arma::vec> y_pred_points;
+    arma::vec y_current;
+    arma::vec yd_current;
+    arma::vec y_target;
+    arma::mat W_opt;
+    arma::mat Wd;
+  } log;
+
+  std::function<void(const Log &)> plot_callback;
 
   struct
   {
@@ -70,6 +158,9 @@ public:
   
   void addViaPoint(double s, const arma::vec &y, double err_tol = 1e-6);
 
+  void addEllipsoidObstacle(const arma::vec &c, const arma::mat &Sigma, std::string name="");
+  void removeObstacle(const std::string &name);
+
   void setPosSlackLimit(double s_lim);
   
   void setVelSlackLimit(double s_lim);
@@ -98,6 +189,19 @@ public:
 
 protected:
 
+  void process_obstacles(const arma::vec &p1, const arma::vec &phi, arma::rowvec *Ai, double *bi);
+
+  struct Ellipsoid
+  {
+    Ellipsoid() {}
+    Ellipsoid(const arma::vec &c_, const arma::vec &Sigma_): c(c_), inv_Sigma(arma::pinv(Sigma_)) {}
+    arma::vec c;
+    arma::mat inv_Sigma;
+  };
+//  std::map<std::string, Ellipsoid> elips_obst;
+  std::map<std::string, std::shared_ptr<Obstacle>> obst_map;
+  unsigned n_obst;
+
   void integratePhase(double s, double s_dot, std::vector<double> &si_data, std::vector<double> &si_dot_data, std::vector<double> &si_ddot_data);
 
   Eigen::SpMat getAjMat(double s, double s_dot, double s_ddot) const;
@@ -123,7 +227,7 @@ protected:
     Eigen::VectorXd z_dual;
   };
   std::list<ViaPoint> via_points;
-  int n_via; // for how many via-points to allocate space
+  unsigned n_via; // for how many via-points to allocate space
   
   arma::mat W_mpc; ///< mpc optimized weights
   const GMP *gmp_ref;

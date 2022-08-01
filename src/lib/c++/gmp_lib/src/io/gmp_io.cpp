@@ -59,7 +59,6 @@ namespace gmp_
 
     gmp->gmp_up.reset(new GMP_Update(gmp));
     gmp->gmp_up->initExpSigmaw(0.01);
-    gmp->gmp_up->enableSigmawUpdate(false);
 
     if (scale_type == TrajScale::PROP_SCALE) gmp->setScaleMethod( gmp_::TrajScale::Ptr(new gmp_::TrajScale_Prop(n_dofs)) );
     else if (scale_type == TrajScale::ROT_MIN_SCALE) gmp->setScaleMethod( gmp_::TrajScale::Ptr(new gmp_::TrajScale_Rot_min()) );
